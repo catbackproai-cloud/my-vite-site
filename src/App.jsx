@@ -6,13 +6,13 @@ function App() {
       style={{
         height: "100vh",
         width: "100vw",
-        backgroundColor: "#f8f8f8", // off-white full background
+        backgroundColor: "#f8f8f8", // off-white background
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
       }}
     >
-      {/* Strict centered container */}
+      {/* Centered container */}
       <div
         style={{
           maxWidth: "400px",
@@ -20,7 +20,7 @@ function App() {
           textAlign: "center",
         }}
       >
-        {/* Header with logo + name */}
+        {/* Header with logo + brand name */}
         <header
           style={{
             display: "flex",
@@ -59,6 +59,7 @@ function App() {
             Book Your Appointment
           </h2>
 
+          {/* Full Name */}
           <div style={{ marginBottom: "15px" }}>
             <label
               htmlFor="name"
@@ -76,13 +77,15 @@ function App() {
                 borderRadius: "6px",
                 border: "1px solid #ccc",
                 textAlign: "center",
-                color: "#000", // input text black
+                backgroundColor: "#fff", // ✅ white background
+                color: "#000", // ✅ black text
               }}
               placeholder="Enter your name"
               required
             />
           </div>
 
+          {/* Email */}
           <div style={{ marginBottom: "15px" }}>
             <label
               htmlFor="email"
@@ -100,13 +103,15 @@ function App() {
                 borderRadius: "6px",
                 border: "1px solid #ccc",
                 textAlign: "center",
-                color: "#000", // input text black
+                backgroundColor: "#fff",
+                color: "#000",
               }}
               placeholder="Enter your email"
               required
             />
           </div>
 
+          {/* Phone Number */}
           <div style={{ marginBottom: "15px" }}>
             <label
               htmlFor="phone"
@@ -124,13 +129,15 @@ function App() {
                 borderRadius: "6px",
                 border: "1px solid #ccc",
                 textAlign: "center",
-                color: "#000", // input text black
+                backgroundColor: "#fff",
+                color: "#000",
               }}
               placeholder="(555) 123-4567"
               required
             />
           </div>
 
+          {/* Disclaimer */}
           <p
             style={{
               fontSize: "14px",
@@ -141,10 +148,11 @@ function App() {
           >
             By entering your information, you agree to receive appointment
             confirmations and follow-up text messages from{" "}
-            <strong>CatBackAI</strong>. Message &amp; data rates may apply. Reply
-            STOP to unsubscribe.
+            <strong>CatBackAI</strong>. Message &amp; data rates may apply.
+            Reply STOP to unsubscribe.
           </p>
 
+          {/* Submit Button */}
           <button
             type="submit"
             style={{
@@ -155,11 +163,13 @@ function App() {
               borderRadius: "6px",
               fontWeight: "600",
               cursor: "pointer",
+              border: "none",
             }}
           >
             Submit
           </button>
 
+          {/* Privacy Policy Link */}
           <p style={{ fontSize: "12px", color: "#666", marginTop: "15px" }}>
             Read our{" "}
             <a
