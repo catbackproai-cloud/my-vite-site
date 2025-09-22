@@ -24,12 +24,12 @@ function App() {
   return (
     <div
       style={{
-        height: "100vh",
+        minHeight: "100vh",
         width: "100vw",
         backgroundColor: "#f8f8f8",
         display: "flex",
-        alignItems: "center",
         justifyContent: "center",
+        padding: "40px 0",
       }}
     >
       {/* Centered container */}
@@ -239,19 +239,31 @@ function App() {
             </a>
           </p>
         </form>
+      </div>
 
-        {/* Chatbot Embed */}
-        <div style={{ marginTop: "30px" }}>
-          <iframe
-            src="https://chat.heroai.pro/?ns=cat_back&title=Cat%20Back%20AI%20Assistant&primary=%23fbf6e7&secondary=%23fbf6e7&calendly=https%3A%2F%2Fcalendly.com%2Fcatbackproai%2Ffull-car-detailing&open=true&hideLauncher=true"
-            style={{ width: "100%", height: "600px", border: "0" }}
-            title="CatBack AI Assistant"
-          ></iframe>
-        </div>
+      {/* Floating Chatbot */}
+      <div
+        style={{
+          position: "fixed",
+          bottom: "20px",
+          right: "20px",
+          width: "350px",
+          height: "500px",
+          boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
+          borderRadius: "8px",
+          overflow: "hidden",
+          zIndex: 1000,
+          background: "#fff",
+        }}
+      >
+        <iframe
+          src="https://chat.heroai.pro/?ns=cat_back&title=Cat%20Back%20AI%20Assistant&primary=%23fbf6e7&secondary=%23fbf6e7&calendly=https%3A%2F%2Fcalendly.com%2Fcatbackproai%2Ffull-car-detailing&open=true&hideLauncher=true"
+          style={{ width: "100%", height: "100%", border: "0" }}
+          title="CatBack AI Assistant"
+        ></iframe>
       </div>
     </div>
   );
 }
 
 export default App;
-   
