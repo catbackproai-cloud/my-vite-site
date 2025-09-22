@@ -35,22 +35,51 @@ function App() {
     >
       {/* Inject HeroAI embed */}
       <Helmet>
+        <style>{`
+          #heroai-chat-btn{position:fixed;right:16px;bottom:16px;z-index:999999;background:#de8d2b;color:#fff;border:0;border-radius:999px;padding:12px 16px;font:700 14px/1.1 Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.18);cursor:pointer}
+          #heroai-chat-panel{position:fixed;right:16px;bottom:64px;z-index:999998;width:min(420px,92vw);height:min(70vh,560px);background:#fff;border:1px solid #e8edff;border-radius:20px;overflow:hidden;box-shadow:0 22px 60px rgba(0,0,0,.25);margin-bottom:max(0px,env(safe-area-inset-bottom));display:none;box-sizing:border-box}
+          #heroai-chat-iframe{width:100%;height:100%;border:0;display:block}
+          .heroai-topbar{display:flex;align-items:center;gap:10px;padding:10px 12px;background:#fbf6e7;color:#fff;border-bottom:1px solid rgba(0,0,0,.06)}
+          .heroai-topbar img{height:24px;display:block}
+          .heroai-topbar .t{font:600 14px/1 Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+          .heroai-footer{padding:8px 10px;text-align:center;background:#fff;border-top:1px solid #eef2ff}
+          .heroai-footer a{font:600 12px/1 Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#de8d2b;text-decoration:underline}
+          @media (max-width:420px){#heroai-chat-panel{height:80vh;width:94vw;right:3vw;bottom:72px}}
+        `}</style>
+
         <script type="text/javascript">{`
           (function(){
-            var ns = "cat_back"; 
-            var url = "https://bot.heroai.pro/?ns=" + encodeURIComponent(ns) + "&hideLauncher=true";
+            var root = document.getElementById("heroai-chat-root") || document.body;
 
+            // Launcher button (starts CLOSED)
             var b=document.createElement("button");
             b.id="heroai-chat-btn"; b.type="button"; b.textContent="Chat";
             b.setAttribute("aria-label","Open chat");
 
+            // Panel
             var p=document.createElement("div");
             p.id="heroai-chat-panel"; p.setAttribute("role","dialog"); p.setAttribute("aria-label","Hero AI Chat");
 
+            // Topbar
+            var top=document.createElement("div"); top.className="heroai-topbar";
+            var title=document.createElement("div"); title.className="t"; title.textContent="Cat Back AI";
+            top.appendChild(title);
+
+            // Iframe
             var f=document.createElement("iframe");
             f.id="heroai-chat-iframe"; f.title="Hero AI Assistant";
-            f.loading="lazy"; f.referrerPolicy="no-referrer-when-downgrade"; f.src=url;
+            f.loading="lazy"; f.referrerPolicy="no-referrer-when-downgrade";
+            f.src="https://bot.heroai.pro/?ns=cat_back&hideLauncher=true";
+
+            // Footer
+            var foot=document.createElement("div"); foot.className="heroai-footer";
+            var a=document.createElement("a"); a.href="https://heroai.pro"; a.target="_blank"; a.rel="noopener"; a.textContent="Powered with Hero";
+            foot.appendChild(a);
+
+            // Compose panel
+            p.appendChild(top);
             p.appendChild(f);
+            p.appendChild(foot);
 
             function open(){p.style.display="block"; b.textContent="Close"; b.setAttribute("aria-label","Close chat");}
             function close(){p.style.display="none";  b.textContent="Chat";  b.setAttribute("aria-label","Open chat");}
@@ -59,33 +88,10 @@ function App() {
             b.addEventListener("click",toggle);
             window.addEventListener("keydown",function(e){ if(e.key==="Escape") close(); });
 
-            document.body.appendChild(p);
-            document.body.appendChild(b);
+            root.appendChild(p);
+            root.appendChild(b);
           })();
         `}</script>
-
-        <style>{`
-          #heroai-chat-btn{
-            position:fixed;right:16px;bottom:16px;z-index:999999;
-            background:#c5162e;color:#fff;border:0;border-radius:999px;
-            padding:12px 16px;font:700 14px/1.1 Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
-            box-shadow:0 8px 24px rgba(0,0,0,.18);cursor:pointer
-          }
-          #heroai-chat-panel{
-            position:fixed;right:16px;bottom:64px;z-index:999998;
-            width:min(420px,92vw);height:min(70vh,560px);
-            background:#fff;border:1px solid #e8edff;border-radius:20px;
-            overflow:hidden;box-shadow:0 22px 60px rgba(0,0,0,.25);
-            margin-bottom:max(0px,env(safe-area-inset-bottom));
-            display:none;box-sizing:border-box
-          }
-          #heroai-chat-iframe{width:100%;height:100%;border:0;display:block}
-          @media (max-width:420px){
-            #heroai-chat-panel{
-              height:80vh;width:94vw;right:3vw;bottom:72px
-            }
-          }
-        `}</style>
       </Helmet>
 
       {/* Centered container */}
@@ -269,7 +275,7 @@ function App() {
           <button
             type="submit"
             style={{
-              backgroundColor: "#2563eb",
+              backgroundColor: "#de8d2b",
               color: "white",
               padding: "10px",
               width: "100%",
@@ -287,7 +293,7 @@ function App() {
             Read our{" "}
             <a
               href="/privacy.html"
-              style={{ color: "#2563eb", textDecoration: "underline" }}
+              style={{ color: "#de8d2b", textDecoration: "underline" }}
               target="_blank"
               rel="noopener noreferrer"
             >
