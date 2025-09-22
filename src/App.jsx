@@ -257,7 +257,7 @@ function App() {
         }}
       >
         <iframe
-          src="https://chat.heroai.pro/?ns=cat_back&title=Cat%20Back%20AI%20Assistant&primary=%23fbf6e7&secondary=%23fbf6e7&calendly=https%3A%2F%2Fcalendly.com%2Fcatbackproai%2Ffull-car-detailing&open=true&hideLauncher=true"
+          src="https://bot.heroai.pro/?ns=cat_back&title=Cat%20Back%20AI%20Assistant&primary=%23fbf6e7&secondary=%23fbf6e7&calendly=https%3A%2F%2Fcalendly.com%2Fcatbackproai%2Ffull-car-detailing&open=true&hideLauncher=true"
           style={{ width: "100%", height: "100%", border: "0" }}
           title="CatBack AI Assistant"
         ></iframe>
