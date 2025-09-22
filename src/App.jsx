@@ -1,12 +1,32 @@
+import { useState } from "react";
 import logo from "./assets/logo.png";
 
 function App() {
+  const [error, setError] = useState("");
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const remindersChecked = e.target.reminders.checked;
+
+    if (!remindersChecked) {
+      setError(
+        "You must agree to receive appointment confirmations and reminders."
+      );
+      return;
+    }
+
+    setError(""); // clear errors if all good
+
+    // ✅ Handle form submission here (send to backend/n8n/etc.)
+    alert("Form submitted successfully!");
+  };
+
   return (
     <div
       style={{
         height: "100vh",
         width: "100vw",
-        backgroundColor: "#f8f8f8", // off-white background
+        backgroundColor: "#f8f8f8",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -41,6 +61,7 @@ function App() {
 
         {/* Form */}
         <form
+          onSubmit={handleSubmit}
           style={{
             backgroundColor: "white",
             borderRadius: "8px",
@@ -77,8 +98,8 @@ function App() {
                 borderRadius: "6px",
                 border: "1px solid #ccc",
                 textAlign: "center",
-                backgroundColor: "#fff", // ✅ white background
-                color: "#000", // ✅ black text
+                backgroundColor: "#fff",
+                color: "#000",
               }}
               placeholder="Enter your name"
               required
@@ -137,19 +158,55 @@ function App() {
             />
           </div>
 
-          {/* Disclaimer */}
+          {/* Mandatory reminders opt-in (required) */}
+          <div style={{ marginBottom: "12px", textAlign: "left" }}>
+            <input
+              type="checkbox"
+              id="reminders"
+              name="reminders"
+              style={{ marginRight: "8px" }}
+            />
+            <label htmlFor="reminders" style={{ color: "#000" }}>
+              I agree to receive appointment confirmations and follow-up
+              reminders via SMS/email.
+            </label>
+          </div>
+
+          {/* Optional marketing opt-in */}
+          <div style={{ marginBottom: "16px", textAlign: "left" }}>
+            <input
+              type="checkbox"
+              id="marketing"
+              name="marketing"
+              style={{ marginRight: "8px" }}
+            />
+            <label htmlFor="marketing" style={{ color: "#000" }}>
+              I want to receive special offers and updates.
+            </label>
+          </div>
+
+          {/* Error message if reminders not checked */}
+          {error && (
+            <p style={{ color: "red", fontSize: "13px", marginBottom: "12px" }}>
+              {error}
+            </p>
+          )}
+
+          {/* Compliance disclosure */}
           <p
             style={{
-              fontSize: "14px",
+              fontSize: "12.5px",
               color: "#333",
-              marginBottom: "20px",
-              lineHeight: "1.4",
+              marginBottom: "18px",
+              lineHeight: "1.45",
+              textAlign: "left",
             }}
           >
-            By entering your information, you agree to receive appointment
-            confirmations and follow-up text messages from{" "}
-            <strong>CatBackAI</strong>. Message &amp; data rates may apply.
-            Reply STOP to unsubscribe.
+            By submitting this form, you consent to receive messages from{" "}
+            <strong>CatBackAI</strong> related to your appointment. Message &
+            data rates may apply. Message frequency varies. Reply{" "}
+            <strong>STOP</strong> to unsubscribe, <strong>HELP</strong> for help.
+            See our Privacy Policy below.
           </p>
 
           {/* Submit Button */}
@@ -182,6 +239,15 @@ function App() {
             </a>
           </p>
         </form>
+
+        {/* Chatbot Embed */}
+        <div style={{ marginTop: "30px" }}>
+          <iframe
+            src="https://chat.heroai.pro/?ns=cat_back&title=Cat%20Back%20AI%20Assistant&primary=%23fbf6e7&secondary=%23fbf6e7&calendly=https%3A%2F%2Fcalendly.com%2Fcatbackproai%2Ffull-car-detailing&open=true&hideLauncher=true"
+            style={{ width: "100%", height: "600px", border: "0" }}
+            title="CatBack AI Assistant"
+          ></iframe>
+        </div>
       </div>
     </div>
   );
