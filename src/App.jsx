@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Helmet } from "react-helmet";
 import logo from "./assets/logo.png";
 
 function App() {
@@ -32,6 +33,61 @@ function App() {
         padding: "40px 0",
       }}
     >
+      {/* Inject HeroAI embed */}
+      <Helmet>
+        <script type="text/javascript">{`
+          (function(){
+            var ns = "cat_back"; 
+            var url = "https://bot.heroai.pro/?ns=" + encodeURIComponent(ns) + "&hideLauncher=true";
+
+            var b=document.createElement("button");
+            b.id="heroai-chat-btn"; b.type="button"; b.textContent="Chat";
+            b.setAttribute("aria-label","Open chat");
+
+            var p=document.createElement("div");
+            p.id="heroai-chat-panel"; p.setAttribute("role","dialog"); p.setAttribute("aria-label","Hero AI Chat");
+
+            var f=document.createElement("iframe");
+            f.id="heroai-chat-iframe"; f.title="Hero AI Assistant";
+            f.loading="lazy"; f.referrerPolicy="no-referrer-when-downgrade"; f.src=url;
+            p.appendChild(f);
+
+            function open(){p.style.display="block"; b.textContent="Close"; b.setAttribute("aria-label","Close chat");}
+            function close(){p.style.display="none";  b.textContent="Chat";  b.setAttribute("aria-label","Open chat");}
+            function toggle(){(p.style.display==="block") ? close() : open();}
+
+            b.addEventListener("click",toggle);
+            window.addEventListener("keydown",function(e){ if(e.key==="Escape") close(); });
+
+            document.body.appendChild(p);
+            document.body.appendChild(b);
+          })();
+        `}</script>
+
+        <style>{`
+          #heroai-chat-btn{
+            position:fixed;right:16px;bottom:16px;z-index:999999;
+            background:#c5162e;color:#fff;border:0;border-radius:999px;
+            padding:12px 16px;font:700 14px/1.1 Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+            box-shadow:0 8px 24px rgba(0,0,0,.18);cursor:pointer
+          }
+          #heroai-chat-panel{
+            position:fixed;right:16px;bottom:64px;z-index:999998;
+            width:min(420px,92vw);height:min(70vh,560px);
+            background:#fff;border:1px solid #e8edff;border-radius:20px;
+            overflow:hidden;box-shadow:0 22px 60px rgba(0,0,0,.25);
+            margin-bottom:max(0px,env(safe-area-inset-bottom));
+            display:none;box-sizing:border-box
+          }
+          #heroai-chat-iframe{width:100%;height:100%;border:0;display:block}
+          @media (max-width:420px){
+            #heroai-chat-panel{
+              height:80vh;width:94vw;right:3vw;bottom:72px
+            }
+          }
+        `}</style>
+      </Helmet>
+
       {/* Centered container */}
       <div
         style={{
@@ -239,28 +295,6 @@ function App() {
             </a>
           </p>
         </form>
-      </div>
-
-      {/* Floating Chatbot */}
-      <div
-        style={{
-          position: "fixed",
-          bottom: "20px",
-          right: "20px",
-          width: "350px",
-          height: "500px",
-          boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
-          borderRadius: "8px",
-          overflow: "hidden",
-          zIndex: 1000,
-          background: "#fff",
-        }}
-      >
-        <iframe
-          src="https://bot.heroai.pro/?ns=cat_back&title=Cat%20Back%20AI%20Assistant&primary=%23fbf6e7&secondary=%23fbf6e7&calendly=https%3A%2F%2Fcalendly.com%2Fcatbackproai%2Ffull-car-detailing&open=true&hideLauncher=true"
-          style={{ width: "100%", height: "100%", border: "0" }}
-          title="CatBack AI Assistant"
-        ></iframe>
       </div>
     </div>
   );
