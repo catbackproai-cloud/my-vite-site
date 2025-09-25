@@ -1,288 +1,378 @@
-import { useState } from "react";
 import { Helmet } from "react-helmet";
 import logo from "./assets/logo.png";
+import { useMemo, useState } from "react";
 
 function App() {
-  const [error, setError] = useState("");
+  const daysOfWeek = useMemo(
+    () => ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"],
+    []
+  );
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    const remindersChecked = e.target.reminders.checked;
+  const defaultHours = () =>
+    daysOfWeek.reduce((acc, d) => {
+      acc[d] = {
+        openTime: "",
+        openPeriod: "AM",
+        closeTime: "",
+        closePeriod: "PM",
+        closed: true,
+      };
+      return acc;
+    }, {});
 
-    if (!remindersChecked) {
-      setError(
-        "You must agree to receive appointment confirmations and reminders."
-      );
-      return;
+  const [formData, setFormData] = useState({
+    name: "",
+    businessName: "",
+    email: "",
+    phone: "",
+    address: "",
+    hours: defaultHours(),
+    logoFile: null,
+  });
+
+  /* ---------- helpers ---------- */
+  const handleChange = (e) => setFormData((s) => ({ ...s, [e.target.name]: e.target.value }));
+  const handleFileChange = (e) => setFormData((s) => ({ ...s, logoFile: e.target.files?.[0] ?? null }));
+
+  const toggleDay = (day) =>
+    setFormData((s) => ({
+      ...s,
+      hours: { ...s.hours, [day]: { ...s.hours[day], closed: !s.hours[day].closed } },
+    }));
+
+  const formatTimeInput = (value) => {
+    if (!value) return "";
+    let digits = value.replace(/\D/g, "").slice(0, 4); // cap at 4 digits (HHMM)
+    if (digits.length === 3 || digits.length === 4) {
+      digits = digits.slice(0, digits.length - 2) + ":" + digits.slice(-2);
     }
+    return digits;
+  };
 
-    setError(""); // clear errors if all good
+  const setHourField = (day, field, value) =>
+    setFormData((s) => ({
+      ...s,
+      hours: { ...s.hours, [day]: { ...s.hours[day], [field]: formatTimeInput(value) } },
+    }));
 
-    // ✅ Handle form submission here (send to backend/n8n/etc.)
-    alert("Form submitted successfully!");
+  const setPeriodField = (day, field, value) =>
+    setFormData((s) => ({ ...s, hours: { ...s.hours, [day]: { ...s.hours[day], [field]: value } } }));
+
+  // Row click handler: toggle unless the target is an interactive control.
+  const handleRowMouseDown = (day, e) => {
+    const tag = e.target.tagName;
+    const interactive = tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA" || tag === "BUTTON" || tag === "OPTION";
+    if (!interactive) toggleDay(day);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    const scriptURL =
+      "https://script.google.com/macros/s/AKfycbzjCsX9fu-QatvrDzle2bYL-uonrW7sOEXSAVyhxAB1ovZk4szLC_T2IBsEuvhsrQDB5g/exec";
+
+    const fd = new FormData();
+    fd.append("name", formData.name);
+    fd.append("businessName", formData.businessName);
+    fd.append("email", formData.email);
+    fd.append("phone", formData.phone);
+    fd.append("address", formData.address);
+    fd.append("hours", JSON.stringify(formData.hours));
+    if (formData.logoFile) fd.append("logoFile", formData.logoFile);
+
+    try {
+      await fetch(scriptURL, { method: "POST", body: fd, mode: "no-cors" });
+      alert("✅ Form submitted!");
+      setFormData({
+        name: "",
+        businessName: "",
+        email: "",
+        phone: "",
+        address: "",
+        hours: defaultHours(),
+        logoFile: null,
+      });
+      e.target.reset();
+    } catch (err) {
+      console.error(err);
+      alert("❌ There was an error submitting the form.");
+    }
   };
 
   return (
     <div
       style={{
-        minHeight: "100vh",
-        width: "100vw",
+        fontFamily: "Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif",
         backgroundColor: "#f8f8f8",
+        width: "100vw",
+        height: "100vh",
         display: "flex",
-        justifyContent: "center",
-        padding: "40px 0",
       }}
     >
-      {/* Inject HeroAI embed */}
       <Helmet>
         <style>{`
-          #heroai-chat-btn{position:fixed;right:16px;bottom:16px;z-index:999999;background:#de8d2b;color:#fff;border:0;border-radius:999px;padding:12px 16px;font:700 14px/1.1 Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.18);cursor:pointer}
-          #heroai-chat-panel{position:fixed;right:16px;bottom:64px;z-index:999998;width:min(420px,92vw);height:min(70vh,560px);background:#fff;border:1px solid #e8edff;border-radius:20px;overflow:hidden;box-shadow:0 22px 60px rgba(0,0,0,.25);margin-bottom:max(0px,env(safe-area-inset-bottom));display:none;box-sizing:border-box}
-          #heroai-chat-iframe{width:100%;height:100%;border:0;display:block}
-          @media (max-width:420px){#heroai-chat-panel{height:80vh;width:94vw;right:3vw;bottom:72px}}
+          input, select, textarea { background:#fff; color:#000; }
+          input::placeholder { color:#888; }
+          select:disabled, input:disabled { background:#f0f0f0; color:#666; }
+
+          /* Cards & rows hover effects */
+          .hoverCard { transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease; border:1px solid #eee; }
+          .hoverCard:hover { transform: translateY(-4px); box-shadow:0 6px 16px rgba(222,141,43,0.35); border-color:#de8d2b; }
+          .rowHover { transition: background .2s ease, border .2s ease, box-shadow .2s ease; }
+          .rowHover:hover { background:#fff7ef; border-color:#de8d2b; box-shadow:0 2px 10px rgba(222,141,43,0.15); }
         `}</style>
-
-        <script type="text/javascript">{`
-          (function(){
-            var ns  = "cat_back"; 
-            var url = "https://bot.heroai.pro/?ns="+encodeURIComponent(ns)+"&hideLauncher=true";
-
-            var b=document.createElement("button");
-            b.id="heroai-chat-btn"; b.type="button"; b.textContent="Chat";
-            b.setAttribute("aria-label","Open chat");
-
-            var p=document.createElement("div");
-            p.id="heroai-chat-panel"; p.setAttribute("role","dialog"); p.setAttribute("aria-label","Hero AI Chat");
-
-            var f=document.createElement("iframe");
-            f.id="heroai-chat-iframe"; f.title="Hero AI Assistant";
-            f.loading="lazy"; f.referrerPolicy="no-referrer-when-downgrade"; f.src=url;
-
-            p.appendChild(f);
-
-            function open(){p.style.display="block"; b.textContent="Close"; b.setAttribute("aria-label","Close chat");}
-            function close(){p.style.display="none";  b.textContent="Chat";  b.setAttribute("aria-label","Open chat");}
-            function toggle(){(p.style.display==="block")?close():open();}
-
-            b.addEventListener("click",toggle);
-            window.addEventListener("keydown",function(e){ if(e.key==="Escape") close(); });
-
-            document.body.appendChild(p);
-            document.body.appendChild(b);
-          })();
-        `}</script>
       </Helmet>
 
-      {/* Centered container */}
-      <div
-        style={{
-          maxWidth: "400px",
-          margin: "0 auto",
-          textAlign: "center",
-        }}
-      >
-        {/* Header with logo + brand name */}
-        <header
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            marginBottom: "20px",
-          }}
-        >
-          <img
-            src={logo}
-            alt="CatBackAI Logo"
-            style={{ width: "40px", height: "40px", marginRight: "10px" }}
-          />
-          <h1 style={{ fontSize: "28px", fontWeight: "bold", color: "#000" }}>
-            CatBackAI
-          </h1>
+      {/* LEFT SIDE */}
+      <div style={{ flex: 3, padding: "40px", overflowY: "auto" }}>
+        <header style={{ display: "flex", alignItems: "center", marginBottom: 20 }}>
+          <img src={logo} alt="CatBackAI Logo" style={{ width: 50, height: 50, marginRight: 12 }} />
+          <h1 style={{ fontSize: 32, fontWeight: 800, color: "#000" }}>CatBackAI</h1>
         </header>
 
-        {/* Form */}
-        <form
-          onSubmit={handleSubmit}
-          style={{
-            backgroundColor: "white",
-            borderRadius: "8px",
-            padding: "20px",
-            boxShadow: "0 4px 10px rgba(0,0,0,0.1)",
-          }}
-        >
-          <h2
-            style={{
-              fontSize: "20px",
-              fontWeight: "600",
-              marginBottom: "20px",
-              color: "#000",
-            }}
-          >
-            Book Your Appointment
-          </h2>
+        <p style={{ fontSize: 18, marginBottom: 40, color: "#333" }}>
+          Increase your bookings. <br /> Increase your revenue.
+        </p>
 
-          {/* Full Name */}
-          <div style={{ marginBottom: "15px" }}>
-            <label
-              htmlFor="name"
-              style={{ display: "block", marginBottom: "5px", color: "#000" }}
-            >
-              Full Name
-            </label>
-            <input
-              type="text"
-              id="name"
-              name="name"
-              style={{
-                width: "100%",
-                padding: "8px",
-                borderRadius: "6px",
-                border: "1px solid #ccc",
-                textAlign: "center",
-                backgroundColor: "#fff",
-                color: "#000",
-              }}
-              placeholder="Enter your name"
-              required
-            />
+        {/* Features */}
+        <h2 style={{ fontSize: 24, fontWeight: 700, marginBottom: 20, textAlign:"center", color:"#000" }}>
+          What CatBackAI Does
+        </h2>
+        <div style={{ display: "grid", gridTemplateColumns:"repeat(auto-fit, minmax(220px, 1fr))", gap: 20, marginBottom: 40 }}>
+          <div style={cardStyle} className="hoverCard">
+            <div style={iconStyle}>📅</div>
+            <h3 style={cardTitle}>Smart Scheduling</h3>
+            <p style={cardText}>Automated booking system so customers can schedule 24/7 — no missed calls or texts.</p>
+          </div>
+          <div style={cardStyle} className="hoverCard">
+            <div style={iconStyle}>💬</div>
+            <h3 style={cardTitle}>SMS & Email Reminders</h3>
+            <p style={cardText}>Reduce no-shows with automatic appointment confirmations, reminders, and follow-ups.</p>
+          </div>
+          <div style={cardStyle} className="hoverCard">
+            <div style={iconStyle}>📈</div>
+            <h3 style={cardTitle}>Customer Growth</h3>
+            <p style={cardText}>Build repeat business with personalized follow-up messages and upsell opportunities.</p>
+          </div>
+        </div>
+
+        {/* Reviews */}
+        <h2 style={{ fontSize: 24, fontWeight: 700, marginBottom: 20, textAlign:"center", color:"#000" }}>
+          Reviews
+        </h2>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(250px, 1fr))", gap: 20 }}>
+          <div style={reviewCard} className="hoverCard">
+            <p style={reviewText}>"CatBackAI has doubled my appointments. No more missed calls and fewer no-shows!"</p>
+            <div style={reviewAuthor}>– Mike, Auto Detailer</div>
+          </div>
+          <div style={reviewCard} className="hoverCard">
+            <p style={reviewText}>"Super easy setup, and my customers love the reminders. Worth every penny."</p>
+            <div style={reviewAuthor}>– Sarah, Mobile Detail Pro</div>
+          </div>
+          <div style={reviewCard} className="hoverCard">
+            <p style={reviewText}>"I’m booking more repeat clients than ever. The follow-ups are a game changer."</p>
+            <div style={reviewAuthor}>– James, ShineWorks Detailing</div>
+          </div>
+        </div>
+      </div>
+
+      {/* RIGHT SIDE FORM */}
+      <div
+        style={{
+          flex: 1,
+          background: "#fff",
+          padding: 24,
+          borderRadius: 10,
+          boxShadow: "0 4px 12px rgba(0,0,0,.15)",
+          margin: 40,
+          height: "calc(100vh - 80px)",
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
+        <h2 style={{ fontSize: 22, fontWeight: 800, marginBottom: 16, color:"#000" }}>Business Signup</h2>
+
+        <form onSubmit={handleSubmit} style={{ overflowY: "auto" }}>
+          <input name="name" value={formData.name} onChange={handleChange} placeholder="Full Name" required style={inputStyle} />
+          <input name="businessName" value={formData.businessName} onChange={handleChange} placeholder="Business Name" required style={inputStyle} />
+          <input name="email" value={formData.email} onChange={handleChange} type="email" placeholder="Business Email" required style={inputStyle} />
+          <input name="phone" value={formData.phone} onChange={handleChange} type="tel" placeholder="Phone Number" required style={inputStyle} />
+          <input name="address" value={formData.address} onChange={handleChange} placeholder="Address / Location" required style={inputStyle} />
+
+          {/* Business Hours */}
+          <div style={{ marginTop: 20, marginBottom: 10, fontWeight: 700, fontSize: "16px", color:"#000" }}>
+            Business Hours
           </div>
 
-          {/* Email */}
-          <div style={{ marginBottom: "15px" }}>
-            <label
-              htmlFor="email"
-              style={{ display: "block", marginBottom: "5px", color: "#000" }}
-            >
-              Email
-            </label>
-            <input
-              type="email"
-              id="email"
-              name="email"
-              style={{
-                width: "100%",
-                padding: "8px",
-                borderRadius: "6px",
-                border: "1px solid #ccc",
-                textAlign: "center",
-                backgroundColor: "#fff",
-                color: "#000",
-              }}
-              placeholder="Enter your email"
-              required
-            />
-          </div>
+          {daysOfWeek.map((day) => {
+            const d = formData.hours[day];
+            return (
+              <div
+                key={day}
+                style={{
+                  ...rowStyle,
+                  border: d.closed ? "1px solid #ddd" : "2px solid #de8d2b",
+                  background: d.closed ? "#fafafa" : "#fff",
+                }}
+                className="rowHover"
+                onMouseDown={(e) => handleRowMouseDown(day, e)}   // WHOLE BOX toggles
+              >
+                {/* Left label always toggles */}
+                <label
+                  style={{ display: "flex", alignItems: "center", gap: 8, color:"#000", cursor:"pointer" }}
+                  onMouseDown={(e) => { e.stopPropagation(); toggleDay(day); }} // label = direct toggle
+                >
+                  <input type="checkbox" checked={!d.closed} readOnly style={{ pointerEvents: "none" }} />
+                  <span style={{ fontSize: 14, fontWeight: 600 }}>{day}</span>
+                </label>
 
-          {/* Phone Number */}
-          <div style={{ marginBottom: "15px" }}>
-            <label
-              htmlFor="phone"
-              style={{ display: "block", marginBottom: "5px", color: "#000" }}
-            >
-              Phone Number
-            </label>
-            <input
-              type="tel"
-              id="phone"
-              name="phone"
-              style={{
-                width: "100%",
-                padding: "8px",
-                borderRadius: "6px",
-                border: "1px solid #ccc",
-                textAlign: "center",
-                backgroundColor: "#fff",
-                color: "#000",
-              }}
-              placeholder="(555) 123-4567"
-              required
-            />
-          </div>
+                {/* Inputs: editable, never toggle row while interacting */}
+                <div style={timeGroupWrap(d.closed)} onMouseDown={(e) => e.stopPropagation()}>
+                  <input
+                    type="text"
+                    placeholder="09:00"
+                    value={d.openTime}
+                    onChange={(e) => setHourField(day, "openTime", e.target.value)}
+                    disabled={d.closed}
+                    style={timeBoxLeft}
+                    inputMode="numeric"
+                  />
+                  <select
+                    value={d.openPeriod}
+                    onChange={(e) => setPeriodField(day, "openPeriod", e.target.value)}
+                    disabled={d.closed}
+                    style={ampmRight}
+                  >
+                    <option>AM</option>
+                    <option>PM</option>
+                  </select>
+                </div>
 
-          {/* Mandatory reminders opt-in (required) */}
-          <div style={{ marginBottom: "12px", textAlign: "left" }}>
-            <input
-              type="checkbox"
-              id="reminders"
-              name="reminders"
-              style={{ marginRight: "8px" }}
-            />
-            <label htmlFor="reminders" style={{ color: "#000" }}>
-              I agree to receive appointment confirmations and follow-up
-              reminders via SMS/email.
-            </label>
-          </div>
+                <div style={{ textAlign: "center", color:"#000" }}>to</div>
 
-          {/* Optional marketing opt-in */}
-          <div style={{ marginBottom: "16px", textAlign: "left" }}>
-            <input
-              type="checkbox"
-              id="marketing"
-              name="marketing"
-              style={{ marginRight: "8px" }}
-            />
-            <label htmlFor="marketing" style={{ color: "#000" }}>
-              I want to receive special offers and updates.
-            </label>
-          </div>
+                <div style={timeGroupWrap(d.closed)} onMouseDown={(e) => e.stopPropagation()}>
+                  <input
+                    type="text"
+                    placeholder="05:00"
+                    value={d.closeTime}
+                    onChange={(e) => setHourField(day, "closeTime", e.target.value)}
+                    disabled={d.closed}
+                    style={timeBoxLeft}
+                    inputMode="numeric"
+                  />
+                  <select
+                    value={d.closePeriod}
+                    onChange={(e) => setPeriodField(day, "closePeriod", e.target.value)}
+                    disabled={d.closed}
+                    style={ampmRight}
+                  >
+                    <option>AM</option>
+                    <option>PM</option>
+                  </select>
+                </div>
+              </div>
+            );
+          })}
 
-          {/* Error message if reminders not checked */}
-          {error && (
-            <p style={{ color: "red", fontSize: "13px", marginBottom: "12px" }}>
-              {error}
-            </p>
-          )}
+          <div style={{ marginTop: 16, fontWeight: 700, color:"#000" }}>Business Logo (Optional)</div>
+          <input type="file" accept="image/*" onChange={handleFileChange} style={inputStyle} />
 
-          {/* Compliance disclosure */}
-          <p
-            style={{
-              fontSize: "12.5px",
-              color: "#333",
-              marginBottom: "18px",
-              lineHeight: "1.45",
-              textAlign: "left",
-            }}
-          >
-            By submitting this form, you consent to receive messages from{" "}
-            <strong>CatBackAI</strong> related to your appointment. Message &
-            data rates may apply. Message frequency varies. Reply{" "}
-            <strong>STOP</strong> to unsubscribe, <strong>HELP</strong> for help.
-            See our Privacy Policy below.
-          </p>
-
-          {/* Submit Button */}
-          <button
-            type="submit"
-            style={{
-              backgroundColor: "#de8d2b",
-              color: "white",
-              padding: "10px",
-              width: "100%",
-              borderRadius: "6px",
-              fontWeight: "600",
-              cursor: "pointer",
-              border: "none",
-            }}
-          >
-            Submit
-          </button>
-
-          {/* Privacy Policy Link */}
-          <p style={{ fontSize: "12px", color: "#666", marginTop: "15px" }}>
-            Read our{" "}
-            <a
-              href="/privacy.html"
-              style={{ color: "#de8d2b", textDecoration: "underline" }}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Privacy Policy
-            </a>
-          </p>
+          <button type="submit" style={buttonStyle}>Submit</button>
         </form>
       </div>
     </div>
   );
 }
+
+/* ---------- styles ---------- */
+const inputStyle = {
+  display: "block",
+  width: "100%",
+  padding: "10px 12px",
+  marginBottom: "12px",
+  borderRadius: "8px",
+  border: "1px solid #dcdcdc",
+  fontSize: 14,
+  outline: "none",
+  backgroundColor: "#fff",
+  color:"#000"
+};
+
+const rowStyle = {
+  display: "grid",
+  gridTemplateColumns: "140px 1fr 28px 1fr",
+  alignItems: "center",
+  gap: "12px",
+  marginBottom: "10px",
+  borderRadius: 8,
+  padding: "10px",
+  cursor: "pointer",
+};
+
+const timeGroupWrap = (disabled) => ({
+  display: "flex",
+  alignItems: "center",
+  opacity: disabled ? 0.5 : 1,
+});
+
+const timeBoxLeft = {
+  width: "88px",
+  padding: "8px 10px",
+  border: "1px solid #dcdcdc",
+  borderRight: "0",
+  borderTopLeftRadius: 8,
+  borderBottomLeftRadius: 8,
+  textAlign: "center",
+  fontSize: 14,
+  backgroundColor: "#fff",
+  color:"#000"
+};
+
+const ampmRight = {
+  width: "72px",
+  padding: "8px 10px",
+  border: "1px solid #dcdcdc",
+  borderTopRightRadius: 8,
+  borderBottomRightRadius: 8,
+  fontSize: 14,
+  appearance: "menulist",
+  backgroundColor: "#fff",
+  color:"#000"
+};
+
+const buttonStyle = {
+  background: "#de8d2b",
+  color: "#fff",
+  fontWeight: 800,
+  padding: "12px 20px",
+  border: "none",
+  borderRadius: "8px",
+  width: "100%",
+  cursor: "pointer",
+  marginTop: 16,
+};
+
+const cardStyle = {
+  background:"#fff",
+  borderRadius:12,
+  padding:"20px",
+  textAlign:"center",
+  boxShadow:"0 2px 6px rgba(0,0,0,0.08)",
+};
+const iconStyle = { fontSize:"28px", marginBottom:"12px", color:"#de8d2b" };
+const cardTitle = { fontSize:"16px", fontWeight:700, marginBottom:"8px", color:"#000" };
+const cardText  = { fontSize:"14px", color:"#444", lineHeight:"1.5" };
+
+const reviewCard = {
+  background:"#fff",
+  borderRadius:12,
+  padding:"20px",
+  boxShadow:"0 2px 6px rgba(0,0,0,0.08)",
+  display:"flex",
+  flexDirection:"column",
+  justifyContent:"space-between",
+};
+const reviewText   = { fontSize:"14px", color:"#333", fontStyle:"italic", marginBottom:"12px" };
+const reviewAuthor = { fontSize:"13px", fontWeight:600, color:"#de8d2b", textAlign:"right" };
 
 export default App;
