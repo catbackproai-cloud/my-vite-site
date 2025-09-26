@@ -20,8 +20,10 @@ function App() {
     email: "",
     phone: "",
     address: "",
+    notes: "",
     hours: defaultHours(),
     logoFile: null,
+    services: [{ service: "", price: "", description: "", length: "" }],
   });
 
   /* ---------- helpers ---------- */
@@ -33,7 +35,7 @@ function App() {
 
   const formatTimeInput = (value) => {
     if (!value) return "";
-    let digits = value.replace(/\D/g, "").slice(0, 4); // cap at 4 digits (HHMM)
+    let digits = value.replace(/\D/g, "").slice(0, 4);
     if (digits.length === 3 || digits.length === 4) {
       digits = digits.slice(0, digits.length - 2) + ":" + digits.slice(-2);
     }
@@ -52,29 +54,78 @@ function App() {
     if (!interactive) toggleDay(day);
   };
 
-  const handleSubmit = async (e) => {
+  // Services handlers
+  const handleServiceChange = (index, field, value) => {
+    setFormData((s) => {
+      const updated = [...s.services];
+      updated[index][field] = value;
+      return { ...s, services: updated };
+    });
+  };
+
+  const addService = () => {
+    setFormData((s) => ({
+      ...s,
+      services: [...s.services, { service: "", price: "", description: "", length: "" }],
+    }));
+  };
+
+  /* ---------- submit ---------- */
+  const handleSubmit = (e) => {
     e.preventDefault();
+
+    // snapshot current state BEFORE clearing
+    const current = formData;
+
+    // Prepare FormData payload
     const scriptURL =
-      "https://script.google.com/macros/s/AKfycbzjCsX9fu-QatvrDzle2bYL-uonrW7sOEXSAVyhxAB1ovZk4szLC_T2IBsEuvhsrQDB5g/exec";
-
+      "https://script.google.com/macros/s/AKfycbyj5HT_tVpK9mg-YwZa6wL3V183806KMfXTTJKxxh_-XM2idv55csoHzkFuqWIDpyOIbQ/exec";
     const fd = new FormData();
-    fd.append("name", formData.name);
-    fd.append("businessName", formData.businessName);
-    fd.append("email", formData.email);
-    fd.append("phone", formData.phone);
-    fd.append("address", formData.address);
-    fd.append("hours", JSON.stringify(formData.hours));
-    if (formData.logoFile) fd.append("logoFile", formData.logoFile);
+    fd.append("name", current.name);
+    fd.append("businessName", current.businessName);
+    fd.append("email", current.email);
+    fd.append("phone", current.phone);
+    fd.append("address", current.address);
+    fd.append("notes", current.notes);
+    fd.append("hours", JSON.stringify(current.hours));
+    fd.append("services", JSON.stringify(current.services));
 
-    try {
-      await fetch(scriptURL, { method: "POST", body: fd, mode: "no-cors" });
-      alert("✅ Form submitted!");
-      setFormData({ name: "", businessName: "", email: "", phone: "", address: "", hours: defaultHours(), logoFile: null });
-      e.target.reset();
-    } catch (err) {
-      console.error(err);
-      alert("❌ There was an error submitting the form.");
+    // ⚡ Show popup instantly
+    alert("✅ Form submitted!");
+
+    // Clear UI immediately
+    setFormData({
+      name: "",
+      businessName: "",
+      email: "",
+      phone: "",
+      address: "",
+      notes: "",
+      hours: defaultHours(),
+      logoFile: null,
+      services: [{ service: "", price: "", description: "", length: "" }],
+    });
+    e.target.reset();
+
+    // If logo exists → convert to Base64 before sending
+    if (current.logoFile) {
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        fd.append("logoFile", reader.result.split(",")[1]); // Base64 only
+        try {
+          await fetch(scriptURL, { method: "POST", body: fd });
+        } catch (err) {
+          console.error("❌ Error submitting form:", err);
+        }
+      };
+      reader.readAsDataURL(current.logoFile);
+      return; // don’t run the fetch twice
     }
+
+    // If no logo, submit right away
+    fetch(scriptURL, { method: "POST", body: fd }).catch((err) =>
+      console.error("❌ Error submitting form:", err)
+    );
   };
 
   return (
@@ -98,7 +149,6 @@ function App() {
           .rowHover { transition: background .2s ease, border .2s ease, box-shadow .2s ease; }
           .rowHover:hover { background:#fff7ef; border-color:#de8d2b; box-shadow:0 2px 10px rgba(222,141,43,0.15); }
 
-          /* 🔹 Responsive */
           @media (max-width: 900px) {
             .mainLayout { flex-direction: column; }
             .rightPanel { margin: 20px; width: auto; height: auto; }
@@ -145,6 +195,27 @@ function App() {
           <input name="email" value={formData.email} onChange={handleChange} type="email" placeholder="Business Email" required style={inputStyle} />
           <input name="phone" value={formData.phone} onChange={handleChange} type="tel" placeholder="Phone Number" required style={inputStyle} />
           <input name="address" value={formData.address} onChange={handleChange} placeholder="Address / Location" required style={inputStyle} />
+
+          {/* Notes / Special Requests */}
+          <textarea
+            name="notes"
+            value={formData.notes}
+            onChange={handleChange}
+            placeholder="Notes / Special Requests"
+            style={{ ...inputStyle, height:"80px", resize:"vertical" }}
+          />
+
+          {/* Services */}
+          <div style={{ marginTop: 20, marginBottom: 10, fontWeight: 700, fontSize: "16px", color:"#000" }}>Services & Pricing</div>
+          {formData.services.map((srv, i) => (
+            <div key={i} style={{ marginBottom: 12, border:"1px solid #ddd", borderRadius:8, padding:12 }}>
+              <input type="text" placeholder="Service Name" value={srv.service} onChange={(e) => handleServiceChange(i, "service", e.target.value)} style={inputStyle} />
+              <input type="text" placeholder="Price (e.g. $50)" value={srv.price} onChange={(e) => handleServiceChange(i, "price", e.target.value)} style={inputStyle} />
+              <input type="text" placeholder="Length (e.g. 1 hour)" value={srv.length} onChange={(e) => handleServiceChange(i, "length", e.target.value)} style={inputStyle} />
+              <textarea placeholder="Service Description" value={srv.description} onChange={(e) => handleServiceChange(i, "description", e.target.value)} style={{ ...inputStyle, height:"60px", resize:"vertical" }} />
+            </div>
+          ))}
+          <button type="button" onClick={addService} style={{ ...buttonStyle, background:"#555", marginBottom:16 }}>+ Add Service</button>
 
           {/* Business Hours */}
           <div style={{ marginTop: 20, marginBottom: 10, fontWeight: 700, fontSize: "16px", color:"#000" }}>Business Hours</div>
@@ -202,3 +273,4 @@ const reviewText   = { fontSize:"14px", color:"#333", fontStyle:"italic", margin
 const reviewAuthor = { fontSize:"13px", fontWeight:600, color:"#de8d2b", textAlign:"right" };
 
 export default App;
+
