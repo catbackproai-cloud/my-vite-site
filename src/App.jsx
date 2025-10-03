@@ -4,68 +4,137 @@ import logo from "./assets/Y-Logo.png"; // ✅ exact file name
 
 function App() {
 useEffect(() => {
-  // === Hero AI overlay — same logic as your workflow embed, React-safe ===
-  (function () {
-    const NS = "cat_back"; // <-- put his namespace here
-    const I = "https://bot.heroai.pro/?ns=" + encodeURIComponent(NS) + "&hideLauncher=1";
+  const NS = "cat_back"; // ← client namespace
+  const I = "https://bot.heroai.pro/?ns=" + encodeURIComponent(NS) + "&hideLauncher=1";
 
-    // Inject CSS (includes display:none on the panel until clicked)
-    const css =
-      ".heroai-launcher{position:fixed;right:20px;bottom:20px;min-width:56px;height:56px;padding:0 18px;border:0;border-radius:999px;font-weight:700;box-shadow:0 12px 28px rgba(13,27,62,.15);cursor:pointer;z-index:2147483646;display:inline-flex;align-items:center;justify-content:center}"
-      + ".heroai-iframe-wrap{position:fixed;right:20px;bottom:90px;width:380px;height:560px;display:none;border-radius:16px;overflow:hidden;box-shadow:0 18px 60px rgba(0,0,0,.22);z-index:2147483647}"
-      + "@media(max-width:480px){.heroai-iframe-wrap{left:0;right:0;bottom:0;width:100vw;height:70vh;border-radius:16px 16px 0 0}}"
-      + ".heroai-iframe{width:100%;height:100%;border:0}";
-    const st = document.createElement("style");
-    st.textContent = css;
-    document.head.appendChild(st);
+  // CSS
+  const st = document.createElement("style");
+  st.textContent =
+    ".heroai-launcher{position:fixed;right:20px;bottom:20px;min-width:56px;height:56px;padding:0 18px;border:0;border-radius:999px;font-weight:700;box-shadow:0 12px 28px rgba(13,27,62,.15);cursor:pointer;z-index:2147483646;display:inline-flex;align-items:center;justify-content:center}" +
+    ".heroai-iframe-wrap{position:fixed;right:20px;bottom:90px;width:380px;height:560px;display:none;border-radius:16px;overflow:hidden;box-shadow:0 18px 60px rgba(0,0,0,.22);z-index:2147483647}" +
+    "@media(max-width:480px){.heroai-iframe-wrap{left:0;right:0;bottom:0;width:100vw;height:70vh;border-radius:16px 16px 0 0}}" +
+    ".heroai-iframe{width:100%;height:100%;border:0}";
+  document.head.appendChild(st);
 
-    // Build DOM
-    const wrap = document.createElement("div");
-    wrap.className = "heroai-iframe-wrap";
-    const iframe = document.createElement("iframe");
-    iframe.className = "heroai-iframe";
-    iframe.src = I;
-    iframe.title = "Hero AI Assistant";
-    iframe.allow = "clipboard-read; clipboard-write";
-    wrap.appendChild(iframe);
-    document.body.appendChild(wrap);
+  // DOM
+  const wrap = document.createElement("div");
+  wrap.className = "heroai-iframe-wrap";
+  const iframe = document.createElement("iframe");
+  iframe.className = "heroai-iframe";
+  iframe.src = I;
+  iframe.title = "Hero AI Assistant";
+  iframe.allow = "clipboard-read; clipboard-write";
+  wrap.appendChild(iframe);
+  document.body.appendChild(wrap);
 
-    const btn = document.createElement("button");
-    btn.className = "heroai-launcher";
-    btn.textContent = "Chat";
-    btn.style.background = "#0a4fd3";
-    btn.style.color = "#fff";
-    document.body.appendChild(btn);
+  const btn = document.createElement("button");
+  btn.className = "heroai-launcher";
+  btn.textContent = "Chat";
+  btn.style.background = "#0a4fd3";
+  btn.style.color = "#fff";
+  document.body.appendChild(btn);
 
-    // Open/close logic
-    let open = false;
-    function setOpen(v) {
-      open = v;
-      wrap.style.display = v ? "block" : "none";
-      if (v) {
-        try { iframe.contentWindow.postMessage({ type: "HERO_CHAT_OPEN" }, "*"); } catch {}
-      }
+  // State + helpers
+  let open = false;
+  const setOpen = (v) => {
+    open = v;
+    wrap.style.display = v ? "block" : "none";
+    if (v) {
+      try { iframe.contentWindow.postMessage({ type: "HERO_CHAT_OPEN" }, "*"); } catch {}
     }
-    btn.addEventListener("click", () => setOpen(!open));
+  };
+  const toggle = () => setOpen(!open);
 
-    // Pull label/colors from ns-config
-    fetch("https://n8n.srv845865.hstgr.cloud/webhook/ns-config?ns=" + encodeURIComponent(NS) + "&_=" + Date.now(), {
-      headers: { "cache-control": "no-cache" },
-      credentials: "omit",
+  btn.addEventListener("click", toggle);
+
+  // Listen for HERO_READY (optional; harmless if sent early)
+  window.addEventListener("message", (e) => {
+    if (e.source !== iframe.contentWindow) return;
+    if (e.data?.type === "HERO_READY" && open) {
+      try { iframe.contentWindow.postMessage({ type: "HERO_CHAT_OPEN" }, "*"); } catch {}
+    }
+  });
+
+  // --- Auto-open logic (uses ns-config + localStorage) ---
+  const qs = new URLSearchParams(location.search);
+  const urlAuto = (qs.get("auto_open") || "").toLowerCase(); // "off" to force disable
+  const urlOnce = (qs.get("once") || "").toLowerCase();      // "session" | "day"
+  const urlDelay = Number(qs.get("autostart_ms")) || 0;
+
+  const sessionKey = `hero_auto_opened_${NS}`;
+  const dayKey = `hero_last_open_${NS}`;
+
+  function shouldSkipOnce(mode) {
+    const now = Date.now();
+    if (mode === "session") return sessionStorage.getItem(sessionKey) === "1";
+    if (mode === "day") {
+      const last = parseInt(localStorage.getItem(dayKey) || "0", 10);
+      return (now - last) < 86400000; // 24h
+    }
+    return false;
+  }
+  function recordOnce(mode) {
+    const now = Date.now();
+    if (mode === "session") sessionStorage.setItem(sessionKey, "1");
+    if (mode === "day") localStorage.setItem(dayKey, String(now));
+  }
+
+  function scheduleAutoOpen({ enabled, delayMs, onceMode }) {
+    if (!enabled) return;
+    if (shouldSkipOnce(onceMode)) return;
+
+    const start = () => {
+      if (open) return;
+      setTimeout(() => {
+        if (open) return;
+        setOpen(true);
+        recordOnce(onceMode);
+      }, delayMs);
+    };
+
+    if (document.visibilityState === "visible") start();
+    else {
+      const onVis = () => {
+        if (document.visibilityState === "visible") {
+          document.removeEventListener("visibilitychange", onVis);
+          start();
+        }
+      };
+      document.addEventListener("visibilitychange", onVis);
+    }
+  }
+
+  // Pull label/colors + autostart from ns-config
+  fetch("https://n8n.srv845865.hstgr.cloud/webhook/ns-config?ns=" + encodeURIComponent(NS) + "&_=" + Date.now(), {
+    headers: { "cache-control": "no-cache" }, credentials: "omit"
+  })
+    .then(r => r.json())
+    .then(cfg => {
+      const ui = cfg?.ui || {};
+      const c  = cfg?.colors || {};
+
+      // Launcher label/colors
+      btn.textContent = (ui.launcher_text || "Chat").trim();
+      if (c.launcher_bg)   btn.style.background = String(c.launcher_bg).trim();
+      if (c.launcher_text) btn.style.color      = String(c.launcher_text).trim();
+
+      // Auto-open settings
+      const cfgEnabled = ui.autostart !== false; // default true
+      const cfgDelay   = Number(ui.autostart_ms || 3000);
+      const onceMode   = urlOnce || "session";   // support ?once=day
+
+      const enabled = (urlAuto === "off") ? false : cfgEnabled;
+      const delayMs = urlDelay > 0 ? urlDelay : cfgDelay;
+
+      scheduleAutoOpen({ enabled, delayMs, onceMode });
     })
-      .then(r => r.json())
-      .then(cfg => {
-        const ui = cfg?.ui || {};
-        const c  = cfg?.colors || {};
-        btn.textContent = (ui.launcher_text || "Chat").trim();
-        if (c.launcher_bg)   btn.style.background = String(c.launcher_bg).trim();
-        if (c.launcher_text) btn.style.color      = String(c.launcher_text).trim();
-      })
-      .catch(() => {});
+    .catch(() => {
+      // Fallback: safe defaults if ns-config fails
+      scheduleAutoOpen({ enabled: urlAuto !== "off", delayMs: urlDelay || 3000, onceMode: urlOnce || "session" });
+    });
 
-    // Cleanup (for hot reloads/navigation)
-    return () => { try { btn.remove(); wrap.remove(); st.remove(); } catch {} };
-  })();
+  // Cleanup
+  return () => { try { btn.remove(); wrap.remove(); st.remove(); } catch {} };
 }, []);
   const openChatbot = (topic) => {
  alert(`Chatbot opened for: ${topic}`);
