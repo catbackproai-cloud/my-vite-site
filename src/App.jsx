@@ -2,11 +2,147 @@ import { useState } from "react";
 import { Helmet } from "react-helmet";
 import logo from "./assets/Y-Logo.png"; // ✅ exact file name
 
+// Floating chat overlay: injects button + iframe (no CSS files needed)
+function initHeroAIOverlay(NS = "cat_back") {
+  if (typeof window === "undefined") return;
+  if (window.__heroaiInjected) return;
+  window.__heroaiInjected = true;
+
+  var ORIGIN = "https://bot.heroai.pro";
+  var IURL = ORIGIN + "/?ns=" + encodeURIComponent(NS) + "&hideLauncher=1";
+
+  // create elements
+  var wrap = document.createElement("div");
+  var iframe = document.createElement("iframe");
+  var btn = document.createElement("button");
+
+  // helpers
+  function isMobile(){ try { return matchMedia("(max-width:480px)").matches; } catch { return false; } }
+  function applyWrapStyle(open){
+    var m = isMobile();
+    wrap.style.position = "fixed";
+    wrap.style.right = m ? "0" : "20px";
+    wrap.style.bottom = m ? "0" : "90px";
+    wrap.style.width = m ? "100vw" : "380px";
+    wrap.style.height = m ? "70vh" : "560px";
+    wrap.style.display = open ? "block" : "none";
+    wrap.style.borderRadius = m ? "16px 16px 0 0" : "16px";
+    wrap.style.overflow = "hidden";
+    wrap.style.boxShadow = "0 18px 60px rgba(0,0,0,.22)";
+    wrap.style.zIndex = "2147483647";
+    wrap.style.background = "transparent";
+    wrap.setAttribute("role","dialog");
+    wrap.setAttribute("aria-modal", open ? "true" : "false");
+  }
+  function applyBtnStyle(){
+    btn.style.position = "fixed";
+    btn.style.right = "20px";
+    btn.style.bottom = "20px";
+    btn.style.minWidth = "56px";
+    btn.style.height = "56px";
+    btn.style.padding = "0 18px";
+    btn.style.border = "0";
+    btn.style.borderRadius = "999px";
+    btn.style.fontWeight = "700";
+    btn.style.boxShadow = "0 12px 28px rgba(13,27,62,.15)";
+    btn.style.cursor = "pointer";
+    btn.style.zIndex = "2147483646";
+    btn.style.display = "inline-flex";
+    btn.style.alignItems = "center";
+    btn.style.justifyContent = "center";
+    btn.style.background = "#0a4fd3";
+    btn.style.color = "#fff";
+  }
+
+  // iframe
+  iframe.src = IURL;
+  iframe.allow = "clipboard-read; clipboard-write";
+  iframe.title = "Hero AI Assistant";
+  iframe.style.width = "100%";
+  iframe.style.height = "100%";
+  iframe.style.border = "0";
+  iframe.style.display = "block";
+
+  // button
+  btn.type = "button";
+  btn.textContent = "Chat";
+  btn.setAttribute("aria-controls", "heroai-chat");
+  btn.setAttribute("aria-expanded", "false");
+
+  // attach
+  wrap.appendChild(iframe);
+  document.body.appendChild(wrap);
+  document.body.appendChild(btn);
+
+  // open/close logic
+  var open = false;
+  function postOpen(){ try{ iframe.contentWindow.postMessage({ type:"HERO_CHAT_OPEN" },"*"); }catch(e){} }
+  function setOpen(v){
+    open = v;
+    applyWrapStyle(open);
+    btn.setAttribute("aria-expanded", v ? "true" : "false");
+    if (v) postOpen();
+  }
+  function toggle(){ setOpen(!open); }
+  function openChat(){ setOpen(true); }
+  function closeChat(){ setOpen(false); }
+
+  // initial styles
+  applyBtnStyle();
+  applyWrapStyle(false);
+
+  // events
+  btn.addEventListener("click", toggle);
+  function onDocClick(e){
+    if(!open) return;
+    var inside = e.target===wrap || wrap.contains(e.target) || e.target===btn || btn.contains(e.target);
+    if(!inside) closeChat();
+  }
+  function onKey(e){
+    if(!open) return;
+    if(e.key==="Escape" || e.key==="Esc") closeChat();
+  }
+  function onResize(){ applyWrapStyle(open); }
+  document.addEventListener("click", onDocClick, true);
+  document.addEventListener("keydown", onKey);
+  window.addEventListener("resize", onResize);
+
+  // pull launcher label/colors from ns-config
+  fetch("https://n8n.srv845865.hstgr.cloud/webhook/ns-config?ns="+encodeURIComponent(NS)+"&_="+Date.now(),{
+    headers:{"cache-control":"no-cache"}, credentials:"omit"
+  }).then(function(r){ return r.json(); }).then(function(cfg){
+    var ui = cfg && cfg.ui || {};
+    var c  = cfg && cfg.colors || {};
+    btn.textContent = String((ui.launcher_text || "Chat")).trim();
+    if (c.launcher_bg)   btn.style.background = String(c.launcher_bg).trim();
+    if (c.launcher_text) btn.style.color      = String(c.launcher_text).trim();
+  }).catch(function(){});
+
+  // public API
+  window.HeroAIChat = { open: openChat, close: closeChat, toggle };
+
+  // cleanup on hot reload
+  window.addEventListener("beforeunload", function(){
+    try{
+      document.removeEventListener("click", onDocClick, true);
+      document.removeEventListener("keydown", onKey);
+      window.removeEventListener("resize", onResize);
+      wrap.remove(); btn.remove();
+    }catch(e){}
+  });
+}
+
+
 function App() {
   const openChatbot = (topic) => {
-    alert(`Chatbot opened for: ${topic}`);
+    // optional: do something with `topic`
+    window.HeroAIChat?.open(); // open the floating chat
   };
 
+  useEffect(() => {
+    initHeroAIOverlay("cat_back"); // ← put the client’s namespace here
+  }, []);
+  
   /* ---------- signup form state ---------- */
   const [formData, setFormData] = useState({
     BusinessType: "",
