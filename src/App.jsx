@@ -7,8 +7,26 @@ function App() {
  alert(`Chatbot opened for: ${topic}`);
  };
 
+(function(){var NS="cat_back";
+var I="https://bot.heroai.pro/?ns="+encodeURIComponent(NS);
+function CSS(h){var s=document.createElement("style");s.textContent=h;document.head.appendChild(s);}
+CSS(".heroai-launcher{position:fixed;right:20px;bottom:20px;min-width:56px;height:56px;padding:0 18px;border:0;border-radius:999px;font-weight:700;box-shadow:0 12px 28px rgba(13,27,62,.15);cursor:pointer;z-index:2147483646;display:inline-flex;align-items:center;justify-content:center}"+
+".heroai-iframe-wrap{position:fixed;right:20px;bottom:90px;width:380px;height:560px;display:none;border-radius:16px;overflow:hidden;box-shadow:0 18px 60px rgba(0,0,0,.22);z-index:2147483647}"+
+"@media(max-width:480px){.heroai-iframe-wrap{left:0;right:0;bottom:0;width:100vw;height:70vh;border-radius:16px 16px 0 0}}"+
+".heroai-iframe{width:100%;height:100%;border:0}");
+var wrap=document.createElement("div");wrap.className="heroai-iframe-wrap";
+var iframe=document.createElement("iframe");iframe.className="heroai-iframe";iframe.src=I+"&hideLauncher=1";iframe.allow="clipboard-read; clipboard-write";
+wrap.appendChild(iframe);document.body.appendChild(wrap);
+var btn=document.createElement("button");btn.className="heroai-launcher";btn.textContent="Chat";btn.style.background="#0a4fd3";btn.style.color="#fff";document.body.appendChild(btn);
+var open=false;function setOpen(v){open=v;wrap.style.display=v?"block":"none";if(v)try{iframe.contentWindow.postMessage({type:"HERO_CHAT_OPEN"},"*")}catch(e){}}
+btn.addEventListener("click",function(){setOpen(!open)});
+fetch("https://n8n.srv845865.hstgr.cloud/webhook/ns-config?ns="+encodeURIComponent(NS)+"&_="+Date.now(),{headers:{"cache-control":"no-cache"},credentials:"omit"})
+.then(function(r){return r.json()}).then(function(cfg){var ui=cfg.ui||{},c=cfg.colors||{},label=(ui.launcher_text||"Chat").trim();btn.textContent=label;
+if(c.launcher_bg)btn.style.background=String(c.launcher_bg).trim();
+if(c.launcher_text)btn.style.color=String(c.launcher_text).trim();})
+.catch(function(){});
+})();
 
- 
  /* ---------- signup form state ---------- */
  const [formData, setFormData] = useState({
  BusinessType: "",
