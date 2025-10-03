@@ -1,276 +1,655 @@
+import { useState } from "react";
 import { Helmet } from "react-helmet";
-import logo from "./assets/logo.png";
-import { useMemo, useState } from "react";
+import logo from "./assets/Y-Logo.png"; // ✅ exact file name
 
 function App() {
-  const daysOfWeek = useMemo(
-    () => ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"],
-    []
-  );
+  const openChatbot = (topic) => {
+    alert(`Chatbot opened for: ${topic}`);
+  };
 
-  const defaultHours = () =>
-    daysOfWeek.reduce((acc, d) => {
-      acc[d] = { openTime: "", openPeriod: "AM", closeTime: "", closePeriod: "PM", closed: true };
-      return acc;
-    }, {});
-
+  /* ---------- signup form state ---------- */
   const [formData, setFormData] = useState({
-    name: "",
-    businessName: "",
-    email: "",
-    phone: "",
-    address: "",
-    notes: "",
-    hours: defaultHours(),
-    logoFile: null,
-    services: [{ service: "", price: "", description: "", length: "" }],
+    BusinessType: "",
+    OwnerName: "",
+    BusinessName: "",
+    BusinessEmail: "",
+    BusinessPhoneNumber: "",
+    Address: "",
+    LogoFile: null, // ✅ upload → Drive
+    BusinessHours: "",
+    Socials: "",
+    LocationOfServices: "",
+    Notes: "",
+    Consent: false,
+    BusinessId: "", // hidden, auto-handled
   });
 
-  /* ---------- helpers ---------- */
-  const handleChange = (e) => setFormData((s) => ({ ...s, [e.target.name]: e.target.value }));
-  const handleFileChange = (e) => setFormData((s) => ({ ...s, logoFile: e.target.files?.[0] ?? null }));
+  const [status, setStatus] = useState({
+    done: false,
+    error: "",
+    businessId: "",
+    bookingLink: "",
+  });
 
-  const toggleDay = (day) =>
-    setFormData((s) => ({ ...s, hours: { ...s.hours, [day]: { ...s.hours[day], closed: !s.hours[day].closed } } }));
+  const [copied, setCopied] = useState(false);
 
-  const formatTimeInput = (value) => {
-    if (!value) return "";
-    let digits = value.replace(/\D/g, "").slice(0, 4);
-    if (digits.length === 3 || digits.length === 4) {
-      digits = digits.slice(0, digits.length - 2) + ":" + digits.slice(-2);
+  const handleChange = (e) => {
+    const { name, value, type, checked, files } = e.target;
+    if (type === "file") {
+      setFormData((s) => ({ ...s, [name]: files[0] || null }));
+    } else {
+      setFormData((s) => ({
+        ...s,
+        [name]: type === "checkbox" ? checked : value,
+      }));
     }
-    return digits;
   };
 
-  const setHourField = (day, field, value) =>
-    setFormData((s) => ({ ...s, hours: { ...s.hours, [day]: { ...s.hours[day], [field]: formatTimeInput(value) } } }));
-
-  const setPeriodField = (day, field, value) =>
-    setFormData((s) => ({ ...s, hours: { ...s.hours, [day]: { ...s.hours[day], [field]: value } } }));
-
-  const handleRowMouseDown = (day, e) => {
-    const tag = e.target.tagName;
-    const interactive = ["INPUT","SELECT","TEXTAREA","BUTTON","OPTION"].includes(tag);
-    if (!interactive) toggleDay(day);
-  };
-
-  // Services handlers
-  const handleServiceChange = (index, field, value) => {
-    setFormData((s) => {
-      const updated = [...s.services];
-      updated[index][field] = value;
-      return { ...s, services: updated };
-    });
-  };
-
-  const addService = () => {
-    setFormData((s) => ({
-      ...s,
-      services: [...s.services, { service: "", price: "", description: "", length: "" }],
-    }));
-  };
-
-  /* ---------- submit ---------- */
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setStatus({ done: false, error: "", businessId: "", bookingLink: "" });
 
-    // snapshot current state BEFORE clearing
-    const current = formData;
+    try {
+      const body = new FormData();
+      Object.entries(formData).forEach(([key, value]) => {
+        if (value !== null && value !== undefined) body.append(key, value);
+      });
 
-    // Prepare FormData payload
-    const scriptURL =
-      "https://script.google.com/macros/s/AKfycbyj5HT_tVpK9mg-YwZa6wL3V183806KMfXTTJKxxh_-XM2idv55csoHzkFuqWIDpyOIbQ/exec";
-    const fd = new FormData();
-    fd.append("name", current.name);
-    fd.append("businessName", current.businessName);
-    fd.append("email", current.email);
-    fd.append("phone", current.phone);
-    fd.append("address", current.address);
-    fd.append("notes", current.notes);
-    fd.append("hours", JSON.stringify(current.hours));
-    fd.append("services", JSON.stringify(current.services));
+      const res = await fetch(
+        "https://script.google.com/macros/s/AKfycbyszuOhZOPY3UUOa7bG1uhEA7Q_avOG7zs_t3u8CCCwpEQSo4QdfjkPhfcQefmbftBm/exec",
+        { method: "POST", body }
+      );
 
-    // ⚡ Show popup instantly
-    alert("✅ Form submitted!");
+      const json = await res.json();
+      if (!res.ok || json.result !== "ok") {
+        throw new Error(json.message || "Server error");
+      }
 
-    // Clear UI immediately
-    setFormData({
-      name: "",
-      businessName: "",
-      email: "",
-      phone: "",
-      address: "",
-      notes: "",
-      hours: defaultHours(),
-      logoFile: null,
-      services: [{ service: "", price: "", description: "", length: "" }],
-    });
-    e.target.reset();
-
-    // If logo exists → convert to Base64 before sending
-    if (current.logoFile) {
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        fd.append("logoFile", reader.result.split(",")[1]); // Base64 only
-        try {
-          await fetch(scriptURL, { method: "POST", body: fd });
-        } catch (err) {
-          console.error("❌ Error submitting form:", err);
-        }
-      };
-      reader.readAsDataURL(current.logoFile);
-      return; // don’t run the fetch twice
+      setStatus({
+        done: true,
+        error: "",
+        businessId: json.businessId,
+        bookingLink: json.bookingLink, // ✅ returned by Apps Script (e.g. "/book/{id}")
+      });
+    } catch (err) {
+      setStatus({
+        done: false,
+        error: "Could not submit: " + err.message,
+        businessId: "",
+        bookingLink: "",
+      });
     }
+  };
 
-    // If no logo, submit right away
-    fetch(scriptURL, { method: "POST", body: fd }).catch((err) =>
-      console.error("❌ Error submitting form:", err)
-    );
+  const copyToClipboard = () => {
+    if (status.bookingLink) {
+      navigator.clipboard.writeText(status.bookingLink);
+    } else {
+      navigator.clipboard.writeText(status.businessId);
+    }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   return (
-    <div className="mainLayout"
+    <div
+      className="mainLayout"
       style={{
-        fontFamily: "Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif",
-        backgroundColor: "#f8f8f8",
+        fontFamily:
+          "Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif",
+        background: "linear-gradient(180deg, #fff7ef 0%, #f8f8f8 100%)",
         width: "100vw",
         minHeight: "100vh",
-        display: "flex",
       }}
     >
       <Helmet>
         <style>{`
-          input, select, textarea { background:#fff; color:#000; }
-          input::placeholder { color:#888; }
-          select:disabled, input:disabled { background:#f0f0f0; color:#666; }
+          :root { --brand:#de8d2b; }
 
-          .hoverCard { transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease; border:1px solid #eee; }
-          .hoverCard:hover { transform: translateY(-4px); box-shadow:0 6px 16px rgba(222,141,43,0.35); border-color:#de8d2b; }
-          .rowHover { transition: background .2s ease, border .2s ease, box-shadow .2s ease; }
-          .rowHover:hover { background:#fff7ef; border-color:#de8d2b; box-shadow:0 2px 10px rgba(222,141,43,0.15); }
+          /* Global Resets / Helpers */
+          * { box-sizing: border-box; }
+          html, body, #root { height: 100%; }
+          a { color: inherit; }
+          .container { max-width: 1200px; margin: 0 auto; }
+          .muted { color: #444; }
+          .center { text-align: center; }
 
-          @media (max-width: 900px) {
-            .mainLayout { flex-direction: column; }
-            .rightPanel { margin: 20px; width: auto; height: auto; }
+          /* Section titles black (explicit) */
+          h2.sectionTitle {
+            display: inline-block;
+            padding-bottom: 6px;
+            border-bottom: 3px solid var(--brand);
+            margin-bottom: 24px;
+            font-size: 24px;
+            font-weight: 800;
+            color: #000 !important;
+          }
+
+          /* Nav links */
+          nav a {
+            text-decoration: none;
+            color: var(--brand);
+            font-weight: 600;
+            font-size: 16px;
+          }
+          nav a:hover { color: #c67412; }
+
+          /* Buttons */
+          .btnPrimary {
+            background-color: var(--brand);
+            color: #000;
+            padding: 10px 22px;
+            border-radius: 8px;
+            font-weight: 700;
+            border: none;
+            cursor: pointer;
+            font-size: 15px;
+            transition: background 180ms ease;
+          }
+          .btnPrimary:hover { background-color: #c67412; }
+
+          .btnHero {
+            background-color: var(--brand);
+            color: #000;
+            padding: 20px 50px;
+            border-radius: 14px;
+            font-weight: 900;
+            border: none;
+            cursor: pointer;
+            font-size: 22px;
+            transition: background 180ms ease;
+          }
+          .btnHero:hover { background-color: #c67412; }
+
+          .btnGhost {
+            background: transparent;
+            color: #000;
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-weight: 700;
+            border: 2px solid var(--brand);
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 180ms ease;
+          }
+          .btnGhost:hover {
+            background: #ffe9d0;
+            border-color: #c67412;
+          }
+
+          /* Cards hover bg */
+          .hoverCard {
+            transition: background 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+            will-change: background;
+          }
+          .hoverCard:hover {
+            background-color: #ffe9d0; /* soft orange */
+          }
+
+          /* Pricing card accent */
+          .pricingCard {
+            border: 2px solid #eee;
+            transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease, background 160ms ease;
+          }
+          .pricingCard:hover {
+            transform: translateY(-2px);
+            border-color: var(--brand);
+            box-shadow: 0 12px 30px rgba(0,0,0,0.08);
+            background: #fffdf8;
+          }
+
+          /* Badges */
+          .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-weight: 800;
+            font-size: 12px;
+            background: #fff1e0;
+            color: #7a4b0c;
           }
         `}</style>
       </Helmet>
 
-      {/* LEFT SIDE */}
-      <div style={{ flex: 3, padding: "40px", overflowY: "auto" }}>
-        <header style={{ display: "flex", alignItems: "center", marginBottom: 20 }}>
-          <img src={logo} alt="CatBackAI Logo" style={{ width: 50, height: 50, marginRight: 12 }} />
-          <h1 style={{ fontSize: 32, fontWeight: 800, color: "#000" }}>CatBackAI</h1>
-        </header>
+      {/* NAVBAR */}
+      <header
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          padding: "20px 60px",
+          background: "#fff",
+          boxShadow: "0 2px 6px rgba(0,0,0,0.05)",
+          position: "sticky",
+          top: 0,
+          zIndex: 100,
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <img src={logo} alt="CatBackAI Logo" style={{ width: 42, height: 42 }} />
+          <span style={{ fontWeight: 900, fontSize: 22, color: "#000" }}>
+            CatBackAI
+          </span>
+        </div>
 
-        <p style={{ fontSize: 18, marginBottom: 40, color: "#333" }}>
-          Increase your bookings. <br /> Increase your revenue.
+        <nav style={{ display: "flex", gap: "40px", flex: 1, justifyContent: "center" }}>
+          <a href="#who-we-are">Who We Are</a>
+          <a href="#why-catbackai">Why CatBackAI</a>
+          <a href="#pricing">Pricing</a>
+        </nav>
+
+        <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
+          <a href="#login" style={{ fontWeight: 600, fontSize: 16 }}>Log In</a>
+          <button className="btnPrimary" onClick={() => openChatbot("signup")}>
+            Get Started
+          </button>
+        </div>
+      </header>
+
+      {/* HERO SECTION */}
+      <section
+        className="container"
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          alignItems: "start",
+          padding: "80px 60px",
+          gap: "50px",
+        }}
+      >
+        {/* Left column */}
+        <div>
+          <div className="badge" style={{ marginBottom: 12 }}>Built for service businesses</div>
+          <h1
+            style={{
+              fontSize: 38,
+              fontWeight: 900,
+              marginBottom: 16,
+              color: "#000",
+            }}
+          >
+            Bring in more sales and maintain your customers
+          </h1>
+          <p style={{ fontSize: 18, color: "#333", marginBottom: 28 }}>
+            CatBackAI helps you automate bookings, reduce no-shows, and grow
+            lasting client relationships with smart follow-ups.
+          </p>
+          <div style={{ display: "flex", gap: "18px", flexWrap: "wrap" }}>
+            <a className="btnHero" href="#signup-form">Get Started</a>
+            <button className="btnGhost" onClick={() => openChatbot("demo")}>
+              See a quick demo
+            </button>
+          </div>
+          <ul style={{ marginTop: 22, color: "#333", fontSize: 15, lineHeight: 1.8 }}>
+            <li>24/7 self-serve booking</li>
+            <li>Automatic confirmations, reminders, and follow-ups</li>
+            <li>Simple setup, no code required</li>
+          </ul>
+        </div>
+
+        {/* Right column: SIGNUP FORM */}
+        <div>
+          {status.done ? (
+            <div style={card}>
+              <h3 style={title}>✅ Thanks for signing up!</h3>
+              <p style={muted}><strong>Business ID:</strong> {status.businessId}</p>
+              <p style={muted}>
+                <strong>Booking Link:</strong>{" "}
+                <a href={status.bookingLink} target="_blank" rel="noreferrer">
+                  {status.bookingLink}
+                </a>
+              </p>
+              <button
+                onClick={copyToClipboard}
+                style={{
+                  ...btn,
+                  marginTop: "10px",
+                  background: copied ? "#4caf50" : "#de8d2b",
+                  color: copied ? "#fff" : "#000",
+                }}
+              >
+                {copied ? "Copied!" : "Copy Booking Link"}
+              </button>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} style={card} id="signup-form">
+              <h3 style={title}>Business Onboarding</h3>
+
+              <label style={label}>Business Type</label>
+              <select
+                name="BusinessType"
+                value={formData.BusinessType}
+                onChange={handleChange}
+                required
+                style={input}
+              >
+                <option value="">Select</option>
+                <option>Auto Detailing</option>
+                <option>Barber</option>
+                <option>Nail Salon</option>
+                <option>Spa</option>
+                <option>Fitness</option>
+                <option>Other</option>
+              </select>
+
+              <label style={label}>Owner Full Name</label>
+              <input name="OwnerName" value={formData.OwnerName} onChange={handleChange} required style={input} />
+
+              <label style={label}>Business Name</label>
+              <input name="BusinessName" value={formData.BusinessName} onChange={handleChange} required style={input} />
+
+              <label style={label}>Business Email</label>
+              <input type="email" name="BusinessEmail" value={formData.BusinessEmail} onChange={handleChange} required style={input} />
+
+              <label style={label}>Business Phone Number</label>
+              <input type="tel" name="BusinessPhoneNumber" value={formData.BusinessPhoneNumber} onChange={handleChange} required style={input} />
+
+              <label style={label}>Address</label>
+              <input name="Address" value={formData.Address} onChange={handleChange} style={input} />
+
+              <label style={label}>Upload Logo (optional)</label>
+              <input type="file" name="LogoFile" accept="image/*" onChange={handleChange} style={input} />
+
+              <label style={label}>Business Hours</label>
+              <textarea name="BusinessHours" value={formData.BusinessHours} onChange={handleChange} rows={2} style={textarea} />
+
+              <label style={label}>Socials</label>
+              <textarea name="Socials" value={formData.Socials} onChange={handleChange} rows={2} style={textarea} />
+
+              <label style={label}>Location of Services</label>
+              <select name="LocationOfServices" value={formData.LocationOfServices} onChange={handleChange} required style={input}>
+                <option value="">Select</option>
+                <option>On-site</option>
+                <option>Mobile</option>
+                <option>Both</option>
+              </select>
+
+              <label style={label}>Requests / Notes</label>
+              <textarea name="Notes" value={formData.Notes} onChange={handleChange} rows={3} style={textarea} />
+
+              <label style={{ ...label, display: "flex", gap: 8, alignItems: "flex-start" }}>
+                <input type="checkbox" name="Consent" checked={formData.Consent} onChange={handleChange} required />
+                <span style={muted}>
+                  I acknowledge my clients may receive confirmations, reminders, and follow-ups from CatBackAI with opt-out instructions (Reply STOP).
+                </span>
+              </label>
+
+              {status.error && <div style={errorBox}>{status.error}</div>}
+              <button type="submit" style={btn}>Submit</button>
+            </form>
+          )}
+        </div>
+      </section>
+
+      {/* WHO WE ARE */}
+      <section id="who-we-are" className="container" style={{ padding: "60px 60px 20px" }}>
+        <h2 className="sectionTitle">Who We Are</h2>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+            gap: 20,
+            marginTop: 20,
+          }}
+        >
+          <div style={{ ...card, minHeight: 140 }} className="hoverCard">
+            <h3 style={title}>Focused on Results</h3>
+            <p style={muted}>
+              We’re a small team obsessed with helping service businesses book more jobs and retain more clients.
+            </p>
+          </div>
+          <div style={{ ...card, minHeight: 140 }} className="hoverCard">
+            <h3 style={title}>Fast Setup</h3>
+            <p style={muted}>
+              Most businesses can be onboarded in minutes. Just enter your info and you’ll get a booking link instantly.
+            </p>
+          </div>
+          <div style={{ ...card, minHeight: 140 }} className="hoverCard">
+            <h3 style={title}>Flexible & Growing</h3>
+            <p style={muted}>
+              Start with bookings and reminders. Add follow-ups and upsells when you’re ready.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* WHY CATBACKAI */}
+      <section id="why-catbackai" className="container" style={{ padding: "20px 60px 60px" }}>
+        <h2 className="sectionTitle">Why CatBackAI</h2>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1.3fr 1fr",
+            gap: 40,
+            alignItems: "center",
+          }}
+        >
+          <div>
+            <ul style={{ marginTop: 10, color: "#333", fontSize: 16, lineHeight: 1.9 }}>
+              <li><strong>Stop losing leads</strong>—give customers a 24/7 way to book.</li>
+              <li><strong>Reduce no-shows</strong> with confirmations and reminders via SMS/email.</li>
+              <li><strong>Win more repeat business</strong> with follow-ups and review nudges.</li>
+              <li><strong>See what’s working</strong> with simple tracking of bookings and outcomes.</li>
+            </ul>
+            <div style={{ marginTop: 18, display: "flex", gap: 12 }}>
+              <a className="btnPrimary" href="#signup-form">Start Free</a>
+              <button className="btnGhost" onClick={() => openChatbot("questions")}>
+                Ask a question
+              </button>
+            </div>
+          </div>
+          <div style={{ ...card, padding: 24 }} className="hoverCard">
+            <h3 style={{ ...title, marginBottom: 10 }}>How it works</h3>
+            <ol style={{ color: "#333", lineHeight: 1.8, paddingLeft: 18 }}>
+              <li>Enter your business details in the form.</li>
+              <li>Get a unique booking link for clients.</li>
+              <li>We handle confirmations, reminders, and follow-ups.</li>
+            </ol>
+          </div>
+        </div>
+      </section>
+
+      {/* FEATURES SECTION */}
+      <section className="container" style={{ padding: "60px", background: "#f9f9f9", borderRadius: 16 }}>
+        <h2 className="sectionTitle">What CatBackAI Does</h2>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
+            gap: "20px",
+            marginTop: "20px",
+          }}
+        >
+          <div style={card} className="hoverCard">
+            <h3 style={title}>📅 Smart Scheduling</h3>
+            <p style={muted}>
+              Automated booking system so customers can schedule 24/7 — no missed calls or texts.
+            </p>
+          </div>
+          <div style={card} className="hoverCard">
+            <h3 style={title}>💬 SMS & Email Reminders</h3>
+            <p style={muted}>
+              Reduce no-shows with automatic appointment confirmations, reminders, and follow-ups.
+            </p>
+          </div>
+          <div style={card} className="hoverCard">
+            <h3 style={title}>📈 Customer Growth</h3>
+            <p style={muted}>
+              Build repeat business with personalized follow-up messages and upsell opportunities.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* REVIEWS SECTION */}
+      <section className="container" style={{ padding: "60px 60px 20px" }}>
+        <h2 className="sectionTitle">Reviews</h2>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+            gap: "20px",
+            marginTop: "20px",
+          }}
+        >
+          <div style={card} className="hoverCard">
+            <p style={muted}>
+              "CatBackAI has doubled my appointments. No more missed calls and fewer no-shows!"
+            </p>
+            <p style={{ ...muted, fontWeight: "bold", color: "#de8d2b" }}>
+              – Mike, Auto Detailer
+            </p>
+          </div>
+          <div style={card} className="hoverCard">
+            <p style={muted}>
+              "Super easy setup, and my customers love the reminders. Worth every penny."
+            </p>
+            <p style={{ ...muted, fontWeight: "bold", color: "#de8d2b" }}>
+              – Sarah, Mobile Detail Pro
+            </p>
+          </div>
+          <div style={card} className="hoverCard">
+            <p style={muted}>
+              "I'm booking more repeat clients than ever. The follow-ups are a game changer."
+            </p>
+            <p style={{ ...muted, fontWeight: "bold", color: "#de8d2b" }}>
+              – James, ShineWorks Detailing
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* PRICING */}
+      <section id="pricing" className="container" style={{ padding: "20px 60px 80px" }}>
+        <h2 className="sectionTitle">Pricing</h2>
+        <p style={{ color: "#333", marginTop: 10 }}>
+          Simple pricing with everything included. Upgrade or cancel anytime.
         </p>
 
-        {/* Features */}
-        <h2 style={{ fontSize: 24, fontWeight: 700, marginBottom: 20, textAlign:"center", color:"#000" }}>What CatBackAI Does</h2>
-        <div style={{ display: "grid", gridTemplateColumns:"repeat(auto-fit, minmax(220px, 1fr))", gap: 20, marginBottom: 40 }}>
-          <div style={cardStyle} className="hoverCard"><div style={iconStyle}>📅</div><h3 style={cardTitle}>Smart Scheduling</h3><p style={cardText}>Automated booking system so customers can schedule 24/7 — no missed calls or texts.</p></div>
-          <div style={cardStyle} className="hoverCard"><div style={iconStyle}>💬</div><h3 style={cardTitle}>SMS & Email Reminders</h3><p style={cardText}>Reduce no-shows with automatic appointment confirmations, reminders, and follow-ups.</p></div>
-          <div style={cardStyle} className="hoverCard"><div style={iconStyle}>📈</div><h3 style={cardTitle}>Customer Growth</h3><p style={cardText}>Build repeat business with personalized follow-up messages and upsell opportunities.</p></div>
-        </div>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+            gap: 24,
+            marginTop: 24,
+          }}
+        >
+          {/* Starter */}
+          <div style={{ ...card, padding: 24 }} className="pricingCard">
+            <div className="badge" style={{ marginBottom: 10 }}>Starter</div>
+            <h3 style={{ ...title, fontSize: 22, marginBottom: 8 }}>$49/mo</h3>
+            <ul style={{ color: "#333", lineHeight: 1.9, paddingLeft: 18 }}>
+              <li>Online bookings</li>
+              <li>SMS/email reminders</li>
+              <li>Basic follow-ups</li>
+            </ul>
+            <a className="btnPrimary" href="#signup-form" style={{ marginTop: 12, display: "inline-block" }}>
+              Start Starter
+            </a>
+          </div>
 
-        {/* Reviews */}
-        <h2 style={{ fontSize: 24, fontWeight: 700, marginBottom: 20, textAlign:"center", color:"#000" }}>Reviews</h2>
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(250px, 1fr))", gap: 20 }}>
-          <div style={reviewCard} className="hoverCard"><p style={reviewText}>"CatBackAI has doubled my appointments. No more missed calls and fewer no-shows!"</p><div style={reviewAuthor}>– Mike, Auto Detailer</div></div>
-          <div style={reviewCard} className="hoverCard"><p style={reviewText}>"Super easy setup, and my customers love the reminders. Worth every penny."</p><div style={reviewAuthor}>– Sarah, Mobile Detail Pro</div></div>
-          <div style={reviewCard} className="hoverCard"><p style={reviewText}>"I’m booking more repeat clients than ever. The follow-ups are a game changer."</p><div style={reviewAuthor}>– James, ShineWorks Detailing</div></div>
-        </div>
-      </div>
+          {/* Growth */}
+          <div style={{ ...card, padding: 24, border: "2px solid #f4c89a" }} className="pricingCard">
+            <div className="badge" style={{ marginBottom: 10 }}>Most Popular</div>
+            <h3 style={{ ...title, fontSize: 22, marginBottom: 8 }}>$99/mo</h3>
+            <ul style={{ color: "#333", lineHeight: 1.9, paddingLeft: 18 }}>
+              <li>Everything in Starter</li>
+              <li>Advanced follow-ups & upsells</li>
+              <li>Review nudges</li>
+            </ul>
+            <a className="btnPrimary" href="#signup-form" style={{ marginTop: 12, display: "inline-block" }}>
+              Start Growth
+            </a>
+          </div>
 
-      {/* RIGHT SIDE FORM */}
-      <div className="rightPanel"
-        style={{ flex: 1, background: "#fff", padding: 24, borderRadius: 10, boxShadow: "0 4px 12px rgba(0,0,0,.15)", margin: 40, height: "calc(100vh - 80px)", display: "flex", flexDirection: "column" }}
+          {/* Pro */}
+          <div style={{ ...card, padding: 24 }} className="pricingCard">
+            <div className="badge" style={{ marginBottom: 10 }}>Pro</div>
+            <h3 style={{ ...title, fontSize: 22, marginBottom: 8 }}>$199/mo</h3>
+            <ul style={{ color: "#333", lineHeight: 1.9, paddingLeft: 18 }}>
+              <li>Everything in Growth</li>
+              <li>Custom flows</li>
+              <li>Priority support</li>
+            </ul>
+            <a className="btnPrimary" href="#signup-form" style={{ marginTop: 12, display: "inline-block" }}>
+              Start Pro
+            </a>
+          </div>
+        </div>
+      </section>
+
+      {/* FOOTER */}
+      <footer
+        style={{
+          padding: "28px 60px",
+          background: "#fff",
+          borderTop: "1px solid #eee",
+          marginTop: 20,
+        }}
       >
-        <h2 style={{ fontSize: 22, fontWeight: 800, marginBottom: 16, color:"#000" }}>Business Signup</h2>
-        <form onSubmit={handleSubmit} style={{ overflowY: "auto" }}>
-          <input name="name" value={formData.name} onChange={handleChange} placeholder="Full Name" required style={inputStyle} />
-          <input name="businessName" value={formData.businessName} onChange={handleChange} placeholder="Business Name" required style={inputStyle} />
-          <input name="email" value={formData.email} onChange={handleChange} type="email" placeholder="Business Email" required style={inputStyle} />
-          <input name="phone" value={formData.phone} onChange={handleChange} type="tel" placeholder="Phone Number" required style={inputStyle} />
-          <input name="address" value={formData.address} onChange={handleChange} placeholder="Address / Location" required style={inputStyle} />
-
-          {/* Notes / Special Requests */}
-          <textarea
-            name="notes"
-            value={formData.notes}
-            onChange={handleChange}
-            placeholder="Notes / Special Requests"
-            style={{ ...inputStyle, height:"80px", resize:"vertical" }}
-          />
-
-          {/* Services */}
-          <div style={{ marginTop: 20, marginBottom: 10, fontWeight: 700, fontSize: "16px", color:"#000" }}>Services & Pricing</div>
-          {formData.services.map((srv, i) => (
-            <div key={i} style={{ marginBottom: 12, border:"1px solid #ddd", borderRadius:8, padding:12 }}>
-              <input type="text" placeholder="Service Name" value={srv.service} onChange={(e) => handleServiceChange(i, "service", e.target.value)} style={inputStyle} />
-              <input type="text" placeholder="Price (e.g. $50)" value={srv.price} onChange={(e) => handleServiceChange(i, "price", e.target.value)} style={inputStyle} />
-              <input type="text" placeholder="Length (e.g. 1 hour)" value={srv.length} onChange={(e) => handleServiceChange(i, "length", e.target.value)} style={inputStyle} />
-              <textarea placeholder="Service Description" value={srv.description} onChange={(e) => handleServiceChange(i, "description", e.target.value)} style={{ ...inputStyle, height:"60px", resize:"vertical" }} />
-            </div>
-          ))}
-          <button type="button" onClick={addService} style={{ ...buttonStyle, background:"#555", marginBottom:16 }}>+ Add Service</button>
-
-          {/* Business Hours */}
-          <div style={{ marginTop: 20, marginBottom: 10, fontWeight: 700, fontSize: "16px", color:"#000" }}>Business Hours</div>
-          {daysOfWeek.map((day) => {
-            const d = formData.hours[day];
-            return (
-              <div key={day}
-                style={{ ...rowStyle, border: d.closed ? "1px solid #ddd" : "2px solid #de8d2b", background: d.closed ? "#fafafa" : "#fff" }}
-                className="rowHover"
-                onMouseDown={(e) => handleRowMouseDown(day, e)}
-              >
-                <label style={{ display: "flex", alignItems: "center", gap: 8, color:"#000", cursor:"pointer" }}
-                  onMouseDown={(e) => { e.stopPropagation(); toggleDay(day); }}>
-                  <input type="checkbox" checked={!d.closed} readOnly style={{ pointerEvents: "none" }} />
-                  <span style={{ fontSize: 14, fontWeight: 600 }}>{day}</span>
-                </label>
-
-                <div style={timeGroupWrap(d.closed)} onMouseDown={(e) => e.stopPropagation()}>
-                  <input type="text" placeholder="09:00" value={d.openTime} onChange={(e) => setHourField(day, "openTime", e.target.value)} disabled={d.closed} style={timeBoxLeft} inputMode="numeric" />
-                  <select value={d.openPeriod} onChange={(e) => setPeriodField(day, "openPeriod", e.target.value)} disabled={d.closed} style={ampmRight}><option>AM</option><option>PM</option></select>
-                </div>
-
-                <div style={{ textAlign: "center", color:"#000" }}>to</div>
-
-                <div style={timeGroupWrap(d.closed)} onMouseDown={(e) => e.stopPropagation()}>
-                  <input type="text" placeholder="05:00" value={d.closeTime} onChange={(e) => setHourField(day, "closeTime", e.target.value)} disabled={d.closed} style={timeBoxLeft} inputMode="numeric" />
-                  <select value={d.closePeriod} onChange={(e) => setPeriodField(day, "closePeriod", e.target.value)} disabled={d.closed} style={ampmRight}><option>AM</option><option>PM</option></select>
-                </div>
-              </div>
-            );
-          })}
-
-          <div style={{ marginTop: 16, fontWeight: 700, color:"#000" }}>Business Logo (Optional)</div>
-          <input type="file" accept="image/*" onChange={handleFileChange} style={inputStyle} />
-          <button type="submit" style={buttonStyle}>Submit</button>
-        </form>
-      </div>
+        <div className="container" style={{ display: "flex", gap: 20, justifyContent: "space-between", alignItems: "center", flexWrap: "wrap" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <img src={logo} alt="CatBackAI" style={{ width: 28, height: 28 }} />
+            <strong style={{ fontSize: 16 }}>CatBackAI</strong>
+          </div>
+          <div style={{ color: "#666", fontSize: 14 }}>
+            © {new Date().getFullYear()} CatBackAI — All rights reserved.
+          </div>
+          <div style={{ display: "flex", gap: 14 }}>
+            <a href="#privacy" style={{ color: "#444", textDecoration: "none" }}>Privacy</a>
+            <a href="#terms" style={{ color: "#444", textDecoration: "none" }}>Terms</a>
+            <button className="btnGhost" onClick={() => openChatbot("support")}>Support</button>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
 
 /* ---------- styles ---------- */
-const inputStyle = { display:"block", width:"100%", padding:"10px 12px", marginBottom:"12px", borderRadius:"8px", border:"1px solid #dcdcdc", fontSize:14, outline:"none", backgroundColor:"#fff", color:"#000" };
-const rowStyle = { display:"grid", gridTemplateColumns:"140px 1fr 28px 1fr", alignItems:"center", gap:"12px", marginBottom:"10px", borderRadius:8, padding:"10px", cursor:"pointer" };
-const timeGroupWrap = (disabled) => ({ display:"flex", alignItems:"center", opacity: disabled ? 0.5 : 1 });
-const timeBoxLeft = { width:"88px", padding:"8px 10px", border:"1px solid #dcdcdc", borderRight:"0", borderTopLeftRadius:8, borderBottomLeftRadius:8, textAlign:"center", fontSize:14, backgroundColor:"#fff", color:"#000" };
-const ampmRight = { width:"72px", padding:"8px 10px", border:"1px solid #dcdcdc", borderTopRightRadius:8, borderBottomRightRadius:8, fontSize:14, appearance:"menulist", backgroundColor:"#fff", color:"#000" };
-const buttonStyle = { background:"#de8d2b", color:"#fff", fontWeight:800, padding:"12px 20px", border:"none", borderRadius:"8px", width:"100%", cursor:"pointer", marginTop:16 };
-const cardStyle = { background:"#fff", borderRadius:12, padding:"20px", textAlign:"center", boxShadow:"0 2px 6px rgba(0,0,0,0.08)" };
-const iconStyle = { fontSize:"28px", marginBottom:"12px", color:"#de8d2b" };
-const cardTitle = { fontSize:"16px", fontWeight:700, marginBottom:"8px", color:"#000" };
-const cardText  = { fontSize:"14px", color:"#444", lineHeight:"1.5" };
-const reviewCard = { background:"#fff", borderRadius:12, padding:"20px", boxShadow:"0 2px 6px rgba(0,0,0,0.08)", display:"flex", flexDirection:"column", justifyContent:"space-between" };
-const reviewText   = { fontSize:"14px", color:"#333", fontStyle:"italic", marginBottom:"12px" };
-const reviewAuthor = { fontSize:"13px", fontWeight:600, color:"#de8d2b", textAlign:"right" };
+const card = {
+  background: "#fff",
+  borderRadius: 12,
+  padding: 20,
+  boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+  display: "flex",
+  flexDirection: "column",
+  gap: 10,
+};
+
+const title = { margin: 0, fontWeight: 800, fontSize: 18, color: "#000" };
+
+const label = { fontSize: 13, fontWeight: 700, color: "#111", marginTop: 4 };
+
+const input = {
+  fontSize: 14,
+  padding: "10px 12px",
+  borderRadius: 8,
+  border: "1px solid #ddd",
+};
+
+const textarea = { ...input, minHeight: 64 };
+
+const btn = {
+  marginTop: 6,
+  background: "#de8d2b",
+  color: "#000",
+  padding: "12px",
+  border: "none",
+  borderRadius: 10,
+  fontWeight: 800,
+  cursor: "pointer",
+};
+
+const muted = { color: "#444", fontSize: 13, lineHeight: 1.4 };
+
+const errorBox = {
+  background: "#ffecec",
+  border: "1px solid #ffbcbc",
+  color: "#9b0000",
+  borderRadius: 8,
+  padding: "8px 10px",
+  fontSize: 13,
+};
 
 export default App;
-
