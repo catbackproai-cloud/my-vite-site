@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Helmet } from "react-helmet";
 import logo from "./assets/Y-Logo.png"; // ✅ exact file name
 
