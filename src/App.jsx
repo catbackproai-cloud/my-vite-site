@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Helmet } from "react-helmet";
+import { Helmet } from "react-helmet-async";
 import logo from "./assets/Y-Logo.png"; // ✅ exact file name
 
 function App() {
