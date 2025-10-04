@@ -92,65 +92,80 @@ function App() {
   const completionPct = Math.round((completedCount / requiredFields.length) * 100);
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setStatus({ done: false, error: "", businessId: "", bookingLink: "" });
+  e.preventDefault();
+  setStatus({ done: false, error: "", businessId: "", bookingLink: "" });
 
-    // quick client-side check
-    for (const f of requiredFields) {
-      if (f !== "Consent" && String(formData[f] || "").trim() === "") {
-        setStatus((s) => ({ ...s, error: `Please fill the required field: ${f}` }));
-        return;
-      }
-      if (f === "Consent" && !formData.Consent) {
-        setStatus((s) => ({ ...s, error: "Please check the consent box." }));
-        return;
-      }
+  // quick client-side validation
+  for (const f of requiredFields) {
+    if (f !== "Consent" && String(formData[f] || "").trim() === "") {
+      setStatus((s) => ({ ...s, error: `Please fill the required field: ${f}` }));
+      return;
     }
+    if (f === "Consent" && !formData.Consent) {
+      setStatus((s) => ({ ...s, error: "Please check the consent box." }));
+      return;
+    }
+  }
 
-    setSubmitting(true);
+  setSubmitting(true);
+
+  try {
+    const body = new FormData();
+    Object.entries(formData).forEach(([key, value]) => {
+      if (value !== null && value !== undefined) body.append(key, value);
+    });
+
+    // ✅ add debug logs
+    console.log("🟠 Submitting form data to Apps Script:", formData);
+
+    const res = await fetch(
+      "https://script.google.com/macros/s/AKfycbwK-GlDp79IToIVaXcG8mVEoEkI7caits-XcDIYVJtTkHVlH254nUX33auF6DkGlHtv/exec",
+      {
+        method: "POST",
+        body,
+      }
+    );
+
+    console.log("🟢 Response status:", res.status);
+    const text = await res.text(); // Get raw response text first
+    console.log("🟣 Raw response text:", text);
+
+    // Try parsing JSON safely
+    let json;
     try {
-      const body = new FormData();
-      Object.entries(formData).forEach(([key, value]) => {
-        if (value !== null && value !== undefined) body.append(key, value);
-      });
-
-      const res = await fetch(
-        "https://script.google.com/macros/s/AKfycbzTEvQnFa7lpio5FDDdNduisqltkGnQK3jSdwE9fD2SquV2v6RqGZUe5hV4M9BN4VK9/exec",
-        { method: "POST", body }
-      );
-
-      const json = await res.json();
-      if (!res.ok || json.result !== "ok") {
-        throw new Error(json.message || "Server error");
-      }
-
-      setStatus({
-        done: true,
-        error: "",
-        businessId: json.businessId,
-        bookingLink: json.bookingLink, // ✅ returned by Apps Script (e.g. "/book/{id}")
-      });
-
-      // ✅ simple analytics event
-      console.log("CatBackAI: signup_success", {
-        businessId: json.businessId,
-        ts: Date.now(),
-      });
-
-      // clear draft after successful submit
-      localStorage.removeItem("catbackai_onboarding_draft");
-    } catch (err) {
-      setStatus({
-        done: false,
-        error: "Could not submit: " + err.message,
-        businessId: "",
-        bookingLink: "",
-      });
-      console.warn("CatBackAI: signup_error", err);
-    } finally {
-      setSubmitting(false);
+      json = JSON.parse(text);
+    } catch (e) {
+      throw new Error("Invalid JSON from server: " + text.slice(0, 200));
     }
-  };
+
+    if (!res.ok || json.result !== "ok") {
+      throw new Error(json.message || "Server error");
+    }
+
+    // ✅ Success
+    setStatus({
+      done: true,
+      error: "",
+      businessId: json.businessId,
+      bookingLink: json.bookingLink,
+    });
+
+    console.log("✅ Signup success:", json);
+
+    // remove saved draft
+    localStorage.removeItem("catbackai_onboarding_draft");
+  } catch (err) {
+    console.error("❌ CatBackAI signup error:", err);
+    setStatus({
+      done: false,
+      error: "Could not submit: " + err.message,
+      businessId: "",
+      bookingLink: "",
+    });
+  } finally {
+    setSubmitting(false);
+  }
+};
 
   const copyToClipboard = () => {
     if (status.bookingLink) {
