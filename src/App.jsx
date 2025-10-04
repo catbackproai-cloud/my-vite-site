@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Helmet } from "react-helmet";
 import logo from "./assets/Y-Logo.png"; // ✅ exact file name
 
@@ -6,7 +6,6 @@ function App() {
   const openChatbot = (topic) => {
     alert(`Chatbot opened for: ${topic}`);
   };
-
 
   /* ---------- signup form state ---------- */
   const [formData, setFormData] = useState({
@@ -32,7 +31,38 @@ function App() {
     bookingLink: "",
   });
 
+  // ✅ New: non-breaking enhancements
+  const [submitting, setSubmitting] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [savedDraftAt, setSavedDraftAt] = useState("");
+
+  // ✅ New: localStorage draft save/restore (keeps user's progress)
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("catbackai_onboarding_draft");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        setFormData((s) => ({ ...s, ...parsed }));
+        setSavedDraftAt(new Date().toLocaleString());
+      }
+    } catch (e) {
+      // ignore
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      const toSave = { ...formData };
+      if (toSave.LogoFile) {
+        // files can't be serialized; omit pointer
+        toSave.LogoFile = null;
+      }
+      localStorage.setItem("catbackai_onboarding_draft", JSON.stringify(toSave));
+      setSavedDraftAt(new Date().toLocaleTimeString());
+    } catch (e) {
+      // ignore
+    }
+  }, [formData]);
 
   const handleChange = (e) => {
     const { name, value, type, checked, files } = e.target;
@@ -46,10 +76,38 @@ function App() {
     }
   };
 
+  // ✅ New: simple validation + completion meter
+  const requiredFields = [
+    "BusinessType",
+    "OwnerName",
+    "BusinessName",
+    "BusinessEmail",
+    "BusinessPhoneNumber",
+    "LocationOfServices",
+    "Consent",
+  ];
+  const completedCount = requiredFields.filter((f) =>
+    f === "Consent" ? !!formData[f] : String(formData[f] || "").trim() !== ""
+  ).length;
+  const completionPct = Math.round((completedCount / requiredFields.length) * 100);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setStatus({ done: false, error: "", businessId: "", bookingLink: "" });
 
+    // quick client-side check
+    for (const f of requiredFields) {
+      if (f !== "Consent" && String(formData[f] || "").trim() === "") {
+        setStatus((s) => ({ ...s, error: `Please fill the required field: ${f}` }));
+        return;
+      }
+      if (f === "Consent" && !formData.Consent) {
+        setStatus((s) => ({ ...s, error: "Please check the consent box." }));
+        return;
+      }
+    }
+
+    setSubmitting(true);
     try {
       const body = new FormData();
       Object.entries(formData).forEach(([key, value]) => {
@@ -72,6 +130,15 @@ function App() {
         businessId: json.businessId,
         bookingLink: json.bookingLink, // ✅ returned by Apps Script (e.g. "/book/{id}")
       });
+
+      // ✅ simple analytics event
+      console.log("CatBackAI: signup_success", {
+        businessId: json.businessId,
+        ts: Date.now(),
+      });
+
+      // clear draft after successful submit
+      localStorage.removeItem("catbackai_onboarding_draft");
     } catch (err) {
       setStatus({
         done: false,
@@ -79,6 +146,9 @@ function App() {
         businessId: "",
         bookingLink: "",
       });
+      console.warn("CatBackAI: signup_error", err);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -209,7 +279,33 @@ function App() {
             background: #fff1e0;
             color: #7a4b0c;
           }
+
+          /* New: subtle progress bar */
+          .progressOuter { width: 100%; height: 8px; background:#f1f1f1; border-radius:999px; overflow:hidden; }
+          .progressInner { height: 100%; background: var(--brand); }
+
+          /* New: FAQ accordion */
+          details.faq { border:1px solid #eee; border-radius:12px; padding:12px 16px; background:#fff; }
+          details.faq + details.faq { margin-top:12px; }
+          details.faq summary { cursor:pointer; font-weight:800; color:#111; }
+
+          /* New: floating chat bubble */
+          .chatBubble { position: fixed; right: 20px; bottom: 20px; z-index: 999; }
+
         `}</style>
+        {/* ✅ SEO/OG basics */}
+        <title>CatBackAI — Bookings, Reminders & Follow‑ups</title>
+        <meta name="description" content="Automate bookings, confirmations, reminders, and follow‑ups for service businesses with CatBackAI." />
+        <meta property="og:title" content="CatBackAI" />
+        <meta property="og:description" content="Smart bookings and reminders for service businesses." />
+        <meta property="og:image" content={logo} />
+        <script type="application/ld+json">{JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "SoftwareApplication",
+          name: "CatBackAI",
+          applicationCategory: "BusinessApplication",
+          offers: { "@type": "Offer", price: "49", priceCurrency: "USD" }
+        })}</script>
       </Helmet>
 
       {/* NAVBAR */}
@@ -236,7 +332,11 @@ function App() {
         <nav style={{ display: "flex", gap: "40px", flex: 1, justifyContent: "center" }}>
           <a href="#who-we-are">Who We Are</a>
           <a href="#why-catbackai">Why CatBackAI</a>
+          <a href="#features">Features</a>
+          <a href="#reviews">Reviews</a>
           <a href="#pricing">Pricing</a>
+          <a href="#faq">FAQ</a>
+          <a href="#contact">Contact</a>
         </nav>
 
         <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
@@ -316,6 +416,12 @@ function App() {
             <form onSubmit={handleSubmit} style={card} id="signup-form">
               <h3 style={title}>Business Onboarding</h3>
 
+              {/* ✅ New: inline progress bar */}
+              <div className="progressOuter" aria-label="Form completion" title={`Completion: ${completionPct}%`}>
+                <div className="progressInner" style={{ width: `${completionPct}%` }} />
+              </div>
+              <p style={{ ...muted, marginTop: 6 }}>{completionPct}% complete</p>
+
               <label style={label}>Business Type</label>
               <select
                 name="BusinessType"
@@ -376,7 +482,12 @@ function App() {
               </label>
 
               {status.error && <div style={errorBox}>{status.error}</div>}
-              <button type="submit" style={btn}>Submit</button>
+              <button type="submit" style={{...btn, opacity: submitting ? 0.7 : 1}} disabled={submitting}>
+                {submitting ? "Submitting…" : "Submit"}
+              </button>
+              {savedDraftAt && (
+                <p style={{ ...muted, marginTop: 8 }}>Draft saved: {savedDraftAt}</p>
+              )}
             </form>
           )}
         </div>
@@ -451,7 +562,7 @@ function App() {
       </section>
 
       {/* FEATURES SECTION */}
-      <section className="container" style={{ padding: "60px", background: "#f9f9f9", borderRadius: 16 }}>
+      <section id="features" className="container" style={{ padding: "60px", background: "#f9f9f9", borderRadius: 16 }}>
         <h2 className="sectionTitle">What CatBackAI Does</h2>
         <div
           style={{
@@ -479,11 +590,38 @@ function App() {
               Build repeat business with personalized follow-up messages and upsell opportunities.
             </p>
           </div>
+          {/* ✅ Added feature tiles */}
+          <div style={card} className="hoverCard">
+            <h3 style={title}>🔗 Easy Integration</h3>
+            <p style={muted}>Works smoothly with Sheets / Apps Script-based workflows you already use.</p>
+          </div>
+          <div style={card} className="hoverCard">
+            <h3 style={title}>🧠 AI Assist</h3>
+            <p style={muted}>Smart prompts to help convert inquiries into confirmed bookings.</p>
+          </div>
+          <div style={card} className="hoverCard">
+            <h3 style={title}>🔒 Consent & Compliance</h3>
+            <p style={muted}>Built-in consent language and STOP instructions for peace of mind.</p>
+          </div>
+        </div>
+      </section>
+
+      {/* TRUST BAR / LOGOS */}
+      <section className="container" style={{ padding: "10px 60px 0" }}>
+        <div style={{ ...card, alignItems: "center" }} className="hoverCard">
+          <p style={{ ...muted, margin: 0 }}>Trusted by solo operators & growing teams</p>
+          <div style={{ display: "flex", gap: 24, flexWrap: "wrap", marginTop: 8, alignItems: "center", justifyContent: "center" }}>
+            <div className="badge">Detailers</div>
+            <div className="badge">Barbers</div>
+            <div className="badge">Nail Techs</div>
+            <div className="badge">Fitness</div>
+            <div className="badge">Home Services</div>
+          </div>
         </div>
       </section>
 
       {/* REVIEWS SECTION */}
-      <section className="container" style={{ padding: "60px 60px 20px" }}>
+      <section id="reviews" className="container" style={{ padding: "60px 60px 20px" }}>
         <h2 className="sectionTitle">Reviews</h2>
         <div
           style={{
@@ -521,7 +659,7 @@ function App() {
       </section>
 
       {/* PRICING */}
-      <section id="pricing" className="container" style={{ padding: "20px 60px 80px" }}>
+      <section id="pricing" className="container" style={{ padding: "20px 60px 20px" }}>
         <h2 className="sectionTitle">Pricing</h2>
         <p style={{ color: "#333", marginTop: 10 }}>
           Simple pricing with everything included. Upgrade or cancel anytime.
@@ -579,6 +717,59 @@ function App() {
         </div>
       </section>
 
+      {/* CTA STRIP */}
+      <section className="container" style={{ padding: "30px 60px 60px" }}>
+        <div style={{ ...card, alignItems: "center", textAlign: "center" }} className="hoverCard">
+          <h3 style={{ ...title, fontSize: 22 }}>Ready to try CatBackAI?</h3>
+          <p style={{ ...muted, marginTop: 8 }}>Create your booking link in minutes. No credit card required.</p>
+          <a href="#signup-form" className="btnHero" style={{ marginTop: 12 }}>Create My Link</a>
+        </div>
+      </section>
+
+      {/* FAQ */}
+      <section id="faq" className="container" style={{ padding: "0 60px 60px" }}>
+        <h2 className="sectionTitle">FAQ</h2>
+        <details className="faq"><summary>Do I need any coding?</summary>
+          <p style={muted}>No. Paste your info in the form and you’ll get a booking link automatically.</p>
+        </details>
+        <details className="faq"><summary>Can I use my own number/email?</summary>
+          <p style={muted}>Yes. You can configure sending identity later. We also include opt-out language (Reply STOP).</p>
+        </details>
+        <details className="faq"><summary>Does this work for mobile-only businesses?</summary>
+          <p style={muted}>Absolutely. Choose “Mobile” or “Both” under Location of Services.</p>
+        </details>
+        <details className="faq"><summary>Can I export my data?</summary>
+          <p style={muted}>Your data lives in Google Sheets/Apps Script, so it’s already portable and exportable.</p>
+        </details>
+      </section>
+
+      {/* CONTACT */}
+      <section id="contact" className="container" style={{ padding: "0 60px 60px" }}>
+        <h2 className="sectionTitle">Contact</h2>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+          <div style={{ ...card }} className="hoverCard">
+            <h3 style={title}>Questions?</h3>
+            <p style={muted}>Ping us via the chat button or email support@catback.ai</p>
+            <button className="btnPrimary" onClick={() => openChatbot("support")}>Open Chat</button>
+          </div>
+          <div style={{ ...card }} className="hoverCard">
+            <h3 style={title}>Partnerships</h3>
+            <p style={muted}>Interested in bringing CatBackAI to your industry? Let’s talk.</p>
+            <button className="btnGhost" onClick={() => openChatbot("partnerships")}>Partner with us</button>
+          </div>
+        </div>
+      </section>
+
+      {/* LEGAL ANCHORS so the footer links work */}
+      <section id="privacy" className="container" style={{ padding: "0 60px 20px" }}>
+        <h2 className="sectionTitle">Privacy</h2>
+        <p style={muted}>We only message your clients after they book and consent. You can request data export or deletion any time.</p>
+      </section>
+      <section id="terms" className="container" style={{ padding: "0 60px 40px" }}>
+        <h2 className="sectionTitle">Terms</h2>
+        <p style={muted}>Use CatBackAI responsibly. Messaging must include opt-out instructions. Don’t spam. That’s it.</p>
+      </section>
+
       {/* FOOTER */}
       <footer
         style={{
@@ -603,11 +794,18 @@ function App() {
           </div>
         </div>
       </footer>
+
+      {/* Floating Chat Bubble (non-intrusive) */}
+      <div className="chatBubble">
+        <button className="btnHero" onClick={() => openChatbot("help")} aria-label="Open chat">
+          Chat with us
+        </button>
+      </div>
     </div>
   );
 }
 
-/* ---------- styles ---------- */
+/* ---------- styles (kept original + extended) ---------- */
 const card = {
   background: "#fff",
   borderRadius: 12,
