@@ -115,7 +115,7 @@ function App() {
       });
 
       const res = await fetch(
-        "https://script.google.com/macros/s/AKfycbyszuOhZOPY3UUOa7bG1uhEA7Q_avOG7zs_t3u8CCCwpEQSo4QdfjkPhfcQefmbftBm/exec",
+        "https://script.google.com/macros/s/AKfycbzXqqmaffpYuLEdKd_RAKEG6eXTzIn126c-ysEie4SjTRJQ_MkodmORdWf_xLKVG0B-/exec",
         { method: "POST", body }
       );
 
