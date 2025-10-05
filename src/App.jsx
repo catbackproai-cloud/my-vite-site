@@ -36,20 +36,6 @@ function App() {
   const [copied, setCopied] = useState(false);
   const [savedDraftAt, setSavedDraftAt] = useState("");
 
-  // ✅ New: localStorage draft save/restore (keeps user's progress)
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem("catbackai_onboarding_draft");
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        setFormData((s) => ({ ...s, ...parsed }));
-        setSavedDraftAt(new Date().toLocaleString());
-      }
-    } catch (e) {
-      // ignore
-    }
-  }, []);
-
   useEffect(() => {
     try {
       const toSave = { ...formData };
@@ -119,7 +105,7 @@ function App() {
     console.log("🟠 Submitting form data to Apps Script:", formData);
 
     const res = await fetch(
-      "https://script.google.com/macros/s/AKfycbwK-GlDp79IToIVaXcG8mVEoEkI7caits-XcDIYVJtTkHVlH254nUX33auF6DkGlHtv/exec",
+      "https://script.google.com/macros/s/AKfycbxpgsG7N3tIFgILJ5ACYssyViYzZ8AqL3AqImjhWTdQgoovpglaz93yIig-w9h5OHdv/exec",
       {
         method: "POST",
         body,
