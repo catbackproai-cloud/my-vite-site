@@ -795,13 +795,6 @@ function App() {
           </div>
         </div>
       </footer>
-
-      {/* Floating Chat Bubble (non-intrusive) */}
-      <div className="chatBubble">
-        <button className="btnHero" onClick={() => openChatbot("help")} aria-label="Open chat">
-          Chat with us
-        </button>
-      </div>
     </div>
   );
 }
