@@ -749,11 +749,6 @@ function App() {
         <h2 className="sectionTitle">Contact</h2>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
           <div style={{ ...card }} className="hoverCard">
-            <h3 style={title}>Questions?</h3>
-            <p style={muted}>Ping us via the chat button or email support@catback.ai</p>
-            <button className="btnPrimary" onClick={() => openChatbot("support")}>Open Chat</button>
-          </div>
-          <div style={{ ...card }} className="hoverCard">
             <h3 style={title}>Partnerships</h3>
             <p style={muted}>Interested in bringing CatBackAI to your industry? Let’s talk.</p>
             <button className="btnGhost" onClick={() => openChatbot("partnerships")}>Partner with us</button>
