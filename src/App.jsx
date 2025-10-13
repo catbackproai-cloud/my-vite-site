@@ -341,11 +341,9 @@ function App() {
         </nav>
 
         <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
-          <a href="#login" style={{ fontWeight: 600, fontSize: 16 }}>Log In</a>
-          <button className="btnPrimary" onClick={() => openChatbot("signup")}>
-            Get Started
-          </button>
-        </div>
+  <a href="#login" style={{ fontWeight: 600, fontSize: 16 }}>Log In</a>
+</div>
+
       </header>
 
       {/* HERO SECTION */}
@@ -377,11 +375,8 @@ function App() {
             lasting client relationships with smart follow-ups.
           </p>
           <div style={{ display: "flex", gap: "18px", flexWrap: "wrap" }}>
-            <a className="btnHero" href="#signup-form">Get Started</a>
-            <button className="btnGhost" onClick={() => openChatbot("demo")}>
-              See a quick demo
-            </button>
-          </div>
+  <a className="btnHero" href="#signup-form">Get Started</a>
+</div>
           <ul style={{ marginTop: 22, color: "#333", fontSize: 15, lineHeight: 1.8 }}>
             <li>24/7 self-serve booking</li>
             <li>Automatic confirmations, reminders, and follow-ups</li>
@@ -544,12 +539,9 @@ function App() {
               <li><strong>Win more repeat business</strong> with follow-ups and review nudges.</li>
               <li><strong>See what’s working</strong> with simple tracking of bookings and outcomes.</li>
             </ul>
-            <div style={{ marginTop: 18, display: "flex", gap: 12 }}>
-              <a className="btnPrimary" href="#signup-form">Start Free</a>
-              <button className="btnGhost" onClick={() => openChatbot("questions")}>
-                Ask a question
-              </button>
-            </div>
+            <div style={{ marginTop: 18 }}>
+  <a className="btnPrimary" href="#signup-form">Start Free</a>
+</div>
           </div>
           <div style={{ ...card, padding: 24 }} className="hoverCard">
             <h3 style={{ ...title, marginBottom: 10 }}>How it works</h3>
@@ -617,6 +609,7 @@ function App() {
             <div className="badge">Nail Techs</div>
             <div className="badge">Fitness</div>
             <div className="badge">Home Services</div>
+            <div className="badge">and more</div>
           </div>
         </div>
       </section>
@@ -740,7 +733,7 @@ function App() {
           <p style={muted}>Absolutely. Choose “Mobile” or “Both” under Location of Services.</p>
         </details>
         <details className="faq"><summary>Can I export my data?</summary>
-          <p style={muted}>Your data lives in Google Sheets/Apps Script, so it’s already portable and exportable.</p>
+          <p style={muted}>Your data lives in our database, so it’s already portable and exportable.</p>
         </details>
       </section>
 
