@@ -10,6 +10,7 @@ function App() {
   /* ---------- signup form state ---------- */
   const [formData, setFormData] = useState({
     BusinessType: "",
+    OtherBusinessType: "",
     OwnerName: "",
     BusinessName: "",
     BusinessEmail: "",
