@@ -447,9 +447,6 @@ function App() {
               <label style={label}>Business Phone Number</label>
               <input type="tel" name="BusinessPhoneNumber" value={formData.BusinessPhoneNumber} onChange={handleChange} required style={input} />
 
-              <label style={label}>Address</label>
-              <input name="Address" value={formData.Address} onChange={handleChange} style={input} />
-
               <label style={label}>Upload Logo (optional)</label>
               <input type="file" name="LogoFile" accept="image/*" onChange={handleChange} style={input} />
 
@@ -467,6 +464,20 @@ function App() {
                 <option>Both</option>
               </select>
 
+{(formData.LocationOfServices === "On-site" ||
+  formData.LocationOfServices === "Both") && (
+  <>
+    <label style={label}>If on-site, provide address of service</label>
+    <input
+      name="Address"
+      value={formData.Address}
+      onChange={handleChange}
+      style={input}
+      placeholder="123 Main St, City, State"
+      required
+    />
+  </>
+)}
               <label style={label}>Requests / Notes</label>
               <textarea name="Notes" value={formData.Notes} onChange={handleChange} rows={3} style={textarea} />
 
