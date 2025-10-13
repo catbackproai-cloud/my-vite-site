@@ -432,7 +432,20 @@ function App() {
                 <option>Fitness</option>
                 <option>Other</option>
               </select>
-
+{/* ✅ Conditional field for 'Other' business type */}
+{formData.BusinessType === "Other" && (
+  <>
+    <label style={label}>Please specify your business type</label>
+    <input
+      name="OtherBusinessType"
+      value={formData.OtherBusinessType || ""}
+      onChange={handleChange}
+      placeholder="e.g. Tattoo Artist, Landscaping, etc."
+      style={input}
+      required
+    />
+  </>
+)}
               <label style={label}>Owner Full Name</label>
               <input name="OwnerName" value={formData.OwnerName} onChange={handleChange} required style={input} />
 
