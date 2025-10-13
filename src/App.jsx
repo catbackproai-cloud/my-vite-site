@@ -104,13 +104,11 @@ function App() {
     // ✅ add debug logs
     console.log("🟠 Submitting form data to Apps Script:", formData);
 
-    const res = await fetch(
-      "https://script.google.com/macros/s/AKfycby_ixLZQSpqxArbszuHLyEFyvMETC1bGyfOU0BzN4vE7w425P9Uh6B4njzELDzAOOsU/exec",
-      {
-        method: "POST",
-        body,
-      }
-    );
+    const res = await fetch("https://jacobtf007.app.n8n.cloud/webhook/catbackai_signup", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify(formData),
+});
 
     console.log("🟢 Response status:", res.status);
     const text = await res.text(); // Get raw response text first
