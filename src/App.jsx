@@ -105,7 +105,7 @@ function App() {
     console.log("🟠 Submitting form data to Apps Script:", formData);
 
     const res = await fetch(
-      "https://script.google.com/macros/s/AKfycbz-GZvqQVTuuXbzvLdlTJde_gIJ4bNax9XXSzlhrztPtpSQfk7-yPJci29-RIwYC0Ty/exec",
+      "https://script.google.com/macros/s/AKfycbxb5b5Cv-XS4XONFLpgLJltK69DQpxY9IvoOinNm4UF8gAXRkl0jDS8xz3AmCkTdZtx/exec",
       {
         method: "POST",
         body,
