@@ -1,275 +1,205 @@
 import { useParams } from "react-router-dom";
 import { useState, useEffect } from "react";
-import DatePicker from "react-datepicker";
-import "react-datepicker/dist/react-datepicker.css";
 
-const API_BASE =
-  "https://script.google.com/macros/s/AKfycbzXqqmaffpYuLEdKd_RAKEG6eXTzIn126c-ysEie4SjTRJQ_MkodmORdWf_xLKVG0B-/exec";
-
-function BookingForm() {
+export default function BookingForm() {
+  // Get the businessId from the URL: /book/{businessId}
   const { businessId } = useParams();
 
+  // Store the business data loaded from n8n
   const [business, setBusiness] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  // Form data for clients booking an appointment
   const [formData, setFormData] = useState({
     clientName: "",
-    clientEmail: "",
     clientPhone: "",
-    serviceName: "",
-    servicePrice: "",
-    serviceDuration: "",
-    date: "",
-    time: "",
+    clientEmail: "",
+    serviceRequested: "",
+    preferredDate: "",
+    preferredTime: "",
     notes: "",
-    consent: false,
   });
 
-  const [status, setStatus] = useState({ done: false, error: "" });
-  const [submitting, setSubmitting] = useState(false);
-
-  /* ---------- Load business data ---------- */
+  // Fetch business details from n8n
   useEffect(() => {
-    if (!businessId) return;
-    fetch(`${API_BASE}?action=getbusiness&businessId=${businessId}`)
-      .then((res) => res.json())
-      .then((json) => {
-        if (json.result === "ok") setBusiness(json.business);
-        else throw new Error(json.message || "Business not found");
-      })
-      .catch((err) =>
-        setStatus({ done: false, error: "Failed to load business: " + err.message })
-      );
+    async function fetchBusiness() {
+      try {
+        const res = await fetch(
+          `https://jacobtf007.app.n8n.cloud/webhook-test/catbackai_getbusiness`
+        );
+        if (!res.ok) throw new Error("Failed to fetch business info");
+        const data = await res.json();
+        if (data?.result === "ok" && data.business) {
+          setBusiness(data.business);
+        } else {
+          throw new Error("Business not found");
+        }
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchBusiness();
   }, [businessId]);
 
-  /* ---------- Form Handlers ---------- */
+  // Handle input changes
   const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setFormData((s) => ({
-      ...s,
-      [name]: type === "checkbox" ? checked : value,
-    }));
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  // Submit booking (you’ll connect this to n8n POST later)
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setSubmitting(true);
-    setStatus({ done: false, error: "" });
-
-    try {
-      const body = new URLSearchParams();
-      Object.entries(formData).forEach(([key, val]) => body.append(key, val));
-      body.append("businessId", businessId);
-      body.append("action", "createbooking");
-
-      const res = await fetch(API_BASE, { method: "POST", body });
-      const json = await res.json();
-
-      if (!res.ok || json.result !== "ok") {
-        throw new Error(json.message || "Error submitting booking");
-      }
-
-      setStatus({ done: true, error: "" });
-    } catch (err) {
-      setStatus({ done: false, error: err.message });
-    } finally {
-      setSubmitting(false);
-    }
+    alert(`Booking submitted for ${business?.BusinessName}!`);
+    // 🔜 Later this will POST to /catbackai_createbooking flow
   };
 
-  if (!business) {
-    return <p style={{ padding: 40 }}>Loading business info...</p>;
-  }
+  // UI rendering
+  if (loading) return <p style={{ textAlign: "center" }}>Loading business info…</p>;
+  if (error) return <p style={{ color: "red", textAlign: "center" }}>{error}</p>;
 
   return (
     <div
       style={{
-        fontFamily: "Inter, system-ui, sans-serif",
-        background: "linear-gradient(180deg, #fff7ef 0%, #f8f8f8 100%)",
-        minHeight: "100vh",
-        padding: "40px",
+        fontFamily:
+          "Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif",
+        padding: "24px",
+        maxWidth: "600px",
+        margin: "0 auto",
       }}
     >
-      <h1 style={{ fontWeight: 900, fontSize: 32, color: "#000" }}>
-        Book with {business.BusinessName}
+      {/* Business header */}
+      <h1 style={{ color: "#de8d2b", textAlign: "center" }}>
+        Book with {business?.BusinessName || "Business"}
       </h1>
-      <p style={{ color: "#444" }}>{business.BusinessType}</p>
+      <p style={{ textAlign: "center", marginBottom: "1rem" }}>
+        {business?.BusinessType} • {business?.LocationOfServices}
+      </p>
 
-      {status.done ? (
-        <div
-          style={{
-            background: "#fff",
-            padding: 24,
-            borderRadius: 12,
-            maxWidth: 500,
-            marginTop: 24,
-          }}
-        >
-          <h3>✅ Booking Submitted!</h3>
-          <p>We’ll send confirmation and reminders to your contact info.</p>
+      {/* Optional logo */}
+      {business?.["Link to Logo"] && (
+        <div style={{ textAlign: "center", marginBottom: "1rem" }}>
+          <img
+            src={business["Link to Logo"]}
+            alt="Business Logo"
+            style={{ maxWidth: "150px", borderRadius: "8px" }}
+          />
         </div>
-      ) : (
-        <form
-          onSubmit={handleSubmit}
+      )}
+
+      {/* Contact + hours */}
+      <div
+        style={{
+          background: "#fff4eb",
+          padding: "12px 18px",
+          borderRadius: "10px",
+          marginBottom: "24px",
+        }}
+      >
+        <p>
+          <strong>Email:</strong> {business?.BusinessEmail}
+        </p>
+        <p>
+          <strong>Phone:</strong> {business?.BusinessPhoneNumber}
+        </p>
+        <p>
+          <strong>Hours:</strong> {business?.BusinessHours || "N/A"}
+        </p>
+        <p>
+          <strong>Address:</strong> {business?.["Address (If Applicable)"] || "—"}
+        </p>
+      </div>
+
+      {/* Booking form */}
+      <form onSubmit={handleSubmit}>
+        <label>
+          Name
+          <input
+            name="clientName"
+            value={formData.clientName}
+            onChange={handleChange}
+            required
+          />
+        </label>
+
+        <label>
+          Phone
+          <input
+            name="clientPhone"
+            value={formData.clientPhone}
+            onChange={handleChange}
+            required
+          />
+        </label>
+
+        <label>
+          Email
+          <input
+            type="email"
+            name="clientEmail"
+            value={formData.clientEmail}
+            onChange={handleChange}
+          />
+        </label>
+
+        <label>
+          Service Requested
+          <input
+            name="serviceRequested"
+            value={formData.serviceRequested}
+            onChange={handleChange}
+            placeholder="e.g. Deluxe Car Wash"
+          />
+        </label>
+
+        <label>
+          Preferred Date
+          <input
+            type="date"
+            name="preferredDate"
+            value={formData.preferredDate}
+            onChange={handleChange}
+          />
+        </label>
+
+        <label>
+          Preferred Time
+          <input
+            type="time"
+            name="preferredTime"
+            value={formData.preferredTime}
+            onChange={handleChange}
+          />
+        </label>
+
+        <label>
+          Notes
+          <textarea
+            name="notes"
+            value={formData.notes}
+            onChange={handleChange}
+          />
+        </label>
+
+        <button
+          type="submit"
           style={{
-            background: "#fff",
-            padding: 24,
-            borderRadius: 12,
-            maxWidth: 600,
-            display: "flex",
-            flexDirection: "column",
-            gap: 12,
-            marginTop: 24,
+            background: "#de8d2b",
+            color: "white",
+            padding: "10px 20px",
+            border: "none",
+            borderRadius: "6px",
+            cursor: "pointer",
+            marginTop: "10px",
+            width: "100%",
           }}
         >
-          <label>
-            Name
-            <input
-              name="clientName"
-              value={formData.clientName}
-              onChange={handleChange}
-              required
-              style={input}
-            />
-          </label>
-          <label>
-            Email
-            <input
-              type="email"
-              name="clientEmail"
-              value={formData.clientEmail}
-              onChange={handleChange}
-              required
-              style={input}
-            />
-          </label>
-          <label>
-            Phone
-            <input
-              name="clientPhone"
-              value={formData.clientPhone}
-              onChange={handleChange}
-              required
-              style={input}
-            />
-          </label>
-
-          {/* Service options pulled from sheet */}
-          <label>
-            Service
-            <select
-              name="serviceName"
-              value={formData.serviceName}
-              onChange={handleChange}
-              required
-              style={input}
-            >
-              <option value="">Select service</option>
-              {business.services &&
-                Array.isArray(business.services) &&
-                business.services.map((s, i) => (
-                  <option key={i} value={s.name}>
-                    {s.name} — ${s.price}
-                  </option>
-                ))}
-            </select>
-          </label>
-
-          <label>
-            Date
-            <DatePicker
-              selected={formData.date ? new Date(formData.date) : null}
-              onChange={(d) =>
-                setFormData((s) => ({ ...s, date: d ? d.toISOString().split("T")[0] : "" }))
-              }
-              minDate={new Date()}
-              dateFormat="yyyy-MM-dd"
-              placeholderText="Select date"
-              required
-              style={input}
-            />
-          </label>
-
-          <label>
-            Time
-            <input
-              type="time"
-              name="time"
-              value={formData.time}
-              onChange={handleChange}
-              required
-              style={input}
-            />
-          </label>
-
-          <label>
-            Notes
-            <textarea
-              name="notes"
-              value={formData.notes}
-              onChange={handleChange}
-              rows={3}
-              style={textarea}
-            />
-          </label>
-
-          <label style={{ display: "flex", gap: 8 }}>
-            <input
-              type="checkbox"
-              name="consent"
-              checked={formData.consent}
-              onChange={handleChange}
-              required
-            />
-            <span style={{ fontSize: 13, color: "#444" }}>
-              I agree to receive confirmations, reminders, and follow-ups from {business.BusinessName}.
-            </span>
-          </label>
-
-          {status.error && (
-            <div style={errorBox}>⚠️ {status.error}</div>
-          )}
-
-          <button
-            type="submit"
-            style={{
-              ...btn,
-              opacity: submitting ? 0.7 : 1,
-            }}
-            disabled={submitting}
-          >
-            {submitting ? "Submitting…" : "Book Appointment"}
-          </button>
-        </form>
-      )}
+          Submit Booking
+        </button>
+      </form>
     </div>
   );
 }
-
-/* ---------- styling helpers ---------- */
-const input = {
-  width: "100%",
-  padding: "10px 12px",
-  borderRadius: 8,
-  border: "1px solid #ddd",
-  fontSize: 14,
-};
-const textarea = { ...input, minHeight: 60 };
-const btn = {
-  background: "#de8d2b",
-  color: "#000",
-  padding: "12px",
-  border: "none",
-  borderRadius: 10,
-  fontWeight: 800,
-  cursor: "pointer",
-  fontSize: 16,
-};
-const errorBox = {
-  background: "#ffecec",
-  border: "1px solid #ffbcbc",
-  color: "#9b0000",
-  borderRadius: 8,
-  padding: "8px 10px",
-  fontSize: 13,
-};
-
-export default BookingForm;
