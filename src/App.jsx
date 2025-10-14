@@ -18,6 +18,7 @@ function App() {
     Address: "",
     LogoFile: null, // ✅ upload → Drive
     BusinessHours: "",
+    ServicesOffered: "",
     Socials: "",
     LocationOfServices: "",
     Notes: "",
@@ -70,6 +71,7 @@ function App() {
     "BusinessName",
     "BusinessEmail",
     "BusinessPhoneNumber",
+    "ServicesOffered",
     "LocationOfServices",
     "Consent",
   ];
@@ -464,6 +466,33 @@ function App() {
 
               <label style={label}>Business Hours</label>
               <textarea name="BusinessHours" value={formData.BusinessHours} onChange={handleChange} rows={2} style={textarea} />
+
+<div style={{ marginBottom: "16px" }}>
+  <label
+    style={{
+      display: "block",
+      fontWeight: "600",
+      marginBottom: "6px",
+    }}
+  >
+    Services Offered <span style={{ fontWeight: "400" }}>(comma separated)</span>
+  </label>
+  <input
+    type="text"
+    name="ServicesOffered"
+    value={formData.ServicesOffered}
+    onChange={handleChange}
+    placeholder="e.g. Exterior Wash, Interior Detail, Waxing"
+    style={{
+      width: "100%",
+      padding: "10px",
+      borderRadius: "6px",
+      border: "1px solid #ccc",
+      fontSize: "15px",
+      fontFamily: "inherit",
+    }}
+  />
+</div>
 
               <label style={label}>Socials</label>
               <textarea name="Socials" value={formData.Socials} onChange={handleChange} rows={2} style={textarea} />
