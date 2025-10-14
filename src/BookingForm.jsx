@@ -26,8 +26,8 @@ export default function BookingForm() {
     async function fetchBusiness() {
       try {
         const res = await fetch(
-          `https://jacobtf007.app.n8n.cloud/webhook-test/catbackai_getbusiness`
-        );
+  `https://jacobtf007.app.n8n.cloud/webhook/catbackai_getbusiness?businessId=${businessId}`
+);
         if (!res.ok) throw new Error("Failed to fetch business info");
         const data = await res.json();
         if (data?.result === "ok" && data.business) {
