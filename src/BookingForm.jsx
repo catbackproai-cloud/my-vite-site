@@ -2,15 +2,13 @@ import { useParams } from "react-router-dom";
 import { useState, useEffect } from "react";
 
 export default function BookingForm() {
-  // Get the businessId from the URL: /book/{businessId}
   const { businessId } = useParams();
 
-  // Store the business data loaded from n8n
   const [business, setBusiness] = useState(null);
+  const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // Form data for clients booking an appointment
   const [formData, setFormData] = useState({
     clientName: "",
     clientPhone: "",
@@ -18,23 +16,43 @@ export default function BookingForm() {
     serviceRequested: "",
     preferredDate: "",
     preferredTime: "",
-    notes: "",
+    paymentMethod: "",
   });
 
-  // Fetch business details from n8n
   useEffect(() => {
     async function fetchBusiness() {
       try {
         const res = await fetch(
-  `https://jacobtf007.app.n8n.cloud/webhook/catbackai_getbusiness?businessId=${businessId}`
-);
+          `https://jacobtf007.app.n8n.cloud/webhook/catbackai_getbusiness?businessId=${businessId}`
+        );
         if (!res.ok) throw new Error("Failed to fetch business info");
+
         const data = await res.json();
-        if (data?.result === "ok" && data.business) {
-          setBusiness(data.business);
-        } else {
-          throw new Error("Business not found");
+        if (!data || !data.business) throw new Error("Business not found");
+
+        setBusiness(data.business);
+
+        // 👇 detect where your “Services Offered” lives
+        const raw =
+          data.business["Services Offered"] ||
+          data.business["servicesOffered"] ||
+          data.business["services"] ||
+          data.business["Services"] ||
+          "[]";
+
+        // try to parse JSON if possible, otherwise fallback to comma-separated string
+        let parsed = [];
+        if (typeof raw === "string") {
+          try {
+            parsed = JSON.parse(raw);
+          } catch {
+            parsed = raw.split(",").map((s) => s.trim());
+          }
+        } else if (Array.isArray(raw)) {
+          parsed = raw;
         }
+
+        setServices(parsed.filter(Boolean));
       } catch (err) {
         setError(err.message);
       } finally {
@@ -44,22 +62,50 @@ export default function BookingForm() {
     fetchBusiness();
   }, [businessId]);
 
-  // Handle input changes
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Submit booking (you’ll connect this to n8n POST later)
   const handleSubmit = async (e) => {
     e.preventDefault();
-    alert(`Booking submitted for ${business?.BusinessName}!`);
-    // 🔜 Later this will POST to /catbackai_createbooking flow
+
+    const payload = {
+      businessId,
+      ...formData,
+    };
+
+    try {
+      const res = await fetch(
+        "https://jacobtf007.app.n8n.cloud/webhook/catbackai_createbooking",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }
+      );
+
+      if (!res.ok) throw new Error("Booking failed");
+
+      alert(`✅ Booking submitted for ${business?.BusinessName}!`);
+      setFormData({
+        clientName: "",
+        clientPhone: "",
+        clientEmail: "",
+        serviceRequested: "",
+        preferredDate: "",
+        preferredTime: "",
+        paymentMethod: "",
+      });
+    } catch (err) {
+      alert(`❌ ${err.message}`);
+    }
   };
 
-  // UI rendering
-  if (loading) return <p style={{ textAlign: "center" }}>Loading business info…</p>;
-  if (error) return <p style={{ color: "red", textAlign: "center" }}>{error}</p>;
+  if (loading)
+    return <p style={{ textAlign: "center" }}>Loading business info…</p>;
+  if (error)
+    return <p style={{ color: "red", textAlign: "center" }}>{error}</p>;
 
   return (
     <div
@@ -71,50 +117,87 @@ export default function BookingForm() {
         margin: "0 auto",
       }}
     >
-      {/* Business header */}
-      <h1 style={{ color: "#de8d2b", textAlign: "center" }}>
-        Book with {business?.BusinessName || "Business"}
-      </h1>
-      <p style={{ textAlign: "center", marginBottom: "1rem" }}>
-        {business?.BusinessType} • {business?.LocationOfServices}
-      </p>
-
-      {/* Optional logo */}
-      {business?.["Link to Logo"] && (
+      {/* Logo */}
+      {business?.["LogoLink"] && (
         <div style={{ textAlign: "center", marginBottom: "1rem" }}>
           <img
-            src={business["Link to Logo"]}
+            src={business["LogoLink"]}
             alt="Business Logo"
-            style={{ maxWidth: "150px", borderRadius: "8px" }}
+            style={{ maxWidth: "120px", borderRadius: "8px" }}
           />
         </div>
       )}
 
-      {/* Contact + hours */}
-      <div
+      {/* Business Name */}
+      <h1
         style={{
-          background: "#fff4eb",
-          padding: "12px 18px",
-          borderRadius: "10px",
-          marginBottom: "24px",
+          color: "#de8d2b",
+          textAlign: "center",
+          marginBottom: "16px",
         }}
       >
-        <p>
-          <strong>Email:</strong> {business?.BusinessEmail}
-        </p>
-        <p>
-          <strong>Phone:</strong> {business?.BusinessPhoneNumber}
-        </p>
-        <p>
-          <strong>Hours:</strong> {business?.BusinessHours || "N/A"}
-        </p>
-        <p>
-          <strong>Address:</strong> {business?.["Address (If Applicable)"] || "—"}
-        </p>
-      </div>
+        {business?.BusinessName || "Business"}
+      </h1>
 
-      {/* Booking form */}
-      <form onSubmit={handleSubmit}>
+      {/* Form */}
+      <form
+        onSubmit={handleSubmit}
+        style={{
+          background: "#fff4eb",
+          padding: "20px",
+          borderRadius: "12px",
+          display: "flex",
+          flexDirection: "column",
+          gap: "12px",
+        }}
+      >
+        {/* Service dropdown */}
+        <label>
+          Service
+          <select
+            name="serviceRequested"
+            value={formData.serviceRequested}
+            onChange={handleChange}
+            required
+            style={{
+              width: "100%",
+              padding: "8px",
+              borderRadius: "6px",
+              border: "1px solid #ccc",
+            }}
+          >
+            <option value="">Select service</option>
+            {services.map((s, i) => (
+              <option key={i} value={s.name || s.Service || s}>
+                {s.name || s.Service || s}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        {/* Date & Time */}
+        <label>
+          Date
+          <input
+            type="date"
+            name="preferredDate"
+            value={formData.preferredDate}
+            onChange={handleChange}
+            required
+          />
+        </label>
+        <label>
+          Time
+          <input
+            type="time"
+            name="preferredTime"
+            value={formData.preferredTime}
+            onChange={handleChange}
+            required
+          />
+        </label>
+
+        {/* Name */}
         <label>
           Name
           <input
@@ -125,65 +208,44 @@ export default function BookingForm() {
           />
         </label>
 
+        {/* Email / Phone */}
         <label>
-          Phone
+          Email / Phone
           <input
-            name="clientPhone"
-            value={formData.clientPhone}
+            name="clientEmail"
+            value={formData.clientEmail}
             onChange={handleChange}
+            placeholder="Email or phone number"
             required
           />
         </label>
 
-        <label>
-          Email
-          <input
-            type="email"
-            name="clientEmail"
-            value={formData.clientEmail}
-            onChange={handleChange}
-          />
-        </label>
+        {/* Payment */}
+        <fieldset style={{ border: "none", marginTop: "6px" }}>
+          <legend style={{ fontWeight: "bold" }}>Payment</legend>
+          <label style={{ display: "block" }}>
+            <input
+              type="radio"
+              name="paymentMethod"
+              value="Cash"
+              checked={formData.paymentMethod === "Cash"}
+              onChange={handleChange}
+            />{" "}
+            Cash
+          </label>
+          <label style={{ display: "block" }}>
+            <input
+              type="radio"
+              name="paymentMethod"
+              value="Venmo / CashApp / Zelle"
+              checked={formData.paymentMethod === "Venmo / CashApp / Zelle"}
+              onChange={handleChange}
+            />{" "}
+            Venmo / CashApp / Zelle / etc
+          </label>
+        </fieldset>
 
-        <label>
-          Service Requested
-          <input
-            name="serviceRequested"
-            value={formData.serviceRequested}
-            onChange={handleChange}
-            placeholder="e.g. Deluxe Car Wash"
-          />
-        </label>
-
-        <label>
-          Preferred Date
-          <input
-            type="date"
-            name="preferredDate"
-            value={formData.preferredDate}
-            onChange={handleChange}
-          />
-        </label>
-
-        <label>
-          Preferred Time
-          <input
-            type="time"
-            name="preferredTime"
-            value={formData.preferredTime}
-            onChange={handleChange}
-          />
-        </label>
-
-        <label>
-          Notes
-          <textarea
-            name="notes"
-            value={formData.notes}
-            onChange={handleChange}
-          />
-        </label>
-
+        {/* Submit */}
         <button
           type="submit"
           style={{
@@ -191,10 +253,10 @@ export default function BookingForm() {
             color: "white",
             padding: "10px 20px",
             border: "none",
-            borderRadius: "6px",
+            borderRadius: "8px",
             cursor: "pointer",
-            marginTop: "10px",
-            width: "100%",
+            fontWeight: "bold",
+            marginTop: "12px",
           }}
         >
           Submit Booking
