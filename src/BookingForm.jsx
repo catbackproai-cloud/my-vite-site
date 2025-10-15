@@ -28,20 +28,18 @@ export default function BookingForm() {
         if (!res.ok) throw new Error("Failed to fetch business info");
 
         const data = await res.json();
-        if (!data?.business?.BusinessName) throw new Error("Business not found");
-
+        if (data.result !== "ok" || !data.business?.BusinessName)
+          throw new Error("Business not found");
 
         setBusiness(data.business);
 
-        // 👇 detect where your “Services Offered” lives
+        // Detect where “Services Offered” lives
         const raw =
+          data.business.ServicesOffered ||
           data.business["Services Offered"] ||
-          data.business["servicesOffered"] ||
-          data.business["services"] ||
-          data.business["Services"] ||
+          data.business.services ||
           "[]";
 
-        // try to parse JSON if possible, otherwise fallback to comma-separated string
         let parsed = [];
         if (typeof raw === "string") {
           try {
@@ -60,6 +58,7 @@ export default function BookingForm() {
         setLoading(false);
       }
     }
+
     fetchBusiness();
   }, [businessId]);
 
@@ -71,10 +70,7 @@ export default function BookingForm() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const payload = {
-      businessId,
-      ...formData,
-    };
+    const payload = { businessId, ...formData };
 
     try {
       const res = await fetch(
@@ -119,10 +115,10 @@ export default function BookingForm() {
       }}
     >
       {/* Logo */}
-      {business?.["LogoLink"] && (
+      {business?.LogoLink && (
         <div style={{ textAlign: "center", marginBottom: "1rem" }}>
           <img
-            src={business["LogoLink"]}
+            src={business.LogoLink}
             alt="Business Logo"
             style={{ maxWidth: "120px", borderRadius: "8px" }}
           />
@@ -140,7 +136,7 @@ export default function BookingForm() {
         {business?.BusinessName || "Business"}
       </h1>
 
-      {/* Form */}
+      {/* Booking Form */}
       <form
         onSubmit={handleSubmit}
         style={{
@@ -152,7 +148,7 @@ export default function BookingForm() {
           gap: "12px",
         }}
       >
-        {/* Service dropdown */}
+        {/* Services dropdown */}
         <label>
           Service
           <select
@@ -169,14 +165,14 @@ export default function BookingForm() {
           >
             <option value="">Select service</option>
             {services.map((s, i) => (
-              <option key={i} value={s.name || s.Service || s}>
-                {s.name || s.Service || s}
+              <option key={i} value={s}>
+                {s}
               </option>
             ))}
           </select>
         </label>
 
-        {/* Date & Time */}
+        {/* Date + Time */}
         <label>
           Date
           <input
