@@ -28,7 +28,8 @@ export default function BookingForm() {
         if (!res.ok) throw new Error("Failed to fetch business info");
 
         const data = await res.json();
-        if (!data || !data.business) throw new Error("Business not found");
+        if (!data?.business?.BusinessName) throw new Error("Business not found");
+
 
         setBusiness(data.business);
 
