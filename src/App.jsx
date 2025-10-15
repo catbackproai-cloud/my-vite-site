@@ -129,13 +129,13 @@ function App() {
       throw new Error(json.message || "Server error");
     }
 
-    // ✅ Success
-    setStatus({
-      done: true,
-      error: "",
-      businessId: json.businessId,
-      bookingLink: json.bookingLink,
-    });
+    // ✅ Success (Hybrid approval)
+setStatus({
+  done: true,
+  error: "",
+  businessId: json.businessId,
+  bookingLink: "", // no link yet — given after approval
+});
 
     console.log("✅ Signup success:", json);
 
@@ -388,27 +388,28 @@ function App() {
         {/* Right column: SIGNUP FORM */}
         <div>
           {status.done ? (
-            <div style={card}>
-              <h3 style={title}>✅ Thanks for signing up!</h3>
-              <p style={muted}><strong>Business ID:</strong> {status.businessId}</p>
-              <p style={muted}>
-                <strong>Booking Link:</strong>{" "}
-                <a href={status.bookingLink} target="_blank" rel="noreferrer">
-                  {status.bookingLink}
-                </a>
-              </p>
-              <button
-                onClick={copyToClipboard}
-                style={{
-                  ...btn,
-                  marginTop: "10px",
-                  background: copied ? "#4caf50" : "#de8d2b",
-                  color: copied ? "#fff" : "#000",
-                }}
-              >
-                {copied ? "Copied!" : "Copy Booking Link"}
-              </button>
-            </div>
+  <div style={card}>
+    <h3 style={title}>✅ Signup Received</h3>
+    <p style={muted}>
+      <strong>Your Business ID:</strong> {status.businessId}
+    </p>
+    <p style={muted}>
+      Your business is now <strong>pending approval</strong>. Once approved, you’ll
+      automatically receive your unique booking link by email or SMS.
+    </p>
+    <p style={muted}>Keep this ID safe — it identifies your account for setup and support.</p>
+    <button
+      onClick={copyToClipboard}
+      style={{
+        ...btn,
+        marginTop: "10px",
+        background: copied ? "#4caf50" : "#de8d2b",
+        color: copied ? "#fff" : "#000",
+      }}
+    >
+      {copied ? "Copied!" : "Copy Business ID"}
+    </button>
+  </div>
           ) : (
             <form onSubmit={handleSubmit} style={card} id="signup-form">
               <h3 style={title}>Business Onboarding</h3>
@@ -561,7 +562,7 @@ function App() {
           <div style={{ ...card, minHeight: 140 }} className="hoverCard">
             <h3 style={title}>Fast Setup</h3>
             <p style={muted}>
-              Most businesses can be onboarded in minutes. Just enter your info and you’ll get a booking link instantly.
+              Most businesses can be onboarded in minutes. You’ll get a business ID instantly and your booking link once approved.
             </p>
           </div>
           <div style={{ ...card, minHeight: 140 }} className="hoverCard">
