@@ -26,6 +26,24 @@ function App() {
     BusinessId: "", // hidden, auto-handled
   });
 
+  const [services, setServices] = useState([{ name: "", price: "" }]);
+
+const handleServiceChange = (index, field, value) => {
+  const updated = [...services];
+  updated[index][field] = value;
+  setServices(updated);
+};
+
+const addService = () => {
+  setServices([...services, { name: "", price: "" }]);
+};
+
+const removeService = (index) => {
+  const updated = [...services];
+  updated.splice(index, 1);
+  setServices(updated);
+};
+
   const [status, setStatus] = useState({
     done: false,
     error: "",
@@ -103,6 +121,8 @@ function App() {
     Object.entries(formData).forEach(([key, value]) => {
       if (value !== null && value !== undefined) body.append(key, value);
     });
+
+formData.ServicesOffered = JSON.stringify(services);
 
     // ✅ add debug logs
     console.log("🟠 Submitting form data to Apps Script:", formData);
@@ -468,31 +488,93 @@ setStatus({
               <label style={label}>Business Hours</label>
               <textarea name="BusinessHours" value={formData.BusinessHours} onChange={handleChange} rows={2} style={textarea} />
 
+{/* ✅ Dynamic Services Section */}
 <div style={{ marginBottom: "16px" }}>
   <label
     style={{
       display: "block",
       fontWeight: "600",
-      marginBottom: "6px",
+      marginBottom: "8px",
     }}
   >
-    Services Offered <span style={{ fontWeight: "400" }}>(comma separated)</span>
+    Services Offered
   </label>
-  <input
-    type="text"
-    name="ServicesOffered"
-    value={formData.ServicesOffered}
-    onChange={handleChange}
-    placeholder="e.g. Exterior Wash, Interior Detail, Waxing"
+
+  {services.map((service, index) => (
+    <div
+      key={index}
+      style={{
+        display: "flex",
+        gap: "10px",
+        alignItems: "center",
+        marginBottom: "6px",
+      }}
+    >
+      <input
+        type="text"
+        placeholder="Service name"
+        value={service.name}
+        onChange={(e) =>
+          handleServiceChange(index, "name", e.target.value)
+        }
+        required
+        style={{
+          flex: 1,
+          padding: "8px",
+          borderRadius: "6px",
+          border: "1px solid #ccc",
+        }}
+      />
+      <input
+        type="number"
+        placeholder="Price ($)"
+        value={service.price}
+        onChange={(e) =>
+          handleServiceChange(index, "price", e.target.value)
+        }
+        required
+        style={{
+          width: "110px",
+          padding: "8px",
+          borderRadius: "6px",
+          border: "1px solid #ccc",
+        }}
+      />
+      {services.length > 1 && (
+        <button
+          type="button"
+          onClick={() => removeService(index)}
+          style={{
+            background: "red",
+            color: "white",
+            border: "none",
+            borderRadius: "6px",
+            padding: "6px 10px",
+            cursor: "pointer",
+          }}
+        >
+          ✕
+        </button>
+      )}
+    </div>
+  ))}
+
+  <button
+    type="button"
+    onClick={addService}
     style={{
-      width: "100%",
-      padding: "10px",
+      background: "#de8d2b",
+      color: "white",
+      border: "none",
       borderRadius: "6px",
-      border: "1px solid #ccc",
-      fontSize: "15px",
-      fontFamily: "inherit",
+      padding: "8px 12px",
+      cursor: "pointer",
+      fontWeight: "bold",
+      marginTop: "6px",
     }}
-  />
+  >
+    + Add Service
+  </button>
 </div>
 
               <label style={label}>Socials</label>
