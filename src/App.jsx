@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";// 🔁 redeploy trigger
+import { useState, useEffect } from "react"; // 🔁 redeploy trigger
 import { Helmet } from "react-helmet-async";
 import logo from "./assets/Y-Logo.png"; // ✅ exact file name
 
@@ -16,9 +16,9 @@ function App() {
     BusinessEmail: "",
     BusinessPhoneNumber: "",
     Address: "",
-    LogoFile: null, // ✅ upload → Drive
+    LogoFile: null, // ✅ upload → Drive (not sent in payload)
     BusinessHours: "",
-    ServicesOffered: "",
+    ServicesOffered: "", // will be overwritten by flattened text at submit
     Socials: "",
     LocationOfServices: "",
     Notes: "",
@@ -28,21 +28,21 @@ function App() {
 
   const [services, setServices] = useState([{ name: "", price: "" }]);
 
-const handleServiceChange = (index, field, value) => {
-  const updated = [...services];
-  updated[index][field] = value;
-  setServices(updated);
-};
+  const handleServiceChange = (index, field, value) => {
+    const updated = [...services];
+    updated[index][field] = value;
+    setServices(updated);
+  };
 
-const addService = () => {
-  setServices([...services, { name: "", price: "" }]);
-};
+  const addService = () => {
+    setServices([...services, { name: "", price: "" }]);
+  };
 
-const removeService = (index) => {
-  const updated = [...services];
-  updated.splice(index, 1);
-  setServices(updated);
-};
+  const removeService = (index) => {
+    const updated = [...services];
+    updated.splice(index, 1);
+    setServices(updated);
+  };
 
   const [status, setStatus] = useState({
     done: false,
@@ -63,7 +63,10 @@ const removeService = (index) => {
         // files can't be serialized; omit pointer
         toSave.LogoFile = null;
       }
-      localStorage.setItem("catbackai_onboarding_draft", JSON.stringify(toSave));
+      localStorage.setItem(
+        "catbackai_onboarding_draft",
+        JSON.stringify(toSave)
+      );
       setSavedDraftAt(new Date().toLocaleTimeString());
     } catch (e) {
       // ignore
@@ -82,102 +85,122 @@ const removeService = (index) => {
     }
   };
 
-  // ✅ New: simple validation + completion meter
+  // ✅ simple validation + completion meter
   const requiredFields = [
     "BusinessType",
     "OwnerName",
     "BusinessName",
     "BusinessEmail",
     "BusinessPhoneNumber",
-    "ServicesOffered",
     "LocationOfServices",
     "Consent",
   ];
   const completedCount = requiredFields.filter((f) =>
     f === "Consent" ? !!formData[f] : String(formData[f] || "").trim() !== ""
   ).length;
-  const completionPct = Math.round((completedCount / requiredFields.length) * 100);
+  const completionPct = Math.round(
+    (completedCount / requiredFields.length) * 100
+  );
 
   const handleSubmit = async (e) => {
-  e.preventDefault();
-  setStatus({ done: false, error: "", businessId: "", bookingLink: "" });
+    e.preventDefault();
+    setStatus({ done: false, error: "", businessId: "", bookingLink: "" });
 
-  // quick client-side validation
-  for (const f of requiredFields) {
-    if (f !== "Consent" && String(formData[f] || "").trim() === "") {
-      setStatus((s) => ({ ...s, error: `Please fill the required field: ${f}` }));
-      return;
+    // quick client-side validation
+    for (const f of requiredFields) {
+      if (f !== "Consent" && String(formData[f] || "").trim() === "") {
+        setStatus((s) => ({ ...s, error: `Please fill the required field: ${f}` }));
+        return;
+      }
+      if (f === "Consent" && !formData.Consent) {
+        setStatus((s) => ({ ...s, error: "Please check the consent box." }));
+        return;
+      }
     }
-    if (f === "Consent" && !formData.Consent) {
-      setStatus((s) => ({ ...s, error: "Please check the consent box." }));
-      return;
-    }
-  }
 
-  setSubmitting(true);
+    setSubmitting(true);
+    console.log("🟠 Submitting form data to n8n (raw formData):", formData);
 
-  try {
-    const body = new FormData();
-    Object.entries(formData).forEach(([key, value]) => {
-      if (value !== null && value !== undefined) body.append(key, value);
-    });
+    // ✅ Build ServicesOffered as flattened text (e.g., "Wash: $25, Wax: $50")
+    const servicesText = services
+      .filter((s) => String(s.name || "").trim() !== "")
+      .map((s) => {
+        const name = String(s.name).trim();
+        const priceNum = Number(s.price);
+        const price = Number.isFinite(priceNum) ? priceNum : 0;
+        return `${name}: $${price}`;
+      })
+      .join(", ");
 
-formData.ServicesOffered = JSON.stringify(services);
+    // ✅ Exclude LogoFile from payload to avoid non-serializable values
+    const { LogoFile, ...rest } = formData;
 
-    // ✅ add debug logs
-    console.log("🟠 Submitting form data to Apps Script:", formData);
+    const payload = {
+      ...rest,
+      ServicesOffered: servicesText,
+    };
 
-    const res = await fetch("https://jacobtf007.app.n8n.cloud/webhook/catbackai_signup", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify(formData),
-});
+    console.log("🟠 Final payload to n8n:", payload);
 
-    console.log("🟢 Response status:", res.status);
-    const text = await res.text(); // Get raw response text first
-    console.log("🟣 Raw response text:", text);
-
-    // Try parsing JSON safely
-    let json;
     try {
-      json = JSON.parse(text);
-    } catch (e) {
-      throw new Error("Invalid JSON from server: " + text.slice(0, 200));
+      const res = await fetch(
+        "https://jacobtf007.app.n8n.cloud/webhook/catbackai_signup",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }
+      );
+
+      const text = await res.text();
+      console.log("🟢 Raw response text:", text);
+
+      // ✅ Graceful JSON parsing or plain-text fallback
+      let json;
+      try {
+        json = JSON.parse(text);
+      } catch {
+        if (text.toLowerCase().includes("ok") || text.toLowerCase().includes("success")) {
+          json = {
+            result: "ok",
+            businessId: text.match(/[0-9a-f-]{8,}/)?.[0] || "pending",
+          };
+        } else {
+          throw new Error("Server returned non-JSON response: " + text.slice(0, 200));
+        }
+      }
+
+      if (!res.ok || json.result !== "ok") {
+        throw new Error(json.message || "Server error");
+      }
+
+      // ✅ Success (Hybrid approval: no public link until approved)
+      setStatus({
+        done: true,
+        error: "",
+        businessId: json.businessId,
+        bookingLink: json.bookingLink || "",
+      });
+
+      console.log("✅ Signup success:", json);
+      localStorage.removeItem("catbackai_onboarding_draft");
+    } catch (err) {
+      console.error("❌ CatBackAI signup error:", err);
+      setStatus({
+        done: false,
+        error: "Could not submit: " + err.message,
+        businessId: "",
+        bookingLink: "",
+      });
+    } finally {
+      setSubmitting(false);
     }
-
-    if (!res.ok || json.result !== "ok") {
-      throw new Error(json.message || "Server error");
-    }
-
-    // ✅ Success (Hybrid approval)
-setStatus({
-  done: true,
-  error: "",
-  businessId: json.businessId,
-  bookingLink: "", // no link yet — given after approval
-});
-
-    console.log("✅ Signup success:", json);
-
-    // remove saved draft
-    localStorage.removeItem("catbackai_onboarding_draft");
-  } catch (err) {
-    console.error("❌ CatBackAI signup error:", err);
-    setStatus({
-      done: false,
-      error: "Could not submit: " + err.message,
-      businessId: "",
-      bookingLink: "",
-    });
-  } finally {
-    setSubmitting(false);
-  }
-};
+  };
 
   const copyToClipboard = () => {
     if (status.bookingLink) {
       navigator.clipboard.writeText(status.bookingLink);
-    } else {
+    } else if (status.businessId) {
       navigator.clipboard.writeText(status.businessId);
     }
     setCopied(true);
@@ -317,16 +340,22 @@ setStatus({
         `}</style>
         {/* ✅ SEO/OG basics */}
         <title>CatBackAI — Bookings, Reminders & Follow‑ups</title>
-        <meta name="description" content="Automate bookings, confirmations, reminders, and follow‑ups for service businesses with CatBackAI." />
+        <meta
+          name="description"
+          content="Automate bookings, confirmations, reminders, and follow‑ups for service businesses with CatBackAI."
+        />
         <meta property="og:title" content="CatBackAI" />
-        <meta property="og:description" content="Smart bookings and reminders for service businesses." />
+        <meta
+          property="og:description"
+          content="Smart bookings and reminders for service businesses."
+        />
         <meta property="og:image" content={logo} />
         <script type="application/ld+json">{JSON.stringify({
           "@context": "https://schema.org",
           "@type": "SoftwareApplication",
           name: "CatBackAI",
           applicationCategory: "BusinessApplication",
-          offers: { "@type": "Offer", price: "49", priceCurrency: "USD" }
+          offers: { "@type": "Offer", price: "49", priceCurrency: "USD" },
         })}</script>
       </Helmet>
 
@@ -362,9 +391,10 @@ setStatus({
         </nav>
 
         <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
-  <a href="#login" style={{ fontWeight: 600, fontSize: 16 }}>Log In</a>
-</div>
-
+          <a href="#login" style={{ fontWeight: 600, fontSize: 16 }}>
+            Log In
+          </a>
+        </div>
       </header>
 
       {/* HERO SECTION */}
@@ -380,7 +410,9 @@ setStatus({
       >
         {/* Left column */}
         <div>
-          <div className="badge" style={{ marginBottom: 12 }}>Built for service businesses</div>
+          <div className="badge" style={{ marginBottom: 12 }}>
+            Built for service businesses
+          </div>
           <h1
             style={{
               fontSize: 38,
@@ -396,9 +428,13 @@ setStatus({
             lasting client relationships with smart follow-ups.
           </p>
           <div style={{ display: "flex", gap: "18px", flexWrap: "wrap" }}>
-  <a className="btnHero" href="#signup-form">Get Started</a>
-</div>
-          <ul style={{ marginTop: 22, color: "#333", fontSize: 15, lineHeight: 1.8 }}>
+            <a className="btnHero" href="#signup-form">
+              Get Started
+            </a>
+          </div>
+          <ul
+            style={{ marginTop: 22, color: "#333", fontSize: 15, lineHeight: 1.8 }}
+          >
             <li>24/7 self-serve booking</li>
             <li>Automatic confirmations, reminders, and follow-ups</li>
             <li>Simple setup, no code required</li>
@@ -408,35 +444,44 @@ setStatus({
         {/* Right column: SIGNUP FORM */}
         <div>
           {status.done ? (
-  <div style={card}>
-    <h3 style={title}>✅ Signup Received</h3>
-    <p style={muted}>
-      <strong>Your Business ID:</strong> {status.businessId}
-    </p>
-    <p style={muted}>
-      Your business is now <strong>pending approval</strong>. Once approved, you’ll
-      automatically receive your unique booking link by email or SMS.
-    </p>
-    <p style={muted}>Keep this ID safe — it identifies your account for setup and support.</p>
-    <button
-      onClick={copyToClipboard}
-      style={{
-        ...btn,
-        marginTop: "10px",
-        background: copied ? "#4caf50" : "#de8d2b",
-        color: copied ? "#fff" : "#000",
-      }}
-    >
-      {copied ? "Copied!" : "Copy Business ID"}
-    </button>
-  </div>
+            <div style={card}>
+              <h3 style={title}>✅ Signup Received</h3>
+              <p style={muted}>
+                <strong>Your Business ID:</strong> {status.businessId}
+              </p>
+              <p style={muted}>
+                Your business is now <strong>pending approval</strong>. Once approved, you’ll
+                automatically receive your unique booking link by email or SMS.
+              </p>
+              <p style={muted}>
+                Keep this ID safe — it identifies your account for setup and support.
+              </p>
+              <button
+                onClick={copyToClipboard}
+                style={{
+                  ...btn,
+                  marginTop: "10px",
+                  background: copied ? "#4caf50" : "#de8d2b",
+                  color: copied ? "#fff" : "#000",
+                }}
+              >
+                {copied ? "Copied!" : "Copy Business ID"}
+              </button>
+            </div>
           ) : (
             <form onSubmit={handleSubmit} style={card} id="signup-form">
               <h3 style={title}>Business Onboarding</h3>
 
               {/* ✅ New: inline progress bar */}
-              <div className="progressOuter" aria-label="Form completion" title={`Completion: ${completionPct}%`}>
-                <div className="progressInner" style={{ width: `${completionPct}%` }} />
+              <div
+                className="progressOuter"
+                aria-label="Form completion"
+                title={`Completion: ${completionPct}%`}
+              >
+                <div
+                  className="progressInner"
+                  style={{ width: `${completionPct}%` }}
+                />
               </div>
               <p style={{ ...muted, marginTop: 6 }}>{completionPct}% complete</p>
 
@@ -456,164 +501,236 @@ setStatus({
                 <option>Fitness</option>
                 <option>Other</option>
               </select>
-{/* ✅ Conditional field for 'Other' business type */}
-{formData.BusinessType === "Other" && (
-  <>
-    <label style={label}>Please specify your business type</label>
-    <input
-      name="OtherBusinessType"
-      value={formData.OtherBusinessType || ""}
-      onChange={handleChange}
-      placeholder="e.g. Tattoo Artist, Landscaping, etc."
-      style={input}
-      required
-    />
-  </>
-)}
+
+              {/* ✅ Conditional field for 'Other' business type */}
+              {formData.BusinessType === "Other" && (
+                <>
+                  <label style={label}>Please specify your business type</label>
+                  <input
+                    name="OtherBusinessType"
+                    value={formData.OtherBusinessType || ""}
+                    onChange={handleChange}
+                    placeholder="e.g. Tattoo Artist, Landscaping, etc."
+                    style={input}
+                    required
+                  />
+                </>
+              )}
+
               <label style={label}>Owner Full Name</label>
-              <input name="OwnerName" value={formData.OwnerName} onChange={handleChange} required style={input} />
+              <input
+                name="OwnerName"
+                value={formData.OwnerName}
+                onChange={handleChange}
+                required
+                style={input}
+              />
 
               <label style={label}>Business Name</label>
-              <input name="BusinessName" value={formData.BusinessName} onChange={handleChange} required style={input} />
+              <input
+                name="BusinessName"
+                value={formData.BusinessName}
+                onChange={handleChange}
+                required
+                style={input}
+              />
 
               <label style={label}>Business Email</label>
-              <input type="email" name="BusinessEmail" value={formData.BusinessEmail} onChange={handleChange} required style={input} />
+              <input
+                type="email"
+                name="BusinessEmail"
+                value={formData.BusinessEmail}
+                onChange={handleChange}
+                required
+                style={input}
+              />
 
               <label style={label}>Business Phone Number</label>
-              <input type="tel" name="BusinessPhoneNumber" value={formData.BusinessPhoneNumber} onChange={handleChange} required style={input} />
+              <input
+                type="tel"
+                name="BusinessPhoneNumber"
+                value={formData.BusinessPhoneNumber}
+                onChange={handleChange}
+                required
+                style={input}
+              />
 
               <label style={label}>Upload Logo (optional)</label>
-              <input type="file" name="LogoFile" accept="image/*" onChange={handleChange} style={input} />
+              <input
+                type="file"
+                name="LogoFile"
+                accept="image/*"
+                onChange={handleChange}
+                style={input}
+              />
 
               <label style={label}>Business Hours</label>
-              <textarea name="BusinessHours" value={formData.BusinessHours} onChange={handleChange} rows={2} style={textarea} />
+              <textarea
+                name="BusinessHours"
+                value={formData.BusinessHours}
+                onChange={handleChange}
+                rows={2}
+                style={textarea}
+              />
 
-{/* ✅ Dynamic Services Section */}
-<div style={{ marginBottom: "16px" }}>
-  <label
-    style={{
-      display: "block",
-      fontWeight: "600",
-      marginBottom: "8px",
-    }}
-  >
-    Services Offered
-  </label>
+              {/* ✅ Dynamic Services Section */}
+              <div style={{ marginBottom: "16px" }}>
+                <label
+                  style={{
+                    display: "block",
+                    fontWeight: "600",
+                    marginBottom: "8px",
+                  }}
+                >
+                  Services Offered
+                </label>
 
-  {services.map((service, index) => (
-    <div
-      key={index}
-      style={{
-        display: "flex",
-        gap: "10px",
-        alignItems: "center",
-        marginBottom: "6px",
-      }}
-    >
-      <input
-        type="text"
-        placeholder="Service name"
-        value={service.name}
-        onChange={(e) =>
-          handleServiceChange(index, "name", e.target.value)
-        }
-        required
-        style={{
-          flex: 1,
-          padding: "8px",
-          borderRadius: "6px",
-          border: "1px solid #ccc",
-        }}
-      />
-      <input
-        type="number"
-        placeholder="Price ($)"
-        value={service.price}
-        onChange={(e) =>
-          handleServiceChange(index, "price", e.target.value)
-        }
-        required
-        style={{
-          width: "110px",
-          padding: "8px",
-          borderRadius: "6px",
-          border: "1px solid #ccc",
-        }}
-      />
-      {services.length > 1 && (
-        <button
-          type="button"
-          onClick={() => removeService(index)}
-          style={{
-            background: "red",
-            color: "white",
-            border: "none",
-            borderRadius: "6px",
-            padding: "6px 10px",
-            cursor: "pointer",
-          }}
-        >
-          ✕
-        </button>
-      )}
-    </div>
-  ))}
+                {services.map((service, index) => (
+                  <div
+                    key={index}
+                    style={{
+                      display: "flex",
+                      gap: "10px",
+                      alignItems: "center",
+                      marginBottom: "6px",
+                    }}
+                  >
+                    <input
+                      type="text"
+                      placeholder="Service name"
+                      value={service.name}
+                      onChange={(e) =>
+                        handleServiceChange(index, "name", e.target.value)
+                      }
+                      required
+                      style={{
+                        flex: 1,
+                        padding: "8px",
+                        borderRadius: "6px",
+                        border: "1px solid #ccc",
+                      }}
+                    />
+                    <input
+                      type="number"
+                      placeholder="Price ($)"
+                      value={service.price}
+                      onChange={(e) =>
+                        handleServiceChange(index, "price", e.target.value)
+                      }
+                      required
+                      style={{
+                        width: "110px",
+                        padding: "8px",
+                        borderRadius: "6px",
+                        border: "1px solid #ccc",
+                      }}
+                    />
+                    {services.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeService(index)}
+                        style={{
+                          background: "red",
+                          color: "white",
+                          border: "none",
+                          borderRadius: "6px",
+                          padding: "6px 10px",
+                          cursor: "pointer",
+                        }}
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                ))}
 
-  <button
-    type="button"
-    onClick={addService}
-    style={{
-      background: "#de8d2b",
-      color: "white",
-      border: "none",
-      borderRadius: "6px",
-      padding: "8px 12px",
-      cursor: "pointer",
-      fontWeight: "bold",
-      marginTop: "6px",
-    }}
-  >
-    + Add Service
-  </button>
-</div>
+                <button
+                  type="button"
+                  onClick={addService}
+                  style={{
+                    background: "#de8d2b",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "6px",
+                    padding: "8px 12px",
+                    cursor: "pointer",
+                    fontWeight: "bold",
+                    marginTop: "6px",
+                  }}
+                >
+                  + Add Service
+                </button>
+              </div>
 
               <label style={label}>Socials</label>
-              <textarea name="Socials" value={formData.Socials} onChange={handleChange} rows={2} style={textarea} />
+              <textarea
+                name="Socials"
+                value={formData.Socials}
+                onChange={handleChange}
+                rows={2}
+                style={textarea}
+              />
 
               <label style={label}>Location of Services</label>
-              <select name="LocationOfServices" value={formData.LocationOfServices} onChange={handleChange} required style={input}>
+              <select
+                name="LocationOfServices"
+                value={formData.LocationOfServices}
+                onChange={handleChange}
+                required
+                style={input}
+              >
                 <option value="">Select</option>
                 <option>On-site</option>
                 <option>Mobile</option>
                 <option>Both</option>
               </select>
 
-{(formData.LocationOfServices === "On-site" ||
-  formData.LocationOfServices === "Both") && (
-  <>
-    <label style={label}>If on-site, provide address of service</label>
-    <input
-      name="Address"
-      value={formData.Address}
-      onChange={handleChange}
-      style={input}
-      placeholder="123 Main St, City, State"
-      required
-    />
-  </>
-)}
-              <label style={label}>Requests / Notes</label>
-              <textarea name="Notes" value={formData.Notes} onChange={handleChange} rows={3} style={textarea} />
+              {(formData.LocationOfServices === "On-site" ||
+                formData.LocationOfServices === "Both") && (
+                <>
+                  <label style={label}>If on-site, provide address of service</label>
+                  <input
+                    name="Address"
+                    value={formData.Address}
+                    onChange={handleChange}
+                    style={input}
+                    placeholder="123 Main St, City, State"
+                    required
+                  />
+                </>
+              )}
 
-              <label style={{ ...label, display: "flex", gap: 8, alignItems: "flex-start" }}>
-                <input type="checkbox" name="Consent" checked={formData.Consent} onChange={handleChange} required />
+              <label style={label}>Requests / Notes</label>
+              <textarea
+                name="Notes"
+                value={formData.Notes}
+                onChange={handleChange}
+                rows={3}
+                style={textarea}
+              />
+
+              <label
+                style={{ ...label, display: "flex", gap: 8, alignItems: "flex-start" }}
+              >
+                <input
+                  type="checkbox"
+                  name="Consent"
+                  checked={formData.Consent}
+                  onChange={handleChange}
+                  required
+                />
                 <span style={muted}>
-                  I acknowledge my clients may receive confirmations, reminders, and follow-ups from CatBackAI with opt-out instructions (Reply STOP).
+                  I acknowledge my clients may receive confirmations, reminders, and
+                  follow-ups from CatBackAI with opt-out instructions (Reply STOP).
                 </span>
               </label>
 
               {status.error && <div style={errorBox}>{status.error}</div>}
-              <button type="submit" style={{...btn, opacity: submitting ? 0.7 : 1}} disabled={submitting}>
+              <button
+                type="submit"
+                style={{ ...btn, opacity: submitting ? 0.7 : 1 }}
+                disabled={submitting}
+              >
                 {submitting ? "Submitting…" : "Submit"}
               </button>
               {savedDraftAt && (
@@ -675,8 +792,8 @@ setStatus({
               <li><strong>See what’s working</strong> with simple tracking of bookings and outcomes.</li>
             </ul>
             <div style={{ marginTop: 18 }}>
-  <a className="btnPrimary" href="#signup-form">Start Free</a>
-</div>
+              <a className="btnPrimary" href="#signup-form">Start Free</a>
+            </div>
           </div>
           <div style={{ ...card, padding: 24 }} className="hoverCard">
             <h3 style={{ ...title, marginBottom: 10 }}>How it works</h3>
@@ -738,7 +855,16 @@ setStatus({
       <section className="container" style={{ padding: "10px 60px 0" }}>
         <div style={{ ...card, alignItems: "center" }} className="hoverCard">
           <p style={{ ...muted, margin: 0 }}>Trusted by solo operators & growing teams</p>
-          <div style={{ display: "flex", gap: 24, flexWrap: "wrap", marginTop: 8, alignItems: "center", justifyContent: "center" }}>
+          <div
+            style={{
+              display: "flex",
+              gap: 24,
+              flexWrap: "wrap",
+              marginTop: 8,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
             <div className="badge">Detailers</div>
             <div className="badge">Barbers</div>
             <div className="badge">Nail Techs</div>
@@ -850,25 +976,39 @@ setStatus({
       <section className="container" style={{ padding: "30px 60px 60px" }}>
         <div style={{ ...card, alignItems: "center", textAlign: "center" }} className="hoverCard">
           <h3 style={{ ...title, fontSize: 22 }}>Ready to try CatBackAI?</h3>
-          <p style={{ ...muted, marginTop: 8 }}>Create your booking link in minutes. No credit card required.</p>
-          <a href="#signup-form" className="btnHero" style={{ marginTop: 12 }}>Create My Link</a>
+          <p style={{ ...muted, marginTop: 8 }}>
+            Create your booking link in minutes. No credit card required.
+          </p>
+          <a href="#signup-form" className="btnHero" style={{ marginTop: 12 }}>
+            Create My Link
+          </a>
         </div>
       </section>
 
       {/* FAQ */}
       <section id="faq" className="container" style={{ padding: "0 60px 60px" }}>
         <h2 className="sectionTitle">FAQ</h2>
-        <details className="faq"><summary>Do I need any coding?</summary>
-          <p style={muted}>No. Paste your info in the form and you’ll get a booking link automatically.</p>
+        <details className="faq">
+          <summary>Do I need any coding?</summary>
+          <p style={muted}>
+            No. Paste your info in the form and you’ll get a booking link automatically.
+          </p>
         </details>
-        <details className="faq"><summary>Can I use my own number/email?</summary>
-          <p style={muted}>Yes. You can configure sending identity later. We also include opt-out language (Reply STOP).</p>
+        <details className="faq">
+          <summary>Can I use my own number/email?</summary>
+          <p style={muted}>
+            Yes. You can configure sending identity later. We also include opt-out language (Reply STOP).
+          </p>
         </details>
-        <details className="faq"><summary>Does this work for mobile-only businesses?</summary>
+        <details className="faq">
+          <summary>Does this work for mobile-only businesses?</summary>
           <p style={muted}>Absolutely. Choose “Mobile” or “Both” under Location of Services.</p>
         </details>
-        <details className="faq"><summary>Can I export my data?</summary>
-          <p style={muted}>Your data lives in our database, so it’s already portable and exportable.</p>
+        <details className="faq">
+          <summary>Can I export my data?</summary>
+          <p style={muted}>
+            Your data lives in our database, so it’s already portable and exportable.
+          </p>
         </details>
       </section>
 
@@ -878,8 +1018,12 @@ setStatus({
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
           <div style={{ ...card }} className="hoverCard">
             <h3 style={title}>Partnerships</h3>
-            <p style={muted}>Interested in bringing CatBackAI to your industry? Let’s talk.</p>
-            <button className="btnGhost" onClick={() => openChatbot("partnerships")}>Partner with us</button>
+            <p style={muted}>
+              Interested in bringing CatBackAI to your industry? Let’s talk.
+            </p>
+            <button className="btnGhost" onClick={() => openChatbot("partnerships")}>
+              Partner with us
+            </button>
           </div>
         </div>
       </section>
@@ -887,11 +1031,15 @@ setStatus({
       {/* LEGAL ANCHORS so the footer links work */}
       <section id="privacy" className="container" style={{ padding: "0 60px 20px" }}>
         <h2 className="sectionTitle">Privacy</h2>
-        <p style={muted}>We only message your clients after they book and consent. You can request data export or deletion any time.</p>
+        <p style={muted}>
+          We only message your clients after they book and consent. You can request data export or deletion any time.
+        </p>
       </section>
       <section id="terms" className="container" style={{ padding: "0 60px 40px" }}>
         <h2 className="sectionTitle">Terms</h2>
-        <p style={muted}>Use CatBackAI responsibly. Messaging must include opt-out instructions. Don’t spam. That’s it.</p>
+        <p style={muted}>
+          Use CatBackAI responsibly. Messaging must include opt-out instructions. Don’t spam. That’s it.
+        </p>
       </section>
 
       {/* FOOTER */}
@@ -903,7 +1051,16 @@ setStatus({
           marginTop: 20,
         }}
       >
-        <div className="container" style={{ display: "flex", gap: 20, justifyContent: "space-between", alignItems: "center", flexWrap: "wrap" }}>
+        <div
+          className="container"
+          style={{
+            display: "flex",
+            gap: 20,
+            justifyContent: "space-between",
+            alignItems: "center",
+            flexWrap: "wrap",
+          }}
+        >
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <img src={logo} alt="CatBackAI" style={{ width: 28, height: 28 }} />
             <strong style={{ fontSize: 16 }}>CatBackAI</strong>
@@ -912,9 +1069,15 @@ setStatus({
             © {new Date().getFullYear()} CatBackAI — All rights reserved.
           </div>
           <div style={{ display: "flex", gap: 14 }}>
-            <a href="#privacy" style={{ color: "#444", textDecoration: "none" }}>Privacy</a>
-            <a href="#terms" style={{ color: "#444", textDecoration: "none" }}>Terms</a>
-            <button className="btnGhost" onClick={() => openChatbot("support")}>Support</button>
+            <a href="#privacy" style={{ color: "#444", textDecoration: "none" }}>
+              Privacy
+            </a>
+            <a href="#terms" style={{ color: "#444", textDecoration: "none" }}>
+              Terms
+            </a>
+            <button className="btnGhost" onClick={() => openChatbot("support")}>
+              Support
+            </button>
           </div>
         </div>
       </footer>
