@@ -38,22 +38,21 @@ export default function BookingForm() {
         setBusiness(b);
 
         // Handle services field gracefully (array or comma-separated string)
-        const raw = b.services || b.ServicesOffered || b["Services Offered"] || "";
+        const raw = b.ServicesOffered || b.services || b["Services Offered"] || "";
         let parsed = [];
 
         if (typeof raw === "string") {
-          try {
-            parsed = JSON.parse(raw);
-          } catch {
-            parsed = raw.split(",").map((s) => s.trim());
-          }
-        } else if (Array.isArray(raw)) {
-          parsed = raw;
-        }
+        parsed = raw
+          .split(",")
+          .map((s) => s.replace(/=+/g, "").trim()) // remove "=" and spaces
+          .filter(Boolean);
+      } else if (Array.isArray(raw)) {
+        parsed = raw;
+      }
 
-        setServices(parsed.filter(Boolean));
+      setServices(parsed.filter(Boolean));
       } catch (err) {
-        setError(err.message);
+        setError(err.message);  
       } finally {
         setLoading(false);
       }
