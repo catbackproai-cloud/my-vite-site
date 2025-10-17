@@ -42,17 +42,17 @@ export default function BookingForm() {
         let parsed = [];
 
         if (typeof raw === "string") {
-        parsed = raw
-          .split(",")
-          .map((s) => s.replace(/=+/g, "").trim()) // remove "=" and spaces
-          .filter(Boolean);
-      } else if (Array.isArray(raw)) {
-        parsed = raw;
-      }
+          parsed = raw
+            .split(",")
+            .map((s) => s.replace(/=+/g, "").trim())
+            .filter(Boolean);
+        } else if (Array.isArray(raw)) {
+          parsed = raw;
+        }
 
-      setServices(parsed.filter(Boolean));
+        setServices(parsed.filter(Boolean));
       } catch (err) {
-        setError(err.message);  
+        setError(err.message);
       } finally {
         setLoading(false);
       }
@@ -93,7 +93,7 @@ export default function BookingForm() {
 
       if (!res.ok) throw new Error("Booking failed");
 
-      const result = await res.json();
+      await res.json();
       alert(`✅ Booking submitted for ${business?.BusinessName || "this business"}!`);
 
       // Reset form after submission
@@ -124,6 +124,13 @@ export default function BookingForm() {
     );
   }
 
+  // ✅ Determine logo URL (if any)
+  const logoUrl =
+    business?.LogoFile ||
+    business?.LogoLink ||
+    business?.Logo ||
+    "";
+
   // ✅ Main booking form
   return (
     <div
@@ -135,27 +142,32 @@ export default function BookingForm() {
         margin: "0 auto",
       }}
     >
-      {/* Logo */}
-      {business?.LogoLink && (
-        <div style={{ textAlign: "center", marginBottom: "1rem" }}>
-          <img
-            src={business.LogoLink}
-            alt={`${business.BusinessName} logo`}
-            style={{ maxWidth: "120px", borderRadius: "8px" }}
-          />
-        </div>
-      )}
-
-      {/* Business Name */}
+      {/* Business Name only (no logo if not provided) */}
       <h1
         style={{
           color: "#de8d2b",
           textAlign: "center",
-          marginBottom: "16px",
+          marginBottom: logoUrl ? "10px" : "20px",
+          fontWeight: "900",
         }}
       >
         {business?.BusinessName || "Business"}
       </h1>
+
+      {/* Show logo only if URL is provided */}
+      {logoUrl && (
+        <div style={{ textAlign: "center", marginBottom: "1.5rem" }}>
+          <img
+            src={logoUrl}
+            alt={`${business.BusinessName || "Business"} logo`}
+            style={{
+              maxWidth: "140px",
+              borderRadius: "8px",
+              objectFit: "contain",
+            }}
+          />
+        </div>
+      )}
 
       {/* Optional: Show Business Hours if available */}
       {business?.BusinessHours && (
