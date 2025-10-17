@@ -21,21 +21,30 @@ export default function BookingForm() {
 
   // ✅ Fetch business info dynamically from n8n
   useEffect(() => {
-    async function fetchBusiness() {
-      try {
-        const res = await fetch(
-          `https://jacobtf007.app.n8n.cloud/webhook/catbackai_getbusiness?businessId=${businessId}`
-        );
+  async function fetchBusiness() {
+    try {
+      const res = await fetch(
+        `https://jacobtf007.app.n8n.cloud/webhook/catbackai_getbusiness?businessId=${businessId}`
+      );
 
-        if (!res.ok) throw new Error("Failed to fetch business info");
-        const data = await res.json();
+      if (!res.ok) throw new Error("Failed to fetch business info");
+      const data = await res.json();
 
-        if (data.result !== "ok" || !data.business) {
-          throw new Error("Business not found or inactive");
+      if (data.result !== "ok" || !data.business) {
+        throw new Error("Business not found or inactive");
+      }
+
+      const b = data.business;
+
+      // 🧹 FIX: remove "=" or weird characters from Google Sheets exports
+      Object.keys(b).forEach((key) => {
+        if (typeof b[key] === "string") {
+          b[key] = b[key].replace(/^=+/, "").trim();
         }
+      });
 
-        const b = data.business;
-        setBusiness(b);
+      setBusiness(b);
+
 
         // Handle services field gracefully (array or comma-separated string)
         const raw = b.ServicesOffered || b.services || b["Services Offered"] || "";
