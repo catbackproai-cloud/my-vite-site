@@ -16,7 +16,7 @@ function App() {
     BusinessEmail: "",
     BusinessPhoneNumber: "",
     Address: "",
-    LogoFile: null, // ✅ upload → Drive (not sent in payload)
+    LogoFile: "", // ✅ now a URL string instead of a file
     BusinessHours: "",
     ServicesOffered: "", // will be overwritten by flattened text at submit
     Socials: "",
@@ -132,13 +132,10 @@ function App() {
       })
       .join(", ");
 
-    // ✅ Exclude LogoFile from payload to avoid non-serializable values
-    const { LogoFile, ...rest } = formData;
-
-    const payload = {
-      ...rest,
-      ServicesOffered: servicesText,
-    };
+  const payload = {
+  ...formData,
+  ServicesOffered: servicesText,
+};
 
     console.log("🟠 Final payload to n8n:", payload);
 
@@ -555,14 +552,18 @@ function App() {
                 style={input}
               />
 
-              <label style={label}>Upload Logo (optional)</label>
-              <input
-                type="file"
-                name="LogoFile"
-                accept="image/*"
-                onChange={handleChange}
-                style={input}
-              />
+              <label style={label}>Logo URL (optional)</label>
+<input
+  type="url"
+  name="LogoFile"
+  value={formData.LogoFile}
+  onChange={handleChange}
+  placeholder="https://example.com/logo.png"
+  style={input}
+/>
+<p style={{ ...muted, fontSize: 12 }}>
+  Paste a direct image link (from your site, Imgur, Cloudinary, etc.)
+</p>
 
               <label style={label}>Business Hours</label>
               <textarea
