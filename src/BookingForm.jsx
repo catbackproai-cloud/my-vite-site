@@ -187,20 +187,7 @@ export default function BookingForm() {
   </h1>
 </div>
 
-      {/* Show logo only if URL is provided */}
-      {logoUrl && (
-        <div style={{ textAlign: "center", marginBottom: "1.5rem" }}>
-          <img
-            src={logoUrl}
-            alt={`${business.BusinessName || "Business"} logo`}
-            style={{
-              maxWidth: "140px",
-              borderRadius: "8px",
-              objectFit: "contain",
-            }}
-          />
-        </div>
-      )}
+
 
       {/* Optional: Show Business Hours if available */}
       {business?.BusinessHours && (
