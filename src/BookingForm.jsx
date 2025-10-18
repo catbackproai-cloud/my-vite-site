@@ -151,17 +151,39 @@ export default function BookingForm() {
         margin: "0 auto",
       }}
     >
-      {/* Business Name only (no logo if not provided) */}
-      <h1
-        style={{
-          color: "#de8d2b",
-          textAlign: "center",
-          marginBottom: logoUrl ? "10px" : "20px",
-          fontWeight: "900",
-        }}
-      >
-        {business?.BusinessName || "Business"}
-      </h1>
+      {/* ✅ Business Header (logo + name side by side if logo exists) */}
+<div
+  style={{
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "12px",
+    marginBottom: "20px",
+  }}
+>
+  {logoUrl && (
+    <img
+      src={logoUrl}
+      alt={`${business.BusinessName || "Business"} logo`}
+      style={{
+        maxWidth: "60px",
+        height: "60px",
+        borderRadius: "8px",
+        objectFit: "contain",
+      }}
+    />
+  )}
+  <h1
+    style={{
+      color: "#de8d2b",
+      fontWeight: "900",
+      fontSize: "28px",
+      margin: 0,
+    }}
+  >
+    {business?.BusinessName || "Business"}
+  </h1>
+</div>
 
       {/* Show logo only if URL is provided */}
       {logoUrl && (
