@@ -135,10 +135,12 @@ export default function BookingForm() {
 
   // ✅ Determine logo URL (if any)
   const logoUrl =
-    business?.LogoFile ||
-    business?.LogoLink ||
-    business?.Logo ||
-    "";
+  business?.LogoLink ||
+  business?.LinkToLogo ||
+  business?.LinktoLogo ||
+  business?.LogoFile ||
+  business?.Logo ||
+  "";
 
   // ✅ Main booking form
   return (
