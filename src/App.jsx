@@ -19,7 +19,7 @@ function App() {
     LogoFile: "", // ✅ now a URL string instead of a file
 
     ServicesOffered: "", // will be overwritten by flattened text at submit
-    Socials: "",
+   
     LocationOfServices: "",
     Notes: "",
     Consent: false,
@@ -656,14 +656,7 @@ function App() {
                 </button>
               </div>
 
-              <label style={label}>Socials</label>
-              <textarea
-                name="Socials"
-                value={formData.Socials}
-                onChange={handleChange}
-                rows={2}
-                style={textarea}
-              />
+
 
               <label style={label}>Location of Services</label>
               <select
