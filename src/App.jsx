@@ -17,7 +17,7 @@ function App() {
     BusinessPhoneNumber: "",
     Address: "",
     LogoFile: "", // ✅ now a URL string instead of a file
-    BusinessHours: "",
+
     ServicesOffered: "", // will be overwritten by flattened text at submit
     Socials: "",
     LocationOfServices: "",
@@ -565,14 +565,7 @@ function App() {
   Paste a direct image link (from your site, Imgur, Cloudinary, etc.)
 </p>
 
-              <label style={label}>Business Hours</label>
-              <textarea
-                name="BusinessHours"
-                value={formData.BusinessHours}
-                onChange={handleChange}
-                rows={2}
-                style={textarea}
-              />
+
 
               {/* ✅ Dynamic Services Section */}
               <div style={{ marginBottom: "16px" }}>
