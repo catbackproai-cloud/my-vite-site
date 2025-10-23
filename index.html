@@ -11,19 +11,13 @@
 
     <!-- React entry -->
     <script type="module" src="/src/main.jsx"></script></q>
-  <script>
-!function(NS){
-  const U="https://n8n.srv845865.hstgr.cloud/webhook/ns-config?ns="+encodeURIComponent(NS)+"&ttl_ms=0&_="+Date.now(),
-        K="heroai_opened_"+NS, open=()=>{window.heroaiOpen?.();document.querySelector(".heroai-launcher")?.click()},
-        done=e=>e?.data?.type==="HERO_OPENED"&&sessionStorage.setItem(K,"1");
-  window.addEventListener("message",e=>done(e));
-  fetch(U,{headers:{"cache-control":"no-cache"}}).then(r=>r.json()).then(c=>{
-    const ui=c.ui||{},col=c.colors||{}; let tries=0, id=setInterval(()=>{
-      const b=document.querySelector(".heroai-launcher"); if(!b&&tries++<40) return;
-      clearInterval(id); if(b){ if(ui.launcher_text) b.textContent=ui.launcher_text; if(col.launcher_bg) b.style.background=col.launcher_bg; if(col.launcher_text) b.style.color=col.launcher_text; }
-      const mode=(ui.auto_open||"").toLowerCase(), ms=+ui.autostart_ms||0; if(!mode||mode==="session"&&sessionStorage.getItem(K)) return; setTimeout(open,ms);
-    },150);
-  });
-}("cat_back");
+<!-- HeroAI embed -->
+<script
+  src="https://chat.heroai.pro/heroai-embed.js"
+  data-heroai-ns="cat_back"
+  data-head="right"
+  data-launcher="on"
+  data-auto-open="session"
+  data-autostart-ms="2000">
 </script>
 </html>
