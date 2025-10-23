@@ -18,31 +18,21 @@ function App() {
     Address: "",
     LogoFile: "", // ✅ now a URL string instead of a file
 
-    ServicesOffered: "", // will be overwritten by flattened text at submit
+  
    
-    LocationOfServices: "",
+  
     Notes: "",
     Consent: false,
     BusinessId: "", // hidden, auto-handled
   });
 
-  const [services, setServices] = useState([{ name: "", price: "" }]);
+  
 
-  const handleServiceChange = (index, field, value) => {
-    const updated = [...services];
-    updated[index][field] = value;
-    setServices(updated);
-  };
+  
 
-  const addService = () => {
-    setServices([...services, { name: "", price: "" }]);
-  };
+  
 
-  const removeService = (index) => {
-    const updated = [...services];
-    updated.splice(index, 1);
-    setServices(updated);
-  };
+  
 
   const [status, setStatus] = useState({
     done: false,
@@ -92,7 +82,7 @@ function App() {
     "BusinessName",
     "BusinessEmail",
     "BusinessPhoneNumber",
-    "LocationOfServices",
+    
     "Consent",
   ];
   const completedCount = requiredFields.filter((f) =>
@@ -121,21 +111,9 @@ function App() {
     setSubmitting(true);
     console.log("🟠 Submitting form data to n8n (raw formData):", formData);
 
-    // ✅ Build ServicesOffered as flattened text (e.g., "Wash: $25, Wax: $50")
-    const servicesText = services
-      .filter((s) => String(s.name || "").trim() !== "")
-      .map((s) => {
-        const name = String(s.name).trim();
-        const priceNum = Number(s.price);
-        const price = Number.isFinite(priceNum) ? priceNum : 0;
-        return `${name}: $${price}`;
-      })
-      .join(", ");
+   
 
-  const payload = {
-  ...formData,
-  ServicesOffered: servicesText,
-};
+  
 
     console.log("🟠 Final payload to n8n:", payload);
 
@@ -567,125 +545,20 @@ function App() {
 
 
 
-              {/* ✅ Dynamic Services Section */}
-              <div style={{ marginBottom: "16px" }}>
-                <label
-                  style={{
-                    display: "block",
-                    fontWeight: "600",
-                    marginBottom: "8px",
-                  }}
-                >
-                  Services Offered
-                </label>
+              
 
-                {services.map((service, index) => (
-                  <div
-                    key={index}
-                    style={{
-                      display: "flex",
-                      gap: "10px",
-                      alignItems: "center",
-                      marginBottom: "6px",
-                    }}
-                  >
-                    <input
-                      type="text"
-                      placeholder="Service name"
-                      value={service.name}
-                      onChange={(e) =>
-                        handleServiceChange(index, "name", e.target.value)
-                      }
-                      required
-                      style={{
-                        flex: 1,
-                        padding: "8px",
-                        borderRadius: "6px",
-                        border: "1px solid #ccc",
-                      }}
-                    />
-                    <input
-                      type="number"
-                      placeholder="Price ($)"
-                      value={service.price}
-                      onChange={(e) =>
-                        handleServiceChange(index, "price", e.target.value)
-                      }
-                      required
-                      style={{
-                        width: "110px",
-                        padding: "8px",
-                        borderRadius: "6px",
-                        border: "1px solid #ccc",
-                      }}
-                    />
-                    {services.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => removeService(index)}
-                        style={{
-                          background: "red",
-                          color: "white",
-                          border: "none",
-                          borderRadius: "6px",
-                          padding: "6px 10px",
-                          cursor: "pointer",
-                        }}
-                      >
-                        ✕
-                      </button>
-                    )}
-                  </div>
-                ))}
+                
+                  
+                
+                    
+                   
 
-                <button
-                  type="button"
-                  onClick={addService}
-                  style={{
-                    background: "#de8d2b",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "6px",
-                    padding: "8px 12px",
-                    cursor: "pointer",
-                    fontWeight: "bold",
-                    marginTop: "6px",
-                  }}
-                >
-                  + Add Service
-                </button>
-              </div>
+               
 
 
 
-              <label style={label}>Location of Services</label>
-              <select
-                name="LocationOfServices"
-                value={formData.LocationOfServices}
-                onChange={handleChange}
-                required
-                style={input}
-              >
-                <option value="">Select</option>
-                <option>On-site</option>
-                <option>Mobile</option>
-                <option>Both</option>
-              </select>
-
-              {(formData.LocationOfServices === "On-site" ||
-                formData.LocationOfServices === "Both") && (
-                <>
-                  <label style={label}>If on-site, provide address of service</label>
-                  <input
-                    name="Address"
-                    value={formData.Address}
-                    onChange={handleChange}
-                    style={input}
-                    placeholder="123 Main St, City, State"
-                    required
-                  />
-                </>
-              )}
+             
+            
 
               <label style={label}>Requests / Notes</label>
               <textarea
