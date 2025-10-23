@@ -17,22 +17,10 @@ function App() {
     BusinessPhoneNumber: "",
     Address: "",
     LogoFile: "", // ✅ now a URL string instead of a file
-
-  
-   
-  
     Notes: "",
     Consent: false,
     BusinessId: "", // hidden, auto-handled
   });
-
-  
-
-  
-
-  
-
-  
 
   const [status, setStatus] = useState({
     done: false,
@@ -110,11 +98,7 @@ function App() {
 
     setSubmitting(true);
     console.log("🟠 Submitting form data to n8n (raw formData):", formData);
-
-   
-
-  
-
+    const payload = { ...formData };
     console.log("🟠 Final payload to n8n:", payload);
 
     try {
