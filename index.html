@@ -11,58 +11,19 @@
 
     <!-- React entry -->
     <script type="module" src="/src/main.jsx"></script></q>
-  <!-- Force-launcher theme + resilient auto-open (keeps registry for everything else) -->
-<style>
-  /* override the default blue launcher */
-  .heroai-launcher{
-    background:#000000 !important;  /* your black */
-    color:#FFFFFF !important;       /* your white text */
-    font-weight:800 !important;
-  }
-  .heroai-launcher span{ color:#FFFFFF !important; }
-</style>
-
-<!-- HeroAI embed (registry-driven) -->
-<script
-  src="https://chat.heroai.pro/heroai-embed.js?"
-  data-heroai-ns="cat_back"
-  data-head="left"
-  data-launcher-text="Hello, any questions?"  
-  data-auto-open="session"                    
-  data-autostart-ms="2500">                  
-</script>
-
-<script>
-  (function () {
-    // tiny debug + resilient open (one time per session)
-    const NS  = "cat_back";
-    const KEY = "hero:autoOpen:" + NS;
-
-    // helpful logs; set to false to silence
-    const DEBUG = true;
-    const log = (...a)=>DEBUG&&console.log("[HeroAI]", ...a);
-
-    // if READY arrives and the widget didn't auto-open, nudge it once
-    window.addEventListener("message", (e)=>{
-      const t = e?.data?.type;
-      if (!t) return;
-
-      if (t === "hero:config" || t === "HERO_CONFIG") log("CONFIG", e.data?.config || e.data);
-      if (t === "hero:error"  || t === "HERO_ERROR")  log("ERROR", e.data?.error  || e.data);
-
-      if (t === "hero:ready"  || t === "HERO_READY") {
-        log("READY");
-        if (!sessionStorage.getItem(KEY)) {
-          setTimeout(() => {
-            log("Nudging open");
-            window.postMessage({ type: "hero:open" }, "*");
-            window.postMessage({ type: "HERO_CHAT_OPEN" }, "*");
-            sessionStorage.setItem(KEY, "1");
-          }, 800);
-        }
-      }
-      if (t === "hero:opened" || t === "HERO_OPENED") log("OPENED");
-    });
-  })();
+  <script>
+!function(NS){
+  const U="https://n8n.srv845865.hstgr.cloud/webhook/ns-config?ns="+encodeURIComponent(NS)+"&ttl_ms=0&_="+Date.now(),
+        K="heroai_opened_"+NS, open=()=>{window.heroaiOpen?.();document.querySelector(".heroai-launcher")?.click()},
+        done=e=>e?.data?.type==="HERO_OPENED"&&sessionStorage.setItem(K,"1");
+  window.addEventListener("message",e=>done(e));
+  fetch(U,{headers:{"cache-control":"no-cache"}}).then(r=>r.json()).then(c=>{
+    const ui=c.ui||{},col=c.colors||{}; let tries=0, id=setInterval(()=>{
+      const b=document.querySelector(".heroai-launcher"); if(!b&&tries++<40) return;
+      clearInterval(id); if(b){ if(ui.launcher_text) b.textContent=ui.launcher_text; if(col.launcher_bg) b.style.background=col.launcher_bg; if(col.launcher_text) b.style.color=col.launcher_text; }
+      const mode=(ui.auto_open||"").toLowerCase(), ms=+ui.autostart_ms||0; if(!mode||mode==="session"&&sessionStorage.getItem(K)) return; setTimeout(open,ms);
+    },150);
+  });
+}("cat_back");
 </script>
 </html>
