@@ -3,38 +3,28 @@ import { useState, useEffect } from "react";
 export default function SchedulingDashboard() {
   const [businessId, setBusinessId] = useState("");
   const [business, setBusiness] = useState(null);
+  const [services, setServices] = useState([]);
   const [hours, setHours] = useState([]);
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(false);
   const [statusMsg, setStatusMsg] = useState("");
 
+  // -------------- LOAD BUSINESS DATA --------------
   const fetchBusinessData = async () => {
     if (!businessId) return alert("Enter Business ID first!");
     setLoading(true);
     setStatusMsg("");
 
     try {
-      // 1️⃣ Fetch business info
       const bizRes = await fetch(
         `https://jacobtf007.app.n8n.cloud/webhook/catbackai_getbusiness?businessId=${businessId}`
       );
       const bizData = await bizRes.json();
       if (!bizData.business) throw new Error("Business not found.");
       setBusiness(bizData.business);
-
-      // 2️⃣ Fetch hours (replace with your Apps Script URL)
-      const hoursRes = await fetch(
-        `https://script.google.com/macros/s/YOUR_APPS_SCRIPT_URL/exec?action=getHours&businessId=${businessId}`
-      );
-      const hoursJson = await hoursRes.json();
-      setHours(hoursJson.hours || []);
-
-      // 3️⃣ Fetch bookings
-      const bookRes = await fetch(
-        `https://script.google.com/macros/s/YOUR_APPS_SCRIPT_URL/exec?action=getBookings&businessId=${businessId}`
-      );
-      const bookJson = await bookRes.json();
-      setBookings(bookJson.bookings || []);
+      setServices(bizData.services || []);
+      setHours(bizData.hours || []);
+      setBookings(bizData.bookings || []);
     } catch (err) {
       setStatusMsg("❌ " + err.message);
     } finally {
@@ -42,6 +32,47 @@ export default function SchedulingDashboard() {
     }
   };
 
+  // -------------- SERVICE MANAGEMENT --------------
+  const addService = () => {
+    setServices([
+      ...services,
+      {
+        name: "",
+        duration: "",
+        price: "",
+        description: "",
+        daysAvailable: [],
+        startTime: "",
+        endTime: "",
+      },
+    ]);
+  };
+
+  const handleServiceChange = (i, field, value) => {
+    const updated = [...services];
+    updated[i][field] = value;
+    setServices(updated);
+  };
+
+  const saveServices = async () => {
+    try {
+      setStatusMsg("Saving services...");
+      const res = await fetch(
+        "https://jacobtf007.app.n8n.cloud/webhook/catbackai_addservice",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ businessId, services }),
+        }
+      );
+      if (!res.ok) throw new Error("Failed to save services");
+      setStatusMsg("✅ Services saved successfully!");
+    } catch (err) {
+      setStatusMsg("❌ " + err.message);
+    }
+  };
+
+  // -------------- AVAILABILITY (HOURS) --------------
   const addHourSlot = () => {
     setHours([
       ...hours,
@@ -49,15 +80,15 @@ export default function SchedulingDashboard() {
     ]);
   };
 
-  const handleHourChange = (index, field, value) => {
+  const handleHourChange = (i, field, val) => {
     const updated = [...hours];
-    updated[index][field] = value;
+    updated[i][field] = val;
     setHours(updated);
   };
 
   const saveHours = async () => {
     try {
-      setStatusMsg("Saving...");
+      setStatusMsg("Saving schedule...");
       const res = await fetch(
         "https://jacobtf007.app.n8n.cloud/webhook/catbackai_addschedule",
         {
@@ -66,7 +97,7 @@ export default function SchedulingDashboard() {
           body: JSON.stringify({ businessId, hours }),
         }
       );
-      if (!res.ok) throw new Error("Save failed");
+      if (!res.ok) throw new Error("Failed to save schedule");
       setStatusMsg("✅ Schedule saved successfully!");
     } catch (err) {
       setStatusMsg("❌ " + err.message);
@@ -79,7 +110,7 @@ export default function SchedulingDashboard() {
         fontFamily:
           "Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif",
         padding: "40px",
-        maxWidth: "900px",
+        maxWidth: "950px",
         margin: "0 auto",
       }}
     >
@@ -117,6 +148,7 @@ export default function SchedulingDashboard() {
 
       {statusMsg && <p>{statusMsg}</p>}
 
+      {/* ---------------- BUSINESS CARD ---------------- */}
       {business && (
         <div
           style={{
@@ -127,25 +159,144 @@ export default function SchedulingDashboard() {
           }}
         >
           <h2>{business.BusinessName}</h2>
-          {business.LogoLink && (
-            <img
-              src={business.LogoLink}
-              alt="Logo"
-              style={{ width: "60px", borderRadius: "8px" }}
-            />
-          )}
+          <img
+            src={business.LogoLink || "https://via.placeholder.com/60"}
+            alt="Logo"
+            style={{ width: "60px", borderRadius: "8px" }}
+          />
           <p>
             <strong>ID:</strong> {business.BusinessId}
           </p>
           <p>
-            <strong>Services:</strong> {business.ServicesOffered}
+            <strong>Services Offered:</strong>{" "}
+            {business.ServicesOffered || "None yet"}
           </p>
         </div>
       )}
 
+      {/* ---------------- SERVICES SECTION ---------------- */}
       {business && (
         <>
-          <h3>Manage Availability</h3>
+          <h3 style={{ color: "#de8d2b" }}>Services</h3>
+          {services.map((s, i) => (
+            <div
+              key={i}
+              style={{
+                background: "#fff",
+                borderRadius: "10px",
+                padding: "16px",
+                marginBottom: "12px",
+                border: "1px solid #ddd",
+              }}
+            >
+              <input
+                placeholder="Service Name"
+                value={s.name}
+                onChange={(e) => handleServiceChange(i, "name", e.target.value)}
+                style={{ width: "100%", marginBottom: 8 }}
+              />
+              <input
+                placeholder="Duration (minutes)"
+                type="number"
+                value={s.duration}
+                onChange={(e) =>
+                  handleServiceChange(i, "duration", e.target.value)
+                }
+                style={{ width: "48%", marginRight: "4%" }}
+              />
+              <input
+                placeholder="Price ($)"
+                type="number"
+                value={s.price}
+                onChange={(e) => handleServiceChange(i, "price", e.target.value)}
+                style={{ width: "48%" }}
+              />
+              <textarea
+                placeholder="Description"
+                value={s.description}
+                onChange={(e) =>
+                  handleServiceChange(i, "description", e.target.value)
+                }
+                style={{
+                  width: "100%",
+                  height: "60px",
+                  marginTop: 8,
+                  borderRadius: "8px",
+                }}
+              />
+              <p>Days Available:</p>
+              {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => (
+                <label key={day} style={{ marginRight: 10 }}>
+                  <input
+                    type="checkbox"
+                    checked={s.daysAvailable.includes(day)}
+                    onChange={(e) => {
+                      const updated = e.target.checked
+                        ? [...s.daysAvailable, day]
+                        : s.daysAvailable.filter((d) => d !== day);
+                      handleServiceChange(i, "daysAvailable", updated);
+                    }}
+                  />{" "}
+                  {day}
+                </label>
+              ))}
+              <div>
+                <label>Start:</label>
+                <input
+                  type="time"
+                  value={s.startTime}
+                  onChange={(e) =>
+                    handleServiceChange(i, "startTime", e.target.value)
+                  }
+                />
+                <label>End:</label>
+                <input
+                  type="time"
+                  value={s.endTime}
+                  onChange={(e) =>
+                    handleServiceChange(i, "endTime", e.target.value)
+                  }
+                />
+              </div>
+            </div>
+          ))}
+          <button
+            onClick={addService}
+            style={{
+              background: "#de8d2b",
+              color: "#fff",
+              border: "none",
+              padding: "8px 16px",
+              borderRadius: "6px",
+              marginTop: "10px",
+              cursor: "pointer",
+            }}
+          >
+            + Add Service
+          </button>
+          <button
+            onClick={saveServices}
+            style={{
+              background: "#4caf50",
+              color: "#fff",
+              border: "none",
+              padding: "8px 16px",
+              borderRadius: "6px",
+              marginLeft: "10px",
+              cursor: "pointer",
+            }}
+          >
+            Save Services
+          </button>
+        </>
+      )}
+
+      {/* ---------------- HOURS TABLE ---------------- */}
+      {business && (
+        <>
+          <h3 style={{ color: "#de8d2b", marginTop: "30px" }}>
+            Manage Availability
+          </h3>
           <table
             style={{
               width: "100%",
@@ -157,7 +308,7 @@ export default function SchedulingDashboard() {
           >
             <thead>
               <tr style={{ background: "#de8d2b", color: "#fff" }}>
-                <th style={{ padding: "8px" }}>Date</th>
+                <th>Date</th>
                 <th>Start</th>
                 <th>End</th>
                 <th>Status</th>
@@ -224,7 +375,6 @@ export default function SchedulingDashboard() {
           >
             + Add Slot
           </button>
-
           <button
             onClick={saveHours}
             style={{
@@ -242,9 +392,10 @@ export default function SchedulingDashboard() {
         </>
       )}
 
+      {/* ---------------- BOOKINGS ---------------- */}
       {bookings.length > 0 && (
         <>
-          <h3 style={{ marginTop: 40 }}>Recent Bookings</h3>
+          <h3 style={{ marginTop: 40, color: "#de8d2b" }}>Recent Bookings</h3>
           <table
             style={{
               width: "100%",
