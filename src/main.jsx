@@ -4,7 +4,8 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import App from "./App";
 import BookingForm from "./BookingForm";
-import SchedulingDashboard from "./SchedulingDashboard"; // ✅ new import
+import SchedulingDashboard from "./SchedulingDashboard";
+import DashboardPortal from "./DashboardPortal"; // ✅ make sure this file exists!
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
 
@@ -19,11 +20,11 @@ root.render(
           {/* Dynamic booking form */}
           <Route path="/book/:businessId" element={<BookingForm />} />
 
-          {/* ✅ New scheduling dashboard */}
+          {/* ✅ Scheduling Dashboard (for logged-in or PIN users) */}
           <Route path="/dashboard" element={<SchedulingDashboard />} />
 
-          {/* New Dashboard Login Portal */}
-          <Route path="/dashboard" element={<DashboardPortal />} />
+          {/* ✅ Optional: Dashboard login page (different path) */}
+          <Route path="/dashboard/login" element={<DashboardPortal />} />
 
           {/* 404 fallback */}
           <Route
