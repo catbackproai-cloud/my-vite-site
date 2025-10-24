@@ -14,31 +14,25 @@ root.render(
     <HelmetProvider>
       <BrowserRouter>
         <Routes>
-          {/* Home page (signup form) */}
+          {/* Public signup form */}
           <Route path="/" element={<App />} />
 
-          {/* Booking form */}
+          {/* Client booking page */}
           <Route path="/book/:businessId" element={<BookingForm />} />
 
-          {/* ✅ Login screen for businesses */}
-          <Route path="/dashboard/login" element={<DashboardPortal />} />
+          {/* Business login page */}
+          <Route path="/dashboard" element={<DashboardPortal />} />
 
-          {/* ✅ Private dashboard (after login) */}
+          {/* Private dashboard after login */}
           <Route path="/dashboard/:businessId" element={<SchedulingDashboard />} />
 
           {/* 404 fallback */}
           <Route
             path="*"
             element={
-              <div
-                style={{
-                  textAlign: "center",
-                  marginTop: "50px",
-                  fontFamily: "Inter, sans-serif",
-                }}
-              >
+              <div style={{ textAlign: "center", marginTop: 50 }}>
                 <h2>404 — Page Not Found</h2>
-                <a href="/" style={{ color: "#de8d2b", textDecoration: "none" }}>
+                <a href="/" style={{ color: "#de8d2b" }}>
                   Go back home
                 </a>
               </div>

@@ -1,6 +1,5 @@
-// SchedulingDashboard.jsx
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom"; // ✅ includes navigate for auth redirect
+import { useParams, useNavigate } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import logo from "./assets/Y-Logo.png";
 
@@ -8,7 +7,6 @@ export default function SchedulingDashboard() {
   const { businessId: routeId } = useParams();
   const navigate = useNavigate();
 
-  const [businessId, setBusinessId] = useState(routeId || "");
   const [business, setBusiness] = useState(null);
   const [services, setServices] = useState([]);
   const [statusMsg, setStatusMsg] = useState("");
@@ -18,10 +16,42 @@ export default function SchedulingDashboard() {
   /* ---------------- AUTH GUARD ---------------- */
   useEffect(() => {
     const token = localStorage.getItem("catback_token");
-    if (token !== routeId) {
+    if (!token || token !== routeId) {
       alert("Please log in first.");
-      navigate("/dashboard/login"); // ✅ redirect to login portal
+      navigate("/dashboard");
+      return;
     }
+
+    // 🕒 Auto logout after 30 minutes of inactivity or on tab close
+    const logout = () => {
+      localStorage.removeItem("catback_token");
+      localStorage.removeItem("catback_lastActive");
+      navigate("/dashboard");
+    };
+
+    const checkInactivity = setInterval(() => {
+      const lastActive = localStorage.getItem("catback_lastActive");
+      if (lastActive && Date.now() - parseInt(lastActive) > 30 * 60 * 1000) {
+        alert("Session expired. Please log in again.");
+        logout();
+      }
+    }, 60000);
+
+    // Track activity
+    const updateActivity = () => {
+      localStorage.setItem("catback_lastActive", Date.now().toString());
+    };
+
+    window.addEventListener("click", updateActivity);
+    window.addEventListener("keydown", updateActivity);
+    window.addEventListener("beforeunload", logout);
+
+    return () => {
+      clearInterval(checkInactivity);
+      window.removeEventListener("click", updateActivity);
+      window.removeEventListener("keydown", updateActivity);
+      window.removeEventListener("beforeunload", logout);
+    };
   }, [routeId, navigate]);
 
   /* ---------------- FETCH BUSINESS + SCHEDULE ---------------- */
@@ -30,12 +60,10 @@ export default function SchedulingDashboard() {
   }, [routeId]);
 
   const fetchAllData = async (id) => {
-    if (!id) return alert("Enter your Business ID first");
     setLoading(true);
     setStatusMsg("");
 
     try {
-      // 1️⃣ Fetch business profile
       const bizRes = await fetch(
         `https://jacobtf007.app.n8n.cloud/webhook/catbackai_getbusiness?businessId=${id}`
       );
@@ -43,9 +71,8 @@ export default function SchedulingDashboard() {
       if (!bizData.business) throw new Error("Business not found.");
       setBusiness(bizData.business);
 
-      // 2️⃣ Fetch existing schedule (services/hours)
       const schedRes = await fetch(
-        `https://jacobtf007.app.n8n.cloud/webhook/catbackai_getschedule`,
+        "https://jacobtf007.app.n8n.cloud/webhook/catbackai_getschedule",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -76,40 +103,15 @@ export default function SchedulingDashboard() {
     }
   };
 
-  /* ---------------- SERVICE MANAGEMENT ---------------- */
-  const addService = () => {
-    setServices([
-      ...services,
-      {
-        name: "",
-        duration: "",
-        price: "",
-        day: "",
-        start: "",
-        end: "",
-        description: "",
-      },
-    ]);
-  };
-
-  const handleServiceChange = (i, field, val) => {
-    const updated = [...services];
-    updated[i][field] = val;
-    setServices(updated);
-  };
-
-  const removeService = (i) => {
-    setServices(services.filter((_, idx) => idx !== i));
-  };
-
+  /* ---------------- SAVE SCHEDULE ---------------- */
   const saveSchedule = async () => {
-    if (!businessId) return alert("Missing Business ID.");
+    if (!routeId) return alert("Missing Business ID.");
     setSaving(true);
     setStatusMsg("Saving schedule...");
 
     try {
       const payload = {
-        businessId,
+        businessId: routeId,
         services: services.map((s) => ({
           ServiceName: s.name,
           Duration: s.duration,
@@ -130,8 +132,7 @@ export default function SchedulingDashboard() {
         }
       );
 
-      const text = await res.text();
-      if (!res.ok) throw new Error(text);
+      if (!res.ok) throw new Error(await res.text());
       setStatusMsg("✅ Schedule saved successfully!");
     } catch (err) {
       setStatusMsg("❌ " + err.message);
@@ -144,8 +145,7 @@ export default function SchedulingDashboard() {
   return (
     <div
       style={{
-        fontFamily:
-          "Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif",
+        fontFamily: "Inter, system-ui, sans-serif",
         background: "linear-gradient(180deg, #fff7ef 0%, #f8f8f8 100%)",
         minHeight: "100vh",
         paddingBottom: "80px",
@@ -155,7 +155,6 @@ export default function SchedulingDashboard() {
         <title>Scheduling Dashboard | CatBackAI</title>
       </Helmet>
 
-      {/* HEADER */}
       <header
         style={{
           display: "flex",
@@ -172,47 +171,24 @@ export default function SchedulingDashboard() {
             Scheduling Dashboard
           </h1>
         </div>
-        <a
-          href="/"
-          style={{ textDecoration: "none", color: "#de8d2b", fontWeight: 600 }}
+        <button
+          onClick={() => {
+            localStorage.clear();
+            navigate("/dashboard");
+          }}
+          style={{
+            background: "transparent",
+            border: "none",
+            color: "#de8d2b",
+            fontWeight: 600,
+            cursor: "pointer",
+          }}
         >
-          Home
-        </a>
+          Log Out
+        </button>
       </header>
 
-      <div style={{ padding: "40px", maxWidth: 950, margin: "0 auto" }}>
-        {/* --- Business Load --- */}
-        {!routeId && (
-          <div style={{ marginBottom: 20 }}>
-            <input
-              placeholder="Enter your Business ID"
-              value={businessId}
-              onChange={(e) => setBusinessId(e.target.value)}
-              style={{
-                padding: "8px 12px",
-                border: "1px solid #ccc",
-                borderRadius: "6px",
-                width: "70%",
-                marginRight: 10,
-              }}
-            />
-            <button
-              onClick={() => fetchAllData(businessId)}
-              style={{
-                background: "#de8d2b",
-                color: "#fff",
-                border: "none",
-                padding: "8px 16px",
-                borderRadius: "6px",
-                cursor: "pointer",
-              }}
-            >
-              Load Dashboard
-            </button>
-          </div>
-        )}
-
-        {/* STATUS / LOADING */}
+      <div style={{ padding: 40, maxWidth: 950, margin: "0 auto" }}>
         {loading && <p>Loading data…</p>}
         {statusMsg && (
           <p
@@ -228,7 +204,6 @@ export default function SchedulingDashboard() {
           </p>
         )}
 
-        {/* BUSINESS INFO */}
         {business && (
           <div
             style={{
@@ -259,7 +234,6 @@ export default function SchedulingDashboard() {
           </div>
         )}
 
-        {/* --- SERVICES / SCHEDULE EDITOR --- */}
         {business && (
           <>
             <h3 style={{ color: "#de8d2b" }}>Your Services & Hours</h3>
@@ -278,9 +252,11 @@ export default function SchedulingDashboard() {
                 <input
                   placeholder="Service Name"
                   value={s.name}
-                  onChange={(e) =>
-                    handleServiceChange(i, "name", e.target.value)
-                  }
+                  onChange={(e) => {
+                    const updated = [...services];
+                    updated[i].name = e.target.value;
+                    setServices(updated);
+                  }}
                   style={{
                     width: "100%",
                     marginBottom: 8,
@@ -289,111 +265,9 @@ export default function SchedulingDashboard() {
                     border: "1px solid #ccc",
                   }}
                 />
-                <div style={{ display: "flex", gap: "4%" }}>
-                  <input
-                    type="number"
-                    placeholder="Duration (min)"
-                    value={s.duration}
-                    onChange={(e) =>
-                      handleServiceChange(i, "duration", e.target.value)
-                    }
-                    style={{ width: "48%", padding: "8px", borderRadius: 6 }}
-                  />
-                  <input
-                    type="number"
-                    placeholder="Price ($)"
-                    value={s.price}
-                    onChange={(e) =>
-                      handleServiceChange(i, "price", e.target.value)
-                    }
-                    style={{ width: "48%", padding: "8px", borderRadius: 6 }}
-                  />
-                </div>
-
-                <div style={{ display: "flex", gap: "4%", marginTop: 8 }}>
-                  <select
-                    value={s.day}
-                    onChange={(e) =>
-                      handleServiceChange(i, "day", e.target.value)
-                    }
-                    style={{ width: "32%", padding: "8px", borderRadius: 6 }}
-                  >
-                    <option value="">Day</option>
-                    {[
-                      "Monday",
-                      "Tuesday",
-                      "Wednesday",
-                      "Thursday",
-                      "Friday",
-                      "Saturday",
-                      "Sunday",
-                    ].map((d) => (
-                      <option key={d}>{d}</option>
-                    ))}
-                  </select>
-                  <input
-                    type="time"
-                    value={s.start}
-                    onChange={(e) =>
-                      handleServiceChange(i, "start", e.target.value)
-                    }
-                    style={{ width: "32%", padding: "8px", borderRadius: 6 }}
-                  />
-                  <input
-                    type="time"
-                    value={s.end}
-                    onChange={(e) =>
-                      handleServiceChange(i, "end", e.target.value)
-                    }
-                    style={{ width: "32%", padding: "8px", borderRadius: 6 }}
-                  />
-                </div>
-
-                <textarea
-                  placeholder="Description"
-                  value={s.description}
-                  onChange={(e) =>
-                    handleServiceChange(i, "description", e.target.value)
-                  }
-                  style={{
-                    width: "100%",
-                    height: "60px",
-                    marginTop: 8,
-                    borderRadius: "8px",
-                    padding: "8px",
-                  }}
-                />
-                <button
-                  onClick={() => removeService(i)}
-                  style={{
-                    marginTop: 8,
-                    background: "#ff5a5a",
-                    color: "#fff",
-                    border: "none",
-                    padding: "6px 12px",
-                    borderRadius: 6,
-                    cursor: "pointer",
-                  }}
-                >
-                  Remove
-                </button>
               </div>
             ))}
 
-            <button
-              onClick={addService}
-              style={{
-                background: "#de8d2b",
-                color: "#fff",
-                border: "none",
-                padding: "10px 16px",
-                borderRadius: "8px",
-                cursor: "pointer",
-                marginTop: 10,
-              }}
-            >
-              + Add Service
-            </button>
             <button
               onClick={saveSchedule}
               disabled={saving}
@@ -404,7 +278,7 @@ export default function SchedulingDashboard() {
                 padding: "10px 16px",
                 borderRadius: "8px",
                 cursor: "pointer",
-                marginLeft: 10,
+                marginTop: 10,
                 opacity: saving ? 0.7 : 1,
               }}
             >

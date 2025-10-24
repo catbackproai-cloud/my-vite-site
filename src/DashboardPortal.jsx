@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import logo from "./assets/Y-Logo.png";
 import { Helmet } from "react-helmet-async";
@@ -8,6 +8,11 @@ export default function DashboardPortal() {
   const [pin, setPin] = useState("");
   const [error, setError] = useState("");
   const navigate = useNavigate();
+
+  // 🧹 Auto-clear old session on page load
+  useEffect(() => {
+    localStorage.removeItem("catback_token");
+  }, []);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -21,6 +26,7 @@ export default function DashboardPortal() {
 
       if (data.result === "ok") {
         localStorage.setItem("catback_token", businessId);
+        localStorage.setItem("catback_lastActive", Date.now().toString());
         navigate(`/dashboard/${businessId}`);
       } else {
         setError("Invalid Business ID or PIN");
@@ -46,8 +52,10 @@ export default function DashboardPortal() {
       <Helmet>
         <title>CatBackAI Dashboard Login</title>
       </Helmet>
+
       <img src={logo} alt="CatBackAI Logo" style={{ width: 80, marginBottom: 10 }} />
       <h2 style={{ color: "#de8d2b" }}>Business Dashboard</h2>
+
       <form onSubmit={handleLogin} style={{ maxWidth: 320, width: "100%" }}>
         <input
           type="text"
@@ -80,6 +88,7 @@ export default function DashboardPortal() {
           Log In
         </button>
       </form>
+
       {error && <p style={{ color: "red", marginTop: 10 }}>{error}</p>}
     </div>
   );
