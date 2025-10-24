@@ -21,7 +21,7 @@ export default function DashboardPortal() {
 
       if (data.result === "ok") {
         localStorage.setItem("catback_token", businessId);
-        navigate(`/scheduling/${businessId}`);
+        navigate(`/dashboard/${businessId}`);
       } else {
         setError("Invalid Business ID or PIN");
       }

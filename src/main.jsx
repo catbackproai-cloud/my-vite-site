@@ -21,7 +21,7 @@ root.render(
           <Route path="/book/:businessId" element={<BookingForm />} />
 
           {/* ✅ Scheduling Dashboard (for logged-in or PIN users) */}
-          <Route path="/dashboard" element={<SchedulingDashboard />} />
+          <Route path="/dashboard/:businessId" element={<SchedulingDashboard />} />
 
           {/* ✅ Optional: Dashboard login page (different path) */}
           <Route path="/dashboard/login" element={<DashboardPortal />} />
