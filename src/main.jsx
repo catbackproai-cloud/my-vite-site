@@ -4,8 +4,8 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import App from "./App";
 import BookingForm from "./BookingForm";
+import DashboardPortal from "./DashboardPortal";
 import SchedulingDashboard from "./SchedulingDashboard";
-import DashboardPortal from "./DashboardPortal"; // ✅ make sure this file exists!
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
 
@@ -17,14 +17,14 @@ root.render(
           {/* Home page (signup form) */}
           <Route path="/" element={<App />} />
 
-          {/* Dynamic booking form */}
+          {/* Booking form */}
           <Route path="/book/:businessId" element={<BookingForm />} />
 
-          {/* ✅ Scheduling Dashboard (for logged-in or PIN users) */}
-          <Route path="/dashboard/:businessId" element={<SchedulingDashboard />} />
-
-          {/* ✅ Optional: Dashboard login page (different path) */}
+          {/* ✅ Login screen for businesses */}
           <Route path="/dashboard/login" element={<DashboardPortal />} />
+
+          {/* ✅ Private dashboard (after login) */}
+          <Route path="/dashboard/:businessId" element={<SchedulingDashboard />} />
 
           {/* 404 fallback */}
           <Route
@@ -38,10 +38,7 @@ root.render(
                 }}
               >
                 <h2>404 — Page Not Found</h2>
-                <a
-                  href="/"
-                  style={{ color: "#de8d2b", textDecoration: "none" }}
-                >
+                <a href="/" style={{ color: "#de8d2b", textDecoration: "none" }}>
                   Go back home
                 </a>
               </div>

@@ -1,25 +1,28 @@
 // SchedulingDashboard.jsx
-useEffect(() => {
-  const token = localStorage.getItem("catback_token");
-  if (token !== routeId) {
-    alert("Please log in first.");
-    navigate("/dashboard");
-  }
-}, [routeId]);
-
 import { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom"; // ✅ includes navigate for auth redirect
 import { Helmet } from "react-helmet-async";
 import logo from "./assets/Y-Logo.png";
 
 export default function SchedulingDashboard() {
   const { businessId: routeId } = useParams();
+  const navigate = useNavigate();
+
   const [businessId, setBusinessId] = useState(routeId || "");
   const [business, setBusiness] = useState(null);
   const [services, setServices] = useState([]);
   const [statusMsg, setStatusMsg] = useState("");
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  /* ---------------- AUTH GUARD ---------------- */
+  useEffect(() => {
+    const token = localStorage.getItem("catback_token");
+    if (token !== routeId) {
+      alert("Please log in first.");
+      navigate("/dashboard/login"); // ✅ redirect to login portal
+    }
+  }, [routeId, navigate]);
 
   /* ---------------- FETCH BUSINESS + SCHEDULE ---------------- */
   useEffect(() => {
@@ -51,8 +54,7 @@ export default function SchedulingDashboard() {
       );
       const schedJson = await schedRes.json();
 
-      if (schedJson.result === "ok" && schedJson.schedule.length > 0) {
-        // Flatten out to your internal structure
+      if (schedJson.result === "ok" && Array.isArray(schedJson.schedule)) {
         setServices(
           schedJson.schedule.map((s) => ({
             name: s.ServiceName || "",
@@ -104,6 +106,7 @@ export default function SchedulingDashboard() {
     if (!businessId) return alert("Missing Business ID.");
     setSaving(true);
     setStatusMsg("Saving schedule...");
+
     try {
       const payload = {
         businessId,
@@ -152,6 +155,7 @@ export default function SchedulingDashboard() {
         <title>Scheduling Dashboard | CatBackAI</title>
       </Helmet>
 
+      {/* HEADER */}
       <header
         style={{
           display: "flex",
@@ -208,6 +212,7 @@ export default function SchedulingDashboard() {
           </div>
         )}
 
+        {/* STATUS / LOADING */}
         {loading && <p>Loading data…</p>}
         {statusMsg && (
           <p
@@ -223,6 +228,7 @@ export default function SchedulingDashboard() {
           </p>
         )}
 
+        {/* BUSINESS INFO */}
         {business && (
           <div
             style={{
