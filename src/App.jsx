@@ -1,11 +1,14 @@
 import { useState, useEffect } from "react"; // 🔁 redeploy trigger
 import { Helmet } from "react-helmet-async";
 import logo from "./assets/Y-Logo.png"; // ✅ exact file name
+import { useNavigate } from "react-router-dom";
 
 function App() {
   const openChatbot = (topic) => {
     alert(`Chatbot opened for: ${topic}`);
-  };
+  }
+  const navigate = useNavigate();
+;
 
   /* ---------- signup form state ---------- */
   const [formData, setFormData] = useState({
@@ -350,9 +353,20 @@ function App() {
         </nav>
 
         <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
-          <a href="#login" style={{ fontWeight: 600, fontSize: 16 }}>
-            Log In
-          </a>
+          <button
+  onClick={() => navigate("/dashboard")}
+  style={{
+    background: "transparent",
+    border: "none",
+    color: "#000",
+    fontWeight: 600,
+    fontSize: 16,
+    cursor: "pointer",
+    textDecoration: "underline",
+  }}
+>
+  Log In
+</button>
         </div>
       </header>
 
