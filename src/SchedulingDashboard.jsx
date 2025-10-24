@@ -9,50 +9,56 @@ export default function SchedulingDashboard() {
   const [businessId, setBusinessId] = useState(routeId || "");
   const [business, setBusiness] = useState(null);
   const [services, setServices] = useState([]);
-  const [hours, setHours] = useState([]);
-  const [bookings, setBookings] = useState([]);
   const [statusMsg, setStatusMsg] = useState("");
+  const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  /* ---------------- FETCH BUSINESS + SCHEDULE ---------------- */
   useEffect(() => {
-    if (routeId) fetchBusinessData();
+    if (routeId) fetchAllData(routeId);
   }, [routeId]);
 
-  /* ------------------ FETCH BUSINESS + DATA ------------------ */
-  const fetchBusinessData = async () => {
-    if (!businessId) return alert("Enter Business ID first!");
+  const fetchAllData = async (id) => {
+    if (!id) return alert("Enter your Business ID first");
     setLoading(true);
     setStatusMsg("");
 
     try {
+      // 1️⃣ Fetch business profile
       const bizRes = await fetch(
-        `https://jacobtf007.app.n8n.cloud/webhook/catbackai_getbusiness?businessId=${businessId}`
+        `https://jacobtf007.app.n8n.cloud/webhook/catbackai_getbusiness?businessId=${id}`
       );
       const bizData = await bizRes.json();
       if (!bizData.business) throw new Error("Business not found.");
-
       setBusiness(bizData.business);
 
-      // Fetch stored services
-      const servicesRes = await fetch(
-        `https://jacobtf007.app.n8n.cloud/webhook/catbackai_getservices?businessId=${businessId}`
+      // 2️⃣ Fetch existing schedule (services/hours)
+      const schedRes = await fetch(
+        `https://jacobtf007.app.n8n.cloud/webhook/catbackai_getschedule`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ businessId: id }),
+        }
       );
-      const servicesJson = await servicesRes.json();
-      setServices(servicesJson.services || []);
+      const schedJson = await schedRes.json();
 
-      // Fetch stored hours
-      const hoursRes = await fetch(
-        `https://jacobtf007.app.n8n.cloud/webhook/catbackai_getschedule?businessId=${businessId}`
-      );
-      const hoursJson = await hoursRes.json();
-      setHours(hoursJson.hours || []);
-
-      // Fetch recent bookings
-      const bookingsRes = await fetch(
-        `https://jacobtf007.app.n8n.cloud/webhook/catbackai_getbookings?businessId=${businessId}`
-      );
-      const bookingsJson = await bookingsRes.json();
-      setBookings(bookingsJson.bookings || []);
+      if (schedJson.result === "ok" && schedJson.schedule.length > 0) {
+        // Flatten out to your internal structure
+        setServices(
+          schedJson.schedule.map((s) => ({
+            name: s.ServiceName || "",
+            duration: s.Duration || "",
+            price: s.Price || "",
+            day: s.Day || "",
+            start: s.StartTime || "",
+            end: s.EndTime || "",
+            description: s.Description || "",
+          }))
+        );
+      } else {
+        setServices([]);
+      }
     } catch (err) {
       setStatusMsg("❌ " + err.message);
     } finally {
@@ -60,7 +66,7 @@ export default function SchedulingDashboard() {
     }
   };
 
-  /* ------------------ SERVICE MANAGEMENT ------------------ */
+  /* ---------------- SERVICE MANAGEMENT ---------------- */
   const addService = () => {
     setServices([
       ...services,
@@ -68,71 +74,62 @@ export default function SchedulingDashboard() {
         name: "",
         duration: "",
         price: "",
+        day: "",
+        start: "",
+        end: "",
         description: "",
-        daysAvailable: [],
-        startTime: "",
-        endTime: "",
       },
     ]);
   };
 
-  const handleServiceChange = (i, field, value) => {
+  const handleServiceChange = (i, field, val) => {
     const updated = [...services];
-    updated[i][field] = value;
+    updated[i][field] = val;
     setServices(updated);
   };
 
-  const saveServices = async () => {
+  const removeService = (i) => {
+    setServices(services.filter((_, idx) => idx !== i));
+  };
+
+  const saveSchedule = async () => {
+    if (!businessId) return alert("Missing Business ID.");
+    setSaving(true);
+    setStatusMsg("Saving schedule...");
     try {
-      setStatusMsg("Saving services...");
+      const payload = {
+        businessId,
+        services: services.map((s) => ({
+          ServiceName: s.name,
+          Duration: s.duration,
+          Price: s.price,
+          Day: s.day,
+          StartTime: s.start,
+          EndTime: s.end,
+          Description: s.description,
+        })),
+      };
+
       const res = await fetch(
-        "https://jacobtf007.app.n8n.cloud/webhook/catbackai_addservice",
+        "https://jacobtf007.app.n8n.cloud/webhook/catbackai_updateschedule",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ businessId, services }),
+          body: JSON.stringify(payload),
         }
       );
-      if (!res.ok) throw new Error("Failed to save services");
-      setStatusMsg("✅ Services saved successfully!");
-    } catch (err) {
-      setStatusMsg("❌ " + err.message);
-    }
-  };
 
-  /* ------------------ SCHEDULE (AVAILABILITY) ------------------ */
-  const addHourSlot = () => {
-    setHours([
-      ...hours,
-      { Date: "", StartTime: "", EndTime: "", Status: "Available" },
-    ]);
-  };
-
-  const handleHourChange = (i, field, val) => {
-    const updated = [...hours];
-    updated[i][field] = val;
-    setHours(updated);
-  };
-
-  const saveHours = async () => {
-    try {
-      setStatusMsg("Saving schedule...");
-      const res = await fetch(
-        "https://jacobtf007.app.n8n.cloud/webhook/catbackai_addschedule",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ businessId, hours }),
-        }
-      );
-      if (!res.ok) throw new Error("Failed to save schedule");
+      const text = await res.text();
+      if (!res.ok) throw new Error(text);
       setStatusMsg("✅ Schedule saved successfully!");
     } catch (err) {
       setStatusMsg("❌ " + err.message);
+    } finally {
+      setSaving(false);
     }
   };
 
-  /* ------------------ RENDER ------------------ */
+  /* ---------------- RENDER ---------------- */
   return (
     <div
       style={{
@@ -140,7 +137,7 @@ export default function SchedulingDashboard() {
           "Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif",
         background: "linear-gradient(180deg, #fff7ef 0%, #f8f8f8 100%)",
         minHeight: "100vh",
-        paddingBottom: "60px",
+        paddingBottom: "80px",
       }}
     >
       <Helmet>
@@ -150,34 +147,30 @@ export default function SchedulingDashboard() {
       <header
         style={{
           display: "flex",
-          alignItems: "center",
           justifyContent: "space-between",
+          alignItems: "center",
           padding: "20px 40px",
-          backgroundColor: "#fff",
+          background: "#fff",
           borderBottom: "1px solid #eee",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          <img src={logo} alt="CatBackAI Logo" style={{ height: "40px" }} />
-          <h1 style={{ color: "#de8d2b", fontWeight: "900", fontSize: "20px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <img src={logo} alt="CatBackAI Logo" style={{ height: 40 }} />
+          <h1 style={{ color: "#de8d2b", fontWeight: 900, fontSize: 20 }}>
             Scheduling Dashboard
           </h1>
         </div>
-
         <a
           href="/"
-          style={{
-            textDecoration: "none",
-            color: "#de8d2b",
-            fontWeight: "600",
-          }}
+          style={{ textDecoration: "none", color: "#de8d2b", fontWeight: 600 }}
         >
           Home
         </a>
       </header>
 
-      <div style={{ padding: "40px", maxWidth: "950px", margin: "0 auto" }}>
-        {!business && (
+      <div style={{ padding: "40px", maxWidth: 950, margin: "0 auto" }}>
+        {/* --- Business Load --- */}
+        {!routeId && (
           <div style={{ marginBottom: 20 }}>
             <input
               placeholder="Enter your Business ID"
@@ -188,11 +181,11 @@ export default function SchedulingDashboard() {
                 border: "1px solid #ccc",
                 borderRadius: "6px",
                 width: "70%",
-                marginRight: "10px",
+                marginRight: 10,
               }}
             />
             <button
-              onClick={fetchBusinessData}
+              onClick={() => fetchAllData(businessId)}
               style={{
                 background: "#de8d2b",
                 color: "#fff",
@@ -207,50 +200,64 @@ export default function SchedulingDashboard() {
           </div>
         )}
 
-        {statusMsg && <p>{statusMsg}</p>}
+        {loading && <p>Loading data…</p>}
+        {statusMsg && (
+          <p
+            style={{
+              background: "#fff4eb",
+              border: "1px solid #f4c89a",
+              padding: "10px",
+              borderRadius: "8px",
+              marginTop: "10px",
+            }}
+          >
+            {statusMsg}
+          </p>
+        )}
 
         {business && (
-          <>
-            <div
-              style={{
-                background: "#fff4eb",
-                padding: "20px",
-                borderRadius: "12px",
-                marginBottom: "30px",
-              }}
-            >
-              <h2>{business.BusinessName}</h2>
-              <img
-                src={business.LogoLink || "https://via.placeholder.com/60"}
-                alt="Logo"
-                style={{ width: "60px", borderRadius: "8px" }}
-              />
-              <p>
-                <strong>ID:</strong> {business.BusinessId}
-              </p>
-              <p>
-                <strong>Scheduling Link:</strong>{" "}
-                <a
-                  href={`/scheduling/${business.BusinessId}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  style={{ color: "#de8d2b" }}
-                >
-                  catbackai.com/scheduling/{business.BusinessId}
-                </a>
-              </p>
-            </div>
+          <div
+            style={{
+              background: "#fff4eb",
+              padding: 20,
+              borderRadius: 12,
+              marginBottom: 30,
+            }}
+          >
+            <h2>{business.BusinessName}</h2>
+            <img
+              src={business.LogoFile || business.LogoLink || logo}
+              alt="Logo"
+              style={{ width: 60, borderRadius: 8 }}
+            />
+            <p>
+              <strong>ID:</strong> {business.BusinessId}
+            </p>
+            <p>
+              <strong>Public Booking:</strong>{" "}
+              <a
+                href={`/book/${business.BusinessId}`}
+                style={{ color: "#de8d2b" }}
+              >
+                catbackai.com/book/{business.BusinessId}
+              </a>
+            </p>
+          </div>
+        )}
 
-            {/* --- Services Section --- */}
-            <h3 style={{ color: "#de8d2b" }}>Services</h3>
+        {/* --- SERVICES / SCHEDULE EDITOR --- */}
+        {business && (
+          <>
+            <h3 style={{ color: "#de8d2b" }}>Your Services & Hours</h3>
+
             {services.map((s, i) => (
               <div
                 key={i}
                 style={{
                   background: "#fff",
-                  borderRadius: "10px",
-                  padding: "16px",
-                  marginBottom: "12px",
+                  borderRadius: 10,
+                  padding: 16,
+                  marginBottom: 12,
                   border: "1px solid #ddd",
                 }}
               >
@@ -260,26 +267,74 @@ export default function SchedulingDashboard() {
                   onChange={(e) =>
                     handleServiceChange(i, "name", e.target.value)
                   }
-                  style={{ width: "100%", marginBottom: 8 }}
+                  style={{
+                    width: "100%",
+                    marginBottom: 8,
+                    padding: "8px",
+                    borderRadius: 6,
+                    border: "1px solid #ccc",
+                  }}
                 />
-                <input
-                  placeholder="Duration (minutes)"
-                  type="number"
-                  value={s.duration}
-                  onChange={(e) =>
-                    handleServiceChange(i, "duration", e.target.value)
-                  }
-                  style={{ width: "48%", marginRight: "4%" }}
-                />
-                <input
-                  placeholder="Price ($)"
-                  type="number"
-                  value={s.price}
-                  onChange={(e) =>
-                    handleServiceChange(i, "price", e.target.value)
-                  }
-                  style={{ width: "48%" }}
-                />
+                <div style={{ display: "flex", gap: "4%" }}>
+                  <input
+                    type="number"
+                    placeholder="Duration (min)"
+                    value={s.duration}
+                    onChange={(e) =>
+                      handleServiceChange(i, "duration", e.target.value)
+                    }
+                    style={{ width: "48%", padding: "8px", borderRadius: 6 }}
+                  />
+                  <input
+                    type="number"
+                    placeholder="Price ($)"
+                    value={s.price}
+                    onChange={(e) =>
+                      handleServiceChange(i, "price", e.target.value)
+                    }
+                    style={{ width: "48%", padding: "8px", borderRadius: 6 }}
+                  />
+                </div>
+
+                <div style={{ display: "flex", gap: "4%", marginTop: 8 }}>
+                  <select
+                    value={s.day}
+                    onChange={(e) =>
+                      handleServiceChange(i, "day", e.target.value)
+                    }
+                    style={{ width: "32%", padding: "8px", borderRadius: 6 }}
+                  >
+                    <option value="">Day</option>
+                    {[
+                      "Monday",
+                      "Tuesday",
+                      "Wednesday",
+                      "Thursday",
+                      "Friday",
+                      "Saturday",
+                      "Sunday",
+                    ].map((d) => (
+                      <option key={d}>{d}</option>
+                    ))}
+                  </select>
+                  <input
+                    type="time"
+                    value={s.start}
+                    onChange={(e) =>
+                      handleServiceChange(i, "start", e.target.value)
+                    }
+                    style={{ width: "32%", padding: "8px", borderRadius: 6 }}
+                  />
+                  <input
+                    type="time"
+                    value={s.end}
+                    onChange={(e) =>
+                      handleServiceChange(i, "end", e.target.value)
+                    }
+                    style={{ width: "32%", padding: "8px", borderRadius: 6 }}
+                  />
+                </div>
+
                 <textarea
                   placeholder="Description"
                   value={s.description}
@@ -291,171 +346,56 @@ export default function SchedulingDashboard() {
                     height: "60px",
                     marginTop: 8,
                     borderRadius: "8px",
+                    padding: "8px",
                   }}
                 />
+                <button
+                  onClick={() => removeService(i)}
+                  style={{
+                    marginTop: 8,
+                    background: "#ff5a5a",
+                    color: "#fff",
+                    border: "none",
+                    padding: "6px 12px",
+                    borderRadius: 6,
+                    cursor: "pointer",
+                  }}
+                >
+                  Remove
+                </button>
               </div>
             ))}
+
             <button
               onClick={addService}
               style={{
                 background: "#de8d2b",
                 color: "#fff",
                 border: "none",
-                padding: "8px 16px",
-                borderRadius: "6px",
-                marginTop: "10px",
+                padding: "10px 16px",
+                borderRadius: "8px",
                 cursor: "pointer",
+                marginTop: 10,
               }}
             >
               + Add Service
             </button>
             <button
-              onClick={saveServices}
+              onClick={saveSchedule}
+              disabled={saving}
               style={{
                 background: "#4caf50",
                 color: "#fff",
                 border: "none",
-                padding: "8px 16px",
-                borderRadius: "6px",
-                marginLeft: "10px",
-                cursor: "pointer",
-              }}
-            >
-              Save Services
-            </button>
-
-            {/* --- Availability --- */}
-            <h3 style={{ color: "#de8d2b", marginTop: "30px" }}>
-              Manage Availability
-            </h3>
-            <table
-              style={{
-                width: "100%",
-                borderCollapse: "collapse",
-                background: "#fff",
-                borderRadius: "12px",
-                overflow: "hidden",
-              }}
-            >
-              <thead>
-                <tr style={{ background: "#de8d2b", color: "#fff" }}>
-                  <th>Date</th>
-                  <th>Start</th>
-                  <th>End</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {hours.map((h, i) => (
-                  <tr key={i}>
-                    <td>
-                      <input
-                        type="date"
-                        value={h.Date}
-                        onChange={(e) =>
-                          handleHourChange(i, "Date", e.target.value)
-                        }
-                      />
-                    </td>
-                    <td>
-                      <input
-                        type="time"
-                        value={h.StartTime}
-                        onChange={(e) =>
-                          handleHourChange(i, "StartTime", e.target.value)
-                        }
-                      />
-                    </td>
-                    <td>
-                      <input
-                        type="time"
-                        value={h.EndTime}
-                        onChange={(e) =>
-                          handleHourChange(i, "EndTime", e.target.value)
-                        }
-                      />
-                    </td>
-                    <td>
-                      <select
-                        value={h.Status}
-                        onChange={(e) =>
-                          handleHourChange(i, "Status", e.target.value)
-                        }
-                      >
-                        <option>Available</option>
-                        <option>Booked</option>
-                        <option>Unavailable</option>
-                      </select>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <button
-              onClick={addHourSlot}
-              style={{
-                background: "#de8d2b",
-                color: "#fff",
-                padding: "10px 18px",
+                padding: "10px 16px",
                 borderRadius: "8px",
-                border: "none",
-                marginTop: "10px",
                 cursor: "pointer",
+                marginLeft: 10,
+                opacity: saving ? 0.7 : 1,
               }}
             >
-              + Add Slot
+              {saving ? "Saving..." : "Save Schedule"}
             </button>
-            <button
-              onClick={saveHours}
-              style={{
-                background: "#4caf50",
-                color: "#fff",
-                padding: "10px 18px",
-                borderRadius: "8px",
-                border: "none",
-                marginLeft: "10px",
-                cursor: "pointer",
-              }}
-            >
-              Save Schedule
-            </button>
-
-            {/* --- Bookings --- */}
-            {bookings.length > 0 && (
-              <>
-                <h3 style={{ marginTop: 40, color: "#de8d2b" }}>
-                  Recent Bookings
-                </h3>
-                <table
-                  style={{
-                    width: "100%",
-                    borderCollapse: "collapse",
-                    background: "#fff",
-                    borderRadius: "12px",
-                    overflow: "hidden",
-                  }}
-                >
-                  <thead>
-                    <tr style={{ background: "#de8d2b", color: "#fff" }}>
-                      <th>Client</th>
-                      <th>Service</th>
-                      <th>Date</th>
-                      <th>Time</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {bookings.map((b, i) => (
-                      <tr key={i}>
-                        <td>{b.ClientName}</td>
-                        <td>{b.Service}</td>
-                        <td>{b.PreferredDate}</td>
-                        <td>{b.PreferredTime}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </>
-            )}
           </>
         )}
       </div>
