@@ -22,6 +22,9 @@ root.render(
           {/* ✅ New scheduling dashboard */}
           <Route path="/dashboard" element={<SchedulingDashboard />} />
 
+          {/* New Dashboard Login Portal */}
+          <Route path="/dashboard" element={<DashboardPortal />} />
+
           {/* 404 fallback */}
           <Route
             path="*"

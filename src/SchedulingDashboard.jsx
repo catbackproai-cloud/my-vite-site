@@ -1,4 +1,12 @@
 // SchedulingDashboard.jsx
+useEffect(() => {
+  const token = localStorage.getItem("catback_token");
+  if (token !== routeId) {
+    alert("Please log in first.");
+    navigate("/dashboard");
+  }
+}, [routeId]);
+
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
