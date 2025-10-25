@@ -46,29 +46,28 @@ const [gateReady, setGateReady] = useState(false);
 useEffect(() => {
   if (!routeId) return;
 
-  // run after short delay so Safari has sessionStorage loaded
   const timer = setTimeout(() => {
     const token = sessionStorage.getItem("catback_token");
     const lastActive = sessionStorage.getItem("catback_lastActive");
 
-    // ❌ If token missing or wrong business, redirect to login
+    // 🚫 invalid or missing token
     if (!token || token !== routeId) {
       sessionStorage.clear();
       navigate("/dashboard", { replace: true });
       return;
     }
 
-    // ⏳ Timeout after 1 hour of inactivity
+    // ⏳ expired session
     if (lastActive && Date.now() - parseInt(lastActive, 10) > 3600000) {
       sessionStorage.clear();
       navigate("/dashboard", { replace: true });
       return;
     }
 
-    // ✅ If valid → mark as ready to render
+    // ✅ passed auth check
     setGateReady(true);
 
-    // 🕓 Refresh last active timestamp on activity
+    // 🕓 refresh lastActive timestamp on user activity
     const bump = () => sessionStorage.setItem("catback_lastActive", Date.now().toString());
     window.addEventListener("mousemove", bump);
     window.addEventListener("keydown", bump);
@@ -77,12 +76,11 @@ useEffect(() => {
       window.removeEventListener("mousemove", bump);
       window.removeEventListener("keydown", bump);
     };
-  }, 250); // ⏱ slightly longer delay (Safari fix)
+  }, 250); // Safari buffer
 
   return () => clearTimeout(timer);
 }, [routeId, navigate]);
 
-// 🧭 show loading placeholder until verified
 if (!gateReady) {
   return (
     <div
@@ -318,13 +316,7 @@ if (!gateReady) return null;
       </header>
 
       {/* Body */}
-      // 👇 after state/hooks and BEFORE the big `return (...)`
-const token = sessionStorage.getItem("catback_token");
-if (!routeId) return null;                    // wait for router param
-if (!token) {                                 // no session → send to login
-  sessionStorage.clear()
-}
-      <main style={{ maxWidth: 1050, margin: "0 auto", padding: "24px 16px", width: "100%" }}>
+            <main style={{ maxWidth: 1050, margin: "0 auto", padding: "24px 16px", width: "100%" }}>
         {statusMsg && (
           <div
             style={{
