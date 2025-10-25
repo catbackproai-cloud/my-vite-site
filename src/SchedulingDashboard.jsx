@@ -41,66 +41,39 @@ export default function SchedulingDashboard() {
   const [unavailableDates, setUnavailableDates] = useState([]);
 
 /* ---------- AUTH GUARD ---------- */
-const [gateReady, setGateReady] = useState(false);
-// 🔍 DEBUG LOGGING
 useEffect(() => {
-  console.log("DEBUG — routeId:", routeId);
-  console.log("DEBUG — sessionStorage token:", sessionStorage.getItem("catback_token"));
-  console.log("DEBUG — sessionStorage lastActive:", sessionStorage.getItem("catback_lastActive"));
-}, [routeId]);
+  if (!routeId) return; // wait until route param exists
 
-useEffect(() => {
-  if (!routeId) return;
+  const token = sessionStorage.getItem("catback_token");
+  const lastActive = sessionStorage.getItem("catback_lastActive");
 
-  const timer = setTimeout(() => {
-    const lastActive = sessionStorage.getItem("catback_lastActive");
+  // handle missing token or mismatch silently, no alerts/popups
+  if (!token || token !== routeId) {
+    sessionStorage.clear();
+    // use a short async delay so navigation happens after render is ready
+    setTimeout(() => navigate("/dashboard", { replace: true }), 0);
+    return;
+  }
 
-    // 🚫 invalid or missing token
-    if (!token || token !== routeId) {
-      sessionStorage.clear();
-      navigate("/dashboard", { replace: true });
-      return;
-    }
+  // expire after 1 hour (no popup)
+  if (lastActive && Date.now() - parseInt(lastActive, 10) > 3600000) {
+    sessionStorage.clear();
+    setTimeout(() => navigate("/dashboard", { replace: true }), 0);
+    return;
+  }
 
-    // ⏳ expired session
-    if (lastActive && Date.now() - parseInt(lastActive, 10) > 3600000) {
-      sessionStorage.clear();
-      navigate("/dashboard", { replace: true });
-      return;
-    }
+  // refresh timer on any activity
+  const updateActivity = () =>
+    sessionStorage.setItem("catback_lastActive", Date.now().toString());
 
-    // ✅ passed auth check
-    setGateReady(true);
+  window.addEventListener("mousemove", updateActivity);
+  window.addEventListener("keydown", updateActivity);
 
-    // 🕓 refresh lastActive timestamp on user activity
-    const bump = () => sessionStorage.setItem("catback_lastActive", Date.now().toString());
-    window.addEventListener("mousemove", bump);
-    window.addEventListener("keydown", bump);
-
-    return () => {
-      window.removeEventListener("mousemove", bump);
-      window.removeEventListener("keydown", bump);
-    };
-  }, 250); // Safari buffer
-
-  return () => clearTimeout(timer);
+  return () => {
+    window.removeEventListener("mousemove", updateActivity);
+    window.removeEventListener("keydown", updateActivity);
+  };
 }, [routeId, navigate]);
-
-// 🧭 show loading placeholder until verified
-if (!gateReady) {
-  return (
-    <div
-      style={{
-        textAlign: "center",
-        marginTop: "40vh",
-        fontFamily: "Inter, system-ui, sans-serif",
-        color: "#999",
-      }}
-    >
-      Loading dashboard…
-    </div>
-  );
-}
 
   /* ---------- FETCH BUSINESS + EXISTING THEME ---------- */
   useEffect(() => {
@@ -319,7 +292,8 @@ if (!gateReady) {
       </header>
 
       {/* Body */}
-            <main style={{ maxWidth: 1050, margin: "0 auto", padding: "24px 16px", width: "100%" }}>
+      if (!sessionStorage.getItem("catback_token")) 
+      <main style={{ maxWidth: 1050, margin: "0 auto", padding: "24px 16px", width: "100%" }}>
         {statusMsg && (
           <div
             style={{
