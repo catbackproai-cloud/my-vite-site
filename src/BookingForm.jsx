@@ -6,9 +6,14 @@ export default function BookingForm() {
 
   const [business, setBusiness] = useState(null);
   const [services, setServices] = useState([]);
+  const [theme, setTheme] = useState({
+    header: "#de8d2b",
+    text: "#000",
+    background: "#fff",
+    accent: "#de8d2b",
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-
   const [formData, setFormData] = useState({
     clientName: "",
     clientPhone: "",
@@ -19,47 +24,36 @@ export default function BookingForm() {
     paymentMethod: "",
   });
 
-  // ✅ Fetch business info dynamically from n8n
   useEffect(() => {
-  async function fetchBusiness() {
-    try {
-      const res = await fetch(
-        `https://jacobtf007.app.n8n.cloud/webhook/catbackai_getbusiness?businessId=${businessId}`
-      );
+    async function fetchBusiness() {
+      try {
+        const res = await fetch(
+          `https://jacobtf007.app.n8n.cloud/webhook/catbackai_getbusiness?businessId=${businessId}`
+        );
+        const data = await res.json();
 
-      if (!res.ok) throw new Error("Failed to fetch business info");
-      const data = await res.json();
+        if (!data.business) throw new Error("Business not found");
+        const b = data.business;
 
-      if (data.result !== "ok" || !data.business) {
-        throw new Error("Business not found or inactive");
-      }
-
-      const b = data.business;
-
-      // 🧹 FIX: remove "=" or weird characters from Google Sheets exports
-      Object.keys(b).forEach((key) => {
-        if (typeof b[key] === "string") {
-          b[key] = b[key].replace(/^=+/, "").trim();
-        }
-      });
-
-      setBusiness(b);
-
-
-        // Handle services field gracefully (array or comma-separated string)
-        const raw = b.ServicesOffered || b.services || b["Services Offered"] || "";
-        let parsed = [];
-
-        if (typeof raw === "string") {
-          parsed = raw
-            .split(",")
-            .map((s) => s.replace(/=+/g, "").trim())
-            .filter(Boolean);
-        } else if (Array.isArray(raw)) {
-          parsed = raw;
+        // Apply theme if available
+        if (b.ColorScheme) {
+          try {
+            const parsed = JSON.parse(b.ColorScheme);
+            setTheme(parsed);
+          } catch {}
         }
 
-        setServices(parsed.filter(Boolean));
+        setBusiness(b);
+
+        // Parse services
+        const raw = b.ServicesOffered || b.services || "";
+        const parsed =
+          typeof raw === "string"
+            ? raw.split(",").map((s) => s.trim()).filter(Boolean)
+            : Array.isArray(raw)
+            ? raw
+            : [];
+        setServices(parsed);
       } catch (err) {
         setError(err.message);
       } finally {
@@ -70,26 +64,14 @@ export default function BookingForm() {
     fetchBusiness();
   }, [businessId]);
 
-  // ✅ Handle input changes
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // ✅ Handle booking submission
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    if (!formData.serviceRequested || !formData.preferredDate || !formData.preferredTime) {
-      alert("Please fill out all required fields.");
-      return;
-    }
-
-    const payload = {
-      businessId,
-      ...formData,
-    };
-
+    const payload = { businessId, ...formData };
     try {
       const res = await fetch(
         "https://jacobtf007.app.n8n.cloud/webhook/catbackai_createbooking",
@@ -99,13 +81,8 @@ export default function BookingForm() {
           body: JSON.stringify(payload),
         }
       );
-
       if (!res.ok) throw new Error("Booking failed");
-
-      await res.json();
-      alert(`✅ Booking submitted for ${business?.BusinessName || "this business"}!`);
-
-      // Reset form after submission
+      alert(`✅ Booking submitted for ${business?.BusinessName}`);
       setFormData({
         clientName: "",
         clientPhone: "",
@@ -120,103 +97,65 @@ export default function BookingForm() {
     }
   };
 
-  // ✅ Loading / error states
-  if (loading) {
-    return <p style={{ textAlign: "center" }}>Loading business info…</p>;
-  }
+  if (loading) return <p>Loading...</p>;
+  if (error) return <p style={{ color: "red" }}>{error}</p>;
 
-  if (error) {
-    return (
-      <p style={{ color: "red", textAlign: "center", padding: "20px" }}>
-        {error}
-      </p>
-    );
-  }
-
-  // ✅ Determine logo URL (if any)
   const logoUrl =
-  business?.LogoLink ||
-  business?.LinkToLogo ||
-  business?.LinktoLogo ||
-  business?.LogoFile ||
-  business?.Logo ||
-  "";
+    business?.LogoLink ||
+    business?.LinkToLogo ||
+    business?.LogoFile ||
+    "";
 
-  // ✅ Main booking form
   return (
     <div
       style={{
-        fontFamily:
-          "Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif",
+        fontFamily: "Inter, system-ui, sans-serif",
         padding: "24px",
-        maxWidth: "600px",
+        maxWidth: 600,
         margin: "0 auto",
+        background: theme.background,
+        color: theme.text,
       }}
     >
-      {/* ✅ Business Header (logo + name side by side if logo exists) */}
-<div
-  style={{
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: "12px",
-    marginBottom: "20px",
-  }}
->
-  {logoUrl && (
-    <img
-      src={logoUrl}
-      alt={`${business.BusinessName || "Business"} logo`}
-      style={{
-        maxWidth: "60px",
-        height: "60px",
-        borderRadius: "8px",
-        objectFit: "contain",
-      }}
-    />
-  )}
-  <h1
-    style={{
-      color: "#de8d2b",
-      fontWeight: "900",
-      fontSize: "28px",
-      margin: 0,
-    }}
-  >
-    {business?.BusinessName || "Business"}
-  </h1>
-</div>
+      {/* Header */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 12,
+          marginBottom: 20,
+        }}
+      >
+        {logoUrl && (
+          <img
+            src={logoUrl}
+            alt={`${business.BusinessName} logo`}
+            style={{
+              maxWidth: 60,
+              height: 60,
+              borderRadius: 8,
+              objectFit: "contain",
+            }}
+          />
+        )}
+        <h1 style={{ color: theme.header, fontWeight: 900 }}>
+          {business?.BusinessName}
+        </h1>
+      </div>
 
-
-
-      {/* Optional: Show Business Hours if available */}
-      {business?.BusinessHours && (
-        <p
-          style={{
-            textAlign: "center",
-            marginBottom: "20px",
-            color: "#444",
-            fontSize: "14px",
-          }}
-        >
-          Hours: {business.BusinessHours}
-        </p>
-      )}
-
-      {/* Booking Form */}
       <form
         onSubmit={handleSubmit}
         style={{
-          background: "#fff4eb",
-          padding: "20px",
-          borderRadius: "12px",
+          background: theme.accent + "15", // accent tinted
+          padding: 20,
+          borderRadius: 12,
           display: "flex",
           flexDirection: "column",
-          gap: "12px",
+          gap: 12,
           boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
         }}
       >
-        {/* Service */}
         <label>
           <strong>Service</strong>
           <select
@@ -225,10 +164,10 @@ export default function BookingForm() {
             onChange={handleChange}
             required
             style={{
-              width: "100%",
-              padding: "8px",
-              borderRadius: "6px",
+              padding: 8,
+              borderRadius: 6,
               border: "1px solid #ccc",
+              width: "100%",
             }}
           >
             <option value="">Select service</option>
@@ -240,7 +179,6 @@ export default function BookingForm() {
           </select>
         </label>
 
-        {/* Date */}
         <label>
           <strong>Date</strong>
           <input
@@ -250,15 +188,14 @@ export default function BookingForm() {
             onChange={handleChange}
             required
             style={{
-              width: "100%",
-              padding: "8px",
-              borderRadius: "6px",
+              padding: 8,
+              borderRadius: 6,
               border: "1px solid #ccc",
+              width: "100%",
             }}
           />
         </label>
 
-        {/* Time */}
         <label>
           <strong>Time</strong>
           <input
@@ -268,15 +205,14 @@ export default function BookingForm() {
             onChange={handleChange}
             required
             style={{
-              width: "100%",
-              padding: "8px",
-              borderRadius: "6px",
+              padding: 8,
+              borderRadius: 6,
               border: "1px solid #ccc",
+              width: "100%",
             }}
           />
         </label>
 
-        {/* Name */}
         <label>
           <strong>Your Name</strong>
           <input
@@ -285,69 +221,41 @@ export default function BookingForm() {
             onChange={handleChange}
             required
             style={{
-              width: "100%",
-              padding: "8px",
-              borderRadius: "6px",
+              padding: 8,
+              borderRadius: 6,
               border: "1px solid #ccc",
+              width: "100%",
             }}
           />
         </label>
 
-        {/* Contact */}
         <label>
-          <strong>Email / Phone</strong>
+          <strong>Contact Info</strong>
           <input
             name="clientEmail"
             value={formData.clientEmail}
             onChange={handleChange}
-            placeholder="Email or phone number"
+            placeholder="Email or phone"
             required
             style={{
-              width: "100%",
-              padding: "8px",
-              borderRadius: "6px",
+              padding: 8,
+              borderRadius: 6,
               border: "1px solid #ccc",
+              width: "100%",
             }}
           />
         </label>
 
-        {/* Payment */}
-        <fieldset style={{ border: "none", marginTop: "6px" }}>
-          <legend style={{ fontWeight: "bold" }}>Payment</legend>
-          <label style={{ display: "block" }}>
-            <input
-              type="radio"
-              name="paymentMethod"
-              value="Cash"
-              checked={formData.paymentMethod === "Cash"}
-              onChange={handleChange}
-            />{" "}
-            Cash
-          </label>
-          <label style={{ display: "block" }}>
-            <input
-              type="radio"
-              name="paymentMethod"
-              value="Venmo / CashApp / Zelle"
-              checked={formData.paymentMethod === "Venmo / CashApp / Zelle"}
-              onChange={handleChange}
-            />{" "}
-            Venmo / CashApp / Zelle / etc
-          </label>
-        </fieldset>
-
-        {/* Submit */}
         <button
           type="submit"
           style={{
-            background: "#de8d2b",
-            color: "white",
+            background: theme.accent,
+            color: "#fff",
             padding: "10px 20px",
+            borderRadius: 8,
             border: "none",
-            borderRadius: "8px",
+            fontWeight: 600,
             cursor: "pointer",
-            fontWeight: "bold",
-            marginTop: "12px",
           }}
         >
           Submit Booking
