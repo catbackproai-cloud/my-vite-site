@@ -156,6 +156,7 @@ export default function SchedulingDashboard() {
         padding: "8px 16px",
         cursor: "pointer",
         fontWeight: 600,
+        transition: "all 0.2s ease-in-out",
       }}
     >
       {label}
@@ -165,8 +166,15 @@ export default function SchedulingDashboard() {
   const handleAddService = () =>
     setServices([...services, { name: "", price: "", duration: "", description: "" }]);
 
-  const handleColorChange = (field, value) =>
-    setColorScheme((prev) => ({ ...prev, [field]: value }));
+  const handleColorChange = (field, value) => {
+    // Fix Safari invalid color error by validating hex format
+    if (/^#[0-9A-Fa-f]{6}$/.test(value)) {
+      setColorScheme((prev) => ({ ...prev, [field]: value }));
+      setStatusMsg("");
+    } else {
+      setStatusMsg("⚠️ Invalid color format. Please use hex (#000000).");
+    }
+  };
 
   const handleAvailabilityToggle = (day) => {
     setAvailability((prev) => ({
@@ -183,21 +191,24 @@ export default function SchedulingDashboard() {
         background: colorScheme.background,
         color: colorScheme.text,
         minHeight: "100vh",
-        paddingBottom: "80px",
+        display: "flex",
+        flexDirection: "column",
       }}
     >
       <Helmet>
         <title>CatBackAI Dashboard | Scheduling</title>
       </Helmet>
 
+      {/* HEADER */}
       <header
         style={{
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          padding: "20px 40px",
+          padding: "16px 24px",
           background: colorScheme.header,
           color: "#fff",
+          flexWrap: "wrap",
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -205,7 +216,14 @@ export default function SchedulingDashboard() {
           <h1 style={{ fontWeight: 800, fontSize: 20 }}>Dashboard</h1>
         </div>
 
-        <div style={{ display: "flex", gap: 10 }}>
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 8,
+            marginTop: 8,
+          }}
+        >
           <TabButton id="customize" label="Customize" />
           <TabButton id="calendar" label="Calendar" />
           <TabButton id="account" label="Account" />
@@ -228,7 +246,15 @@ export default function SchedulingDashboard() {
         </div>
       </header>
 
-      <div style={{ padding: 40, maxWidth: 1000, margin: "0 auto" }}>
+      {/* MAIN BODY */}
+      <main
+        style={{
+          padding: "5vw",
+          flexGrow: 1,
+          maxWidth: 1000,
+          margin: "0 auto",
+        }}
+      >
         {statusMsg && (
           <p
             style={{
@@ -237,6 +263,7 @@ export default function SchedulingDashboard() {
               padding: "10px",
               borderRadius: "8px",
               marginBottom: 20,
+              fontSize: "0.95rem",
             }}
           >
             {statusMsg}
@@ -245,25 +272,49 @@ export default function SchedulingDashboard() {
 
         {activeTab === "customize" && (
           <>
-            <h2 style={{ color: "#de8d2b" }}>Business Customization</h2>
+            <h2 style={{ color: "#de8d2b", fontSize: "1.3rem" }}>
+              Business Customization
+            </h2>
 
-            <div style={{ marginBottom: 30 }}>
-              <h3>Color Scheme</h3>
+            {/* COLOR SCHEME */}
+            <div
+              style={{
+                marginBottom: 30,
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+                gap: 12,
+              }}
+            >
               {["header", "text", "background", "accent"].map((key) => (
-                <div key={key} style={{ marginBottom: 10 }}>
-                  <label style={{ width: 140, display: "inline-block" }}>
-                    {key.charAt(0).toUpperCase() + key.slice(1)}:
+                <div key={key} style={{ display: "flex", alignItems: "center" }}>
+                  <label
+                    style={{
+                      flex: 1,
+                      textTransform: "capitalize",
+                      fontWeight: 500,
+                      fontSize: "0.95rem",
+                    }}
+                  >
+                    {key}:
                   </label>
                   <input
                     type="color"
                     value={colorScheme[key]}
                     onChange={(e) => handleColorChange(key, e.target.value)}
+                    style={{
+                      width: 40,
+                      height: 30,
+                      border: "none",
+                      cursor: "pointer",
+                      background: "transparent",
+                    }}
                   />
                 </div>
               ))}
             </div>
 
-            <h3>Services</h3>
+            {/* SERVICES */}
+            <h3 style={{ color: "#de8d2b" }}>Services</h3>
             {services.map((s, i) => (
               <div
                 key={i}
@@ -283,9 +334,21 @@ export default function SchedulingDashboard() {
                     updated[i].name = e.target.value;
                     setServices(updated);
                   }}
-                  style={{ width: "100%", marginBottom: 8, padding: 6 }}
+                  style={{
+                    width: "100%",
+                    marginBottom: 8,
+                    padding: "8px",
+                    borderRadius: 6,
+                    border: "1px solid #ccc",
+                  }}
                 />
-                <div style={{ display: "flex", gap: 10 }}>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: 10,
+                  }}
+                >
                   <input
                     placeholder="Price"
                     value={s.price}
@@ -294,7 +357,11 @@ export default function SchedulingDashboard() {
                       updated[i].price = e.target.value;
                       setServices(updated);
                     }}
-                    style={{ flex: 1, padding: 6 }}
+                    style={{
+                      padding: 8,
+                      borderRadius: 6,
+                      border: "1px solid #ccc",
+                    }}
                   />
                   <input
                     placeholder="Duration (mins)"
@@ -304,7 +371,11 @@ export default function SchedulingDashboard() {
                       updated[i].duration = e.target.value;
                       setServices(updated);
                     }}
-                    style={{ flex: 1, padding: 6 }}
+                    style={{
+                      padding: 8,
+                      borderRadius: 6,
+                      border: "1px solid #ccc",
+                    }}
                   />
                 </div>
               </div>
@@ -315,27 +386,30 @@ export default function SchedulingDashboard() {
                 background: "#de8d2b",
                 color: "#fff",
                 border: "none",
-                padding: "8px 16px",
+                padding: "10px 16px",
                 borderRadius: 8,
                 cursor: "pointer",
+                marginBottom: 20,
               }}
             >
               + Add Service
             </button>
 
-            <h3 style={{ marginTop: 30 }}>Availability</h3>
+            {/* AVAILABILITY */}
+            <h3 style={{ marginTop: 20, color: "#de8d2b" }}>Availability</h3>
             {Object.entries(availability).map(([day, data]) => (
-              <div key={day} style={{ marginBottom: 10 }}>
-                <label>
+              <div key={day} style={{ marginBottom: 8 }}>
+                <label style={{ fontWeight: 500 }}>
                   <input
                     type="checkbox"
                     checked={data.enabled}
                     onChange={() => handleAvailabilityToggle(day)}
-                  />{" "}
+                    style={{ marginRight: 8 }}
+                  />
                   {day}
                 </label>
                 {data.enabled && (
-                  <>
+                  <span>
                     <input
                       type="time"
                       value={data.start}
@@ -358,18 +432,24 @@ export default function SchedulingDashboard() {
                       }
                       style={{ marginLeft: 10 }}
                     />
-                  </>
+                  </span>
                 )}
               </div>
             ))}
 
+            {/* UNAVAILABLE DATES */}
             <div style={{ marginTop: 20 }}>
-              <h4>Unavailable Dates</h4>
+              <h4 style={{ color: "#de8d2b" }}>Unavailable Dates</h4>
               <input
                 type="date"
                 onChange={(e) =>
                   setUnavailableDates([...unavailableDates, e.target.value])
                 }
+                style={{
+                  padding: 6,
+                  border: "1px solid #ccc",
+                  borderRadius: 6,
+                }}
               />
               <ul>
                 {unavailableDates.map((d, i) => (
@@ -389,6 +469,8 @@ export default function SchedulingDashboard() {
                 borderRadius: 8,
                 border: "none",
                 cursor: "pointer",
+                width: "100%",
+                maxWidth: 250,
               }}
             >
               {saving ? "Saving..." : "Save All Changes"}
@@ -414,7 +496,20 @@ export default function SchedulingDashboard() {
             <p>Access PIN: Stored securely</p>
           </div>
         )}
-      </div>
+      </main>
+
+      <footer
+        style={{
+          background: "#f7f7f7",
+          borderTop: "1px solid #eee",
+          textAlign: "center",
+          padding: "12px 0",
+          fontSize: "0.85rem",
+          color: "#999",
+        }}
+      >
+        © {new Date().getFullYear()} CatBackAI
+      </footer>
     </div>
   );
 }
