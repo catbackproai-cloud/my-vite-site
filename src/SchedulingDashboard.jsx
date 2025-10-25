@@ -42,11 +42,28 @@ export default function SchedulingDashboard() {
 
 /* ---------- AUTH GUARD ---------- */
 useEffect(() => {
+  // wait until routeId is available
+  if (!routeId) return;
+
   const token = sessionStorage.getItem("catback_token");
   const lastActive = sessionStorage.getItem("catback_lastActive");
 
-  // auto-expire after 1 hour
-  if (!token || token !== routeId || (lastActive && Date.now() - parseInt(lastActive, 10) > 3600000)) {
+  // if missing token → redirect
+  if (!token) {
+    console.warn("No session found — redirecting to login");
+    navigate("/dashboard");
+    return;
+  }
+
+  // if wrong business ID → redirect
+  if (token !== routeId) {
+    console.warn("Token mismatch — redirecting to login");
+    navigate("/dashboard");
+    return;
+  }
+
+  // optional 1-hour timeout
+  if (lastActive && Date.now() - parseInt(lastActive, 10) > 3600000) {
     alert("Session expired. Please log in again.");
     sessionStorage.clear();
     navigate("/dashboard");
