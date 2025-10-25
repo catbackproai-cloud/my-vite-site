@@ -40,15 +40,29 @@ export default function SchedulingDashboard() {
   // blackout dates (array of YYYY-MM-DD)
   const [unavailableDates, setUnavailableDates] = useState([]);
 
-  /* ---------- AUTH GUARD ---------- */
-  useEffect(() => {
-    const token = localStorage.getItem("catback_token");
-    if (!token || token !== routeId) {
-      alert("Please log in first.");
-      navigate("/dashboard");
-      return;
-    }
-  }, [routeId, navigate]);
+/* ---------- AUTH GUARD ---------- */
+useEffect(() => {
+  const token = sessionStorage.getItem("catback_token");
+  const lastActive = sessionStorage.getItem("catback_lastActive");
+
+  // auto-expire after 1 hour
+  if (!token || token !== routeId || (lastActive && Date.now() - parseInt(lastActive, 10) > 3600000)) {
+    alert("Session expired. Please log in again.");
+    sessionStorage.clear();
+    navigate("/dashboard");
+    return;
+  }
+
+  // refresh timer on any activity
+  const handleActivity = () => sessionStorage.setItem("catback_lastActive", Date.now().toString());
+  window.addEventListener("mousemove", handleActivity);
+  window.addEventListener("keydown", handleActivity);
+
+  return () => {
+    window.removeEventListener("mousemove", handleActivity);
+    window.removeEventListener("keydown", handleActivity);
+  };
+}, [routeId, navigate]);
 
   /* ---------- FETCH BUSINESS + EXISTING THEME ---------- */
   useEffect(() => {
@@ -249,9 +263,9 @@ export default function SchedulingDashboard() {
           </a>
           <button
             onClick={() => {
-              localStorage.clear();
-              navigate("/dashboard");
-            }}
+  sessionStorage.clear();
+  navigate("/dashboard");
+}}
             style={{
               background: "transparent",
               color: "#fff",

@@ -9,9 +9,12 @@ export default function DashboardPortal() {
   const [error, setError] = useState("");
   const navigate = useNavigate();
 
-  // 🧹 Auto-clear old session on page load
+  // ✅ Optional: auto-expire session after 1 hour
   useEffect(() => {
-    localStorage.removeItem("catback_token");
+    const lastActive = sessionStorage.getItem("catback_lastActive");
+    if (lastActive && Date.now() - parseInt(lastActive, 10) > 3600000) {
+      sessionStorage.clear();
+    }
   }, []);
 
   const handleLogin = async (e) => {
@@ -25,8 +28,9 @@ export default function DashboardPortal() {
       const data = await res.json();
 
       if (data.result === "ok") {
-        localStorage.setItem("catback_token", businessId);
-        localStorage.setItem("catback_lastActive", Date.now().toString());
+        // ✅ Use sessionStorage instead of localStorage
+        sessionStorage.setItem("catback_token", businessId);
+        sessionStorage.setItem("catback_lastActive", Date.now().toString());
         navigate(`/dashboard/${businessId}`);
       } else {
         setError("Invalid Business ID or PIN");
