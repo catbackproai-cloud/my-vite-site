@@ -1,15 +1,13 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import logo from "./assets/Y-Logo.png";
 import { Helmet } from "react-helmet-async";
+import logo from "./assets/Y-Logo.png";
 
 export default function DashboardPortal() {
   const [businessId, setBusinessId] = useState("");
   const [pin, setPin] = useState("");
   const [error, setError] = useState("");
-  const navigate = useNavigate();
 
-  // ✅ Optional: auto-expire session after 1 hour
+  /* ---------- AUTO-EXPIRE SESSION (1 HOUR) ---------- */
   useEffect(() => {
     const lastActive = sessionStorage.getItem("catback_lastActive");
     if (lastActive && Date.now() - parseInt(lastActive, 10) > 3600000) {
@@ -17,6 +15,7 @@ export default function DashboardPortal() {
     }
   }, []);
 
+  /* ---------- HANDLE LOGIN ---------- */
   const handleLogin = async (e) => {
     e.preventDefault();
     setError("");
@@ -28,20 +27,24 @@ export default function DashboardPortal() {
       const data = await res.json();
 
       if (data.result === "ok") {
-        // ✅ Use sessionStorage instead of localStorage
+        // ✅ Save auth info
         sessionStorage.setItem("catback_token", businessId);
         sessionStorage.setItem("catback_lastActive", Date.now().toString());
+
+        // ✅ Safari-safe redirect: allow storage to persist before navigation
         setTimeout(() => {
-  navigate(`/dashboard/${businessId}`, { replace: true });
-}, 50);
+          window.location.href = `/dashboard/${businessId}`;
+        }, 300);
       } else {
         setError("Invalid Business ID or PIN");
       }
-    } catch {
-      setError("Error verifying credentials");
+    } catch (err) {
+      console.error("Login error:", err);
+      setError("Error verifying credentials. Please try again.");
     }
   };
 
+  /* ---------- UI ---------- */
   return (
     <div
       style={{
@@ -68,7 +71,13 @@ export default function DashboardPortal() {
           placeholder="Business ID"
           value={businessId}
           onChange={(e) => setBusinessId(e.target.value)}
-          style={{ width: "100%", marginBottom: 10, padding: 8 }}
+          style={{
+            width: "100%",
+            marginBottom: 10,
+            padding: 8,
+            borderRadius: 8,
+            border: "1px solid #ccc",
+          }}
           required
         />
         <input
@@ -76,19 +85,26 @@ export default function DashboardPortal() {
           placeholder="Access PIN"
           value={pin}
           onChange={(e) => setPin(e.target.value)}
-          style={{ width: "100%", marginBottom: 10, padding: 8 }}
+          style={{
+            width: "100%",
+            marginBottom: 10,
+            padding: 8,
+            borderRadius: 8,
+            border: "1px solid #ccc",
+          }}
           required
         />
         <button
           type="submit"
           style={{
             background: "#de8d2b",
-            color: "white",
+            color: "#fff",
             width: "100%",
             padding: "10px",
             border: "none",
             borderRadius: "8px",
             fontWeight: "bold",
+            cursor: "pointer",
           }}
         >
           Log In
