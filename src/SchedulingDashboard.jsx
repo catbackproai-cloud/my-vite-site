@@ -42,27 +42,27 @@ export default function SchedulingDashboard() {
 
 /* ---------- AUTH GUARD ---------- */
 useEffect(() => {
-  if (!routeId) return; // wait for router
+  if (!routeId) return;
 
   const token = sessionStorage.getItem("catback_token");
   const lastActive = sessionStorage.getItem("catback_lastActive");
   const now = Date.now();
 
-  // wrong/missing token → silent redirect
+  // Missing or wrong token
   if (!token || token !== routeId) {
     sessionStorage.clear();
     navigate("/dashboard", { replace: true });
     return;
   }
 
-  // 1-hour idle timeout (adjust if you want)
+  // Idle timeout (1 hour)
   if (lastActive && now - parseInt(lastActive, 10) > 3600000) {
     sessionStorage.clear();
     navigate("/dashboard", { replace: true });
     return;
   }
 
-  // refresh activity timestamp while tab is used
+  // Refresh activity timestamp
   const bump = () => sessionStorage.setItem("catback_lastActive", Date.now().toString());
   window.addEventListener("mousemove", bump);
   window.addEventListener("keydown", bump);

@@ -31,7 +31,9 @@ export default function DashboardPortal() {
         // ✅ Use sessionStorage instead of localStorage
         sessionStorage.setItem("catback_token", businessId);
         sessionStorage.setItem("catback_lastActive", Date.now().toString());
-        navigate(`/dashboard/${businessId}`);
+        setTimeout(() => {
+  navigate(`/dashboard/${businessId}`, { replace: true });
+}, 50);
       } else {
         setError("Invalid Business ID or PIN");
       }
