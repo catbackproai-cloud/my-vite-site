@@ -46,44 +46,43 @@ const [gateReady, setGateReady] = useState(false);
 useEffect(() => {
   if (!routeId) return;
 
-  const token = sessionStorage.getItem("catback_token");
-  const lastActive = sessionStorage.getItem("catback_lastActive");
-  const now = Date.now();
-
-  // Delay slightly to let Safari finish loading sessionStorage
+  // run after short delay so Safari has sessionStorage loaded
   const timer = setTimeout(() => {
-    // No or wrong token → back to login
+    const token = sessionStorage.getItem("catback_token");
+    const lastActive = sessionStorage.getItem("catback_lastActive");
+
+    // ❌ If token missing or wrong business, redirect to login
     if (!token || token !== routeId) {
       sessionStorage.clear();
       navigate("/dashboard", { replace: true });
       return;
     }
 
-    // Timeout after 1 hour idle
-    if (lastActive && now - parseInt(lastActive, 10) > 3600000) {
+    // ⏳ Timeout after 1 hour of inactivity
+    if (lastActive && Date.now() - parseInt(lastActive, 10) > 3600000) {
       sessionStorage.clear();
       navigate("/dashboard", { replace: true });
       return;
     }
 
-    // Refresh activity timer
+    // ✅ If valid → mark as ready to render
+    setGateReady(true);
+
+    // 🕓 Refresh last active timestamp on activity
     const bump = () => sessionStorage.setItem("catback_lastActive", Date.now().toString());
     window.addEventListener("mousemove", bump);
     window.addEventListener("keydown", bump);
-
-    // ✅ Mark as ready to render
-    setGateReady(true);
 
     return () => {
       window.removeEventListener("mousemove", bump);
       window.removeEventListener("keydown", bump);
     };
-  }, 100); // short delay avoids blank reloads on Safari
+  }, 250); // ⏱ slightly longer delay (Safari fix)
 
   return () => clearTimeout(timer);
 }, [routeId, navigate]);
 
-// Only show loading message while verifying session
+// 🧭 show loading placeholder until verified
 if (!gateReady) {
   return (
     <div
