@@ -42,42 +42,36 @@ export default function SchedulingDashboard() {
 
 /* ---------- AUTH GUARD ---------- */
 useEffect(() => {
-  // wait until routeId is available
-  if (!routeId) return;
+  if (!routeId) return; // wait until route param exists
 
   const token = sessionStorage.getItem("catback_token");
   const lastActive = sessionStorage.getItem("catback_lastActive");
 
-  // if missing token → redirect
-  if (!token) {
-    console.warn("No session found — redirecting to login");
-    navigate("/dashboard");
-    return;
-  }
-
-  // if wrong business ID → redirect
-  if (token !== routeId) {
-    console.warn("Token mismatch — redirecting to login");
-    navigate("/dashboard");
-    return;
-  }
-
-  // optional 1-hour timeout
-  if (lastActive && Date.now() - parseInt(lastActive, 10) > 3600000) {
-    alert("Session expired. Please log in again.");
+  // handle missing token or mismatch silently, no alerts/popups
+  if (!token || token !== routeId) {
     sessionStorage.clear();
-    navigate("/dashboard");
+    // use a short async delay so navigation happens after render is ready
+    setTimeout(() => navigate("/dashboard", { replace: true }), 0);
+    return;
+  }
+
+  // expire after 1 hour (no popup)
+  if (lastActive && Date.now() - parseInt(lastActive, 10) > 3600000) {
+    sessionStorage.clear();
+    setTimeout(() => navigate("/dashboard", { replace: true }), 0);
     return;
   }
 
   // refresh timer on any activity
-  const handleActivity = () => sessionStorage.setItem("catback_lastActive", Date.now().toString());
-  window.addEventListener("mousemove", handleActivity);
-  window.addEventListener("keydown", handleActivity);
+  const updateActivity = () =>
+    sessionStorage.setItem("catback_lastActive", Date.now().toString());
+
+  window.addEventListener("mousemove", updateActivity);
+  window.addEventListener("keydown", updateActivity);
 
   return () => {
-    window.removeEventListener("mousemove", handleActivity);
-    window.removeEventListener("keydown", handleActivity);
+    window.removeEventListener("mousemove", updateActivity);
+    window.removeEventListener("keydown", updateActivity);
   };
 }, [routeId, navigate]);
 
@@ -298,6 +292,7 @@ useEffect(() => {
       </header>
 
       {/* Body */}
+      if (!sessionStorage.getItem("catback_token")) 
       <main style={{ maxWidth: 1050, margin: "0 auto", padding: "24px 16px", width: "100%" }}>
         {statusMsg && (
           <div
