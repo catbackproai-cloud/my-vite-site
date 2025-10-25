@@ -7,28 +7,31 @@
     <title>CatBackAI — Smart Booking System</title>
   </head>
   <body>
-    <div id="root"></div>
-
-    <!-- ✅ Let Vite handle this automatically -->
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.jsx"></script>
+  <!-- (Optional) the guarded HeroAI block goes here, still inside <body> -->
+</body>
 <!-- HeroAI embed -->
 <!-- HeroAI embed: load on public pages only (NOT /dashboard/*) -->
 <script>
   (function () {
     try {
       var p = location.pathname || "/";
-      if (!p.startsWith("/dashboard")) {
-        var s = document.createElement("script");
-        s.src = "https://chat.heroai.pro/heroai-embed.js";
-        s.dataset.heroaiNs = "cat_back";
-        s.dataset.head = "left";
-        s.dataset.autoOpen = "0";
-        s.dataset.autostartMs = "6000";
-        s.dataset.launcher = "off";
-        document.head.appendChild(s);
-      }
-    } catch (e) { /* no-op */ }
+      // load ONLY on home or /book/*  — never on /dashboard
+      var allow = (p === "/" || p.startsWith("/book/"));
+      if (!allow) return;
+
+      var s = document.createElement("script");
+      s.src = "https://chat.heroai.pro/heroai-embed.js";
+      s.async = true;
+      s.defer = true;
+      s.dataset.heroaiNs = "cat_back";
+      s.dataset.head = "left";
+      s.dataset.autoOpen = "0";
+      s.dataset.autostartMs = "0";  // don't auto-open anything
+      s.dataset.launcher = "off";
+      document.body.appendChild(s);
+    } catch (e) {}
   })();
 </script>
 </html>

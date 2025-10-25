@@ -41,6 +41,8 @@ export default function SchedulingDashboard() {
   const [unavailableDates, setUnavailableDates] = useState([]);
 
 /* ---------- AUTH GUARD ---------- */
+const [gateReady, setGateReady] = useState(false);
+
 useEffect(() => {
   if (!routeId) return;
 
@@ -48,24 +50,27 @@ useEffect(() => {
   const lastActive = sessionStorage.getItem("catback_lastActive");
   const now = Date.now();
 
-  // Missing or wrong token
+  // if no token or it doesn’t match → go back to login
   if (!token || token !== routeId) {
     sessionStorage.clear();
     navigate("/dashboard", { replace: true });
     return;
   }
 
-  // Idle timeout (1 hour)
+  // 1-hour idle timeout
   if (lastActive && now - parseInt(lastActive, 10) > 3600000) {
     sessionStorage.clear();
     navigate("/dashboard", { replace: true });
     return;
   }
 
-  // Refresh activity timestamp
+  // refresh the “last active” timer on any interaction
   const bump = () => sessionStorage.setItem("catback_lastActive", Date.now().toString());
   window.addEventListener("mousemove", bump);
   window.addEventListener("keydown", bump);
+
+  // mark page ready to render once session passes
+  setGateReady(true);
 
   return () => {
     window.removeEventListener("mousemove", bump);
@@ -73,6 +78,8 @@ useEffect(() => {
   };
 }, [routeId, navigate]);
 
+// block rendering until auth check finishes
+if (!gateReady) return null;
 
   /* ---------- FETCH BUSINESS + EXISTING THEME ---------- */
   useEffect(() => {
