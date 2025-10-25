@@ -50,33 +50,54 @@ useEffect(() => {
   const lastActive = sessionStorage.getItem("catback_lastActive");
   const now = Date.now();
 
-  // if no token or it doesn’t match → go back to login
-  if (!token || token !== routeId) {
-    sessionStorage.clear();
-    navigate("/dashboard", { replace: true });
-    return;
-  }
+  // Delay slightly to let Safari finish loading sessionStorage
+  const timer = setTimeout(() => {
+    // No or wrong token → back to login
+    if (!token || token !== routeId) {
+      sessionStorage.clear();
+      navigate("/dashboard", { replace: true });
+      return;
+    }
 
-  // 1-hour idle timeout
-  if (lastActive && now - parseInt(lastActive, 10) > 3600000) {
-    sessionStorage.clear();
-    navigate("/dashboard", { replace: true });
-    return;
-  }
+    // Timeout after 1 hour idle
+    if (lastActive && now - parseInt(lastActive, 10) > 3600000) {
+      sessionStorage.clear();
+      navigate("/dashboard", { replace: true });
+      return;
+    }
 
-  // refresh the “last active” timer on any interaction
-  const bump = () => sessionStorage.setItem("catback_lastActive", Date.now().toString());
-  window.addEventListener("mousemove", bump);
-  window.addEventListener("keydown", bump);
+    // Refresh activity timer
+    const bump = () => sessionStorage.setItem("catback_lastActive", Date.now().toString());
+    window.addEventListener("mousemove", bump);
+    window.addEventListener("keydown", bump);
 
-  // mark page ready to render once session passes
-  setGateReady(true);
+    // ✅ Mark as ready to render
+    setGateReady(true);
 
-  return () => {
-    window.removeEventListener("mousemove", bump);
-    window.removeEventListener("keydown", bump);
-  };
+    return () => {
+      window.removeEventListener("mousemove", bump);
+      window.removeEventListener("keydown", bump);
+    };
+  }, 100); // short delay avoids blank reloads on Safari
+
+  return () => clearTimeout(timer);
 }, [routeId, navigate]);
+
+// Only show loading message while verifying session
+if (!gateReady) {
+  return (
+    <div
+      style={{
+        textAlign: "center",
+        marginTop: "40vh",
+        fontFamily: "Inter, system-ui, sans-serif",
+        color: "#999",
+      }}
+    >
+      Loading dashboard…
+    </div>
+  );
+}
 
 // block rendering until auth check finishes
 if (!gateReady) return null;
