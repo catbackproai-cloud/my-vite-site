@@ -42,6 +42,12 @@ export default function SchedulingDashboard() {
 
 /* ---------- AUTH GUARD ---------- */
 const [gateReady, setGateReady] = useState(false);
+// 🔍 DEBUG LOGGING
+useEffect(() => {
+  console.log("DEBUG — routeId:", routeId);
+  console.log("DEBUG — sessionStorage token:", sessionStorage.getItem("catback_token"));
+  console.log("DEBUG — sessionStorage lastActive:", sessionStorage.getItem("catback_lastActive"));
+}, [routeId]);
 
 useEffect(() => {
   if (!routeId) return;
