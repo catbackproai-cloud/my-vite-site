@@ -47,7 +47,6 @@ useEffect(() => {
   if (!routeId) return;
 
   const timer = setTimeout(() => {
-    const token = sessionStorage.getItem("catback_token");
     const lastActive = sessionStorage.getItem("catback_lastActive");
 
     // 🚫 invalid or missing token
@@ -81,6 +80,7 @@ useEffect(() => {
   return () => clearTimeout(timer);
 }, [routeId, navigate]);
 
+// 🧭 show loading placeholder until verified
 if (!gateReady) {
   return (
     <div
@@ -95,9 +95,6 @@ if (!gateReady) {
     </div>
   );
 }
-
-// block rendering until auth check finishes
-if (!gateReady) return null;
 
   /* ---------- FETCH BUSINESS + EXISTING THEME ---------- */
   useEffect(() => {
