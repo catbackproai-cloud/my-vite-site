@@ -7,13 +7,31 @@ export default function SchedulingDashboard() {
   const { businessId: routeId } = useParams();
   const navigate = useNavigate();
 
+  /* ---------- STATE ---------- */
+  const [activeTab, setActiveTab] = useState("customize");
   const [business, setBusiness] = useState(null);
   const [services, setServices] = useState([]);
+  const [availability, setAvailability] = useState({
+    Monday: { enabled: false, start: "", end: "" },
+    Tuesday: { enabled: false, start: "", end: "" },
+    Wednesday: { enabled: false, start: "", end: "" },
+    Thursday: { enabled: false, start: "", end: "" },
+    Friday: { enabled: false, start: "", end: "" },
+    Saturday: { enabled: false, start: "", end: "" },
+    Sunday: { enabled: false, start: "", end: "" },
+  });
+  const [unavailableDates, setUnavailableDates] = useState([]);
+  const [colorScheme, setColorScheme] = useState({
+    header: "#de8d2b",
+    text: "#000000",
+    background: "#ffffff",
+    accent: "#de8d2b",
+  });
   const [statusMsg, setStatusMsg] = useState("");
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  /* ---------------- AUTH GUARD ---------------- */
+  /* ---------- AUTH GUARD ---------- */
   useEffect(() => {
     const token = localStorage.getItem("catback_token");
     if (!token || token !== routeId) {
@@ -22,7 +40,6 @@ export default function SchedulingDashboard() {
       return;
     }
 
-    // 🕒 Auto logout after 30 minutes of inactivity or on tab close
     const logout = () => {
       localStorage.removeItem("catback_token");
       localStorage.removeItem("catback_lastActive");
@@ -37,7 +54,6 @@ export default function SchedulingDashboard() {
       }
     }, 60000);
 
-    // Track activity
     const updateActivity = () => {
       localStorage.setItem("catback_lastActive", Date.now().toString());
     };
@@ -54,15 +70,13 @@ export default function SchedulingDashboard() {
     };
   }, [routeId, navigate]);
 
-  /* ---------------- FETCH BUSINESS + SCHEDULE ---------------- */
+  /* ---------- FETCH BUSINESS + SCHEDULE ---------- */
   useEffect(() => {
     if (routeId) fetchAllData(routeId);
   }, [routeId]);
 
   const fetchAllData = async (id) => {
     setLoading(true);
-    setStatusMsg("");
-
     try {
       const bizRes = await fetch(
         `https://jacobtf007.app.n8n.cloud/webhook/catbackai_getbusiness?businessId=${id}`
@@ -85,16 +99,11 @@ export default function SchedulingDashboard() {
         setServices(
           schedJson.schedule.map((s) => ({
             name: s.ServiceName || "",
-            duration: s.Duration || "",
             price: s.Price || "",
-            day: s.Day || "",
-            start: s.StartTime || "",
-            end: s.EndTime || "",
+            duration: s.Duration || "",
             description: s.Description || "",
           }))
         );
-      } else {
-        setServices([]);
       }
     } catch (err) {
       setStatusMsg("❌ " + err.message);
@@ -103,26 +112,20 @@ export default function SchedulingDashboard() {
     }
   };
 
-  /* ---------------- SAVE SCHEDULE ---------------- */
-  const saveSchedule = async () => {
-    if (!routeId) return alert("Missing Business ID.");
+  /* ---------- SAVE ALL DATA ---------- */
+  const saveDashboard = async () => {
     setSaving(true);
-    setStatusMsg("Saving schedule...");
+    setStatusMsg("Saving all changes...");
+
+    const payload = {
+      businessId: routeId,
+      services,
+      availability,
+      unavailableDates,
+      colorScheme,
+    };
 
     try {
-      const payload = {
-        businessId: routeId,
-        services: services.map((s) => ({
-          ServiceName: s.name,
-          Duration: s.duration,
-          Price: s.price,
-          Day: s.day,
-          StartTime: s.start,
-          EndTime: s.end,
-          Description: s.description,
-        })),
-      };
-
       const res = await fetch(
         "https://jacobtf007.app.n8n.cloud/webhook/catbackai_updateschedule",
         {
@@ -131,9 +134,8 @@ export default function SchedulingDashboard() {
           body: JSON.stringify(payload),
         }
       );
-
       if (!res.ok) throw new Error(await res.text());
-      setStatusMsg("✅ Schedule saved successfully!");
+      setStatusMsg("✅ Dashboard saved successfully!");
     } catch (err) {
       setStatusMsg("❌ " + err.message);
     } finally {
@@ -141,18 +143,51 @@ export default function SchedulingDashboard() {
     }
   };
 
-  /* ---------------- RENDER ---------------- */
+  /* ---------- UI COMPONENTS ---------- */
+
+  const TabButton = ({ id, label }) => (
+    <button
+      onClick={() => setActiveTab(id)}
+      style={{
+        background: activeTab === id ? "#de8d2b" : "transparent",
+        color: activeTab === id ? "#fff" : "#de8d2b",
+        border: "1px solid #de8d2b",
+        borderRadius: 8,
+        padding: "8px 16px",
+        cursor: "pointer",
+        fontWeight: 600,
+      }}
+    >
+      {label}
+    </button>
+  );
+
+  const handleAddService = () =>
+    setServices([...services, { name: "", price: "", duration: "", description: "" }]);
+
+  const handleColorChange = (field, value) =>
+    setColorScheme((prev) => ({ ...prev, [field]: value }));
+
+  const handleAvailabilityToggle = (day) => {
+    setAvailability((prev) => ({
+      ...prev,
+      [day]: { ...prev[day], enabled: !prev[day].enabled },
+    }));
+  };
+
+  /* ---------- RENDER ---------- */
   return (
     <div
       style={{
         fontFamily: "Inter, system-ui, sans-serif",
-        background: "linear-gradient(180deg, #fff7ef 0%, #f8f8f8 100%)",
+        background: colorScheme.background,
+        color: colorScheme.text,
         minHeight: "100vh",
         paddingBottom: "80px",
       }}
     >
       <Helmet>
-        <title>Scheduling Dashboard | CatBackAI</title>
+        <title>CatBackAI Dashboard | Scheduling</title>
       </Helmet>
 
       <header
@@ -161,35 +196,39 @@ export default function SchedulingDashboard() {
           justifyContent: "space-between",
           alignItems: "center",
           padding: "20px 40px",
-          background: "#fff",
-          borderBottom: "1px solid #eee",
+          background: colorScheme.header,
+          color: "#fff",
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <img src={logo} alt="CatBackAI Logo" style={{ height: 40 }} />
-          <h1 style={{ color: "#de8d2b", fontWeight: 900, fontSize: 20 }}>
-            Scheduling Dashboard
-          </h1>
+          <h1 style={{ fontWeight: 800, fontSize: 20 }}>Dashboard</h1>
         </div>
-        <button
-          onClick={() => {
-            localStorage.clear();
-            navigate("/dashboard");
-          }}
-          style={{
-            background: "transparent",
-            border: "none",
-            color: "#de8d2b",
-            fontWeight: 600,
-            cursor: "pointer",
-          }}
-        >
-          Log Out
-        </button>
+
+        <div style={{ display: "flex", gap: 10 }}>
+          <TabButton id="customize" label="Customize" />
+          <TabButton id="calendar" label="Calendar" />
+          <TabButton id="account" label="Account" />
+          <button
+            onClick={() => {
+              localStorage.clear();
+              navigate("/dashboard");
+            }}
+            style={{
+              background: "transparent",
+              border: "1px solid #fff",
+              color: "#fff",
+              borderRadius: 8,
+              padding: "8px 16px",
+              cursor: "pointer",
+            }}
+          >
+            Log Out
+          </button>
+        </div>
       </header>
 
-      <div style={{ padding: 40, maxWidth: 950, margin: "0 auto" }}>
-        {loading && <p>Loading data…</p>}
+      <div style={{ padding: 40, maxWidth: 1000, margin: "0 auto" }}>
         {statusMsg && (
           <p
             style={{
@@ -197,56 +236,43 @@ export default function SchedulingDashboard() {
               border: "1px solid #f4c89a",
               padding: "10px",
               borderRadius: "8px",
-              marginTop: "10px",
+              marginBottom: 20,
             }}
           >
             {statusMsg}
           </p>
         )}
 
-        {business && (
-          <div
-            style={{
-              background: "#fff4eb",
-              padding: 20,
-              borderRadius: 12,
-              marginBottom: 30,
-            }}
-          >
-            <h2>{business.BusinessName}</h2>
-            <img
-              src={business.LogoFile || business.LogoLink || logo}
-              alt="Logo"
-              style={{ width: 60, borderRadius: 8 }}
-            />
-            <p>
-              <strong>ID:</strong> {business.BusinessId}
-            </p>
-            <p>
-              <strong>Public Booking:</strong>{" "}
-              <a
-                href={`/book/${business.BusinessId}`}
-                style={{ color: "#de8d2b" }}
-              >
-                catbackai.com/book/{business.BusinessId}
-              </a>
-            </p>
-          </div>
-        )}
-
-        {business && (
+        {activeTab === "customize" && (
           <>
-            <h3 style={{ color: "#de8d2b" }}>Your Services & Hours</h3>
+            <h2 style={{ color: "#de8d2b" }}>Business Customization</h2>
 
+            <div style={{ marginBottom: 30 }}>
+              <h3>Color Scheme</h3>
+              {["header", "text", "background", "accent"].map((key) => (
+                <div key={key} style={{ marginBottom: 10 }}>
+                  <label style={{ width: 140, display: "inline-block" }}>
+                    {key.charAt(0).toUpperCase() + key.slice(1)}:
+                  </label>
+                  <input
+                    type="color"
+                    value={colorScheme[key]}
+                    onChange={(e) => handleColorChange(key, e.target.value)}
+                  />
+                </div>
+              ))}
+            </div>
+
+            <h3>Services</h3>
             {services.map((s, i) => (
               <div
                 key={i}
                 style={{
                   background: "#fff",
+                  border: "1px solid #ddd",
                   borderRadius: 10,
                   padding: 16,
-                  marginBottom: 12,
-                  border: "1px solid #ddd",
+                  marginBottom: 10,
                 }}
               >
                 <input
@@ -257,34 +283,136 @@ export default function SchedulingDashboard() {
                     updated[i].name = e.target.value;
                     setServices(updated);
                   }}
-                  style={{
-                    width: "100%",
-                    marginBottom: 8,
-                    padding: "8px",
-                    borderRadius: 6,
-                    border: "1px solid #ccc",
-                  }}
+                  style={{ width: "100%", marginBottom: 8, padding: 6 }}
                 />
+                <div style={{ display: "flex", gap: 10 }}>
+                  <input
+                    placeholder="Price"
+                    value={s.price}
+                    onChange={(e) => {
+                      const updated = [...services];
+                      updated[i].price = e.target.value;
+                      setServices(updated);
+                    }}
+                    style={{ flex: 1, padding: 6 }}
+                  />
+                  <input
+                    placeholder="Duration (mins)"
+                    value={s.duration}
+                    onChange={(e) => {
+                      const updated = [...services];
+                      updated[i].duration = e.target.value;
+                      setServices(updated);
+                    }}
+                    style={{ flex: 1, padding: 6 }}
+                  />
+                </div>
+              </div>
+            ))}
+            <button
+              onClick={handleAddService}
+              style={{
+                background: "#de8d2b",
+                color: "#fff",
+                border: "none",
+                padding: "8px 16px",
+                borderRadius: 8,
+                cursor: "pointer",
+              }}
+            >
+              + Add Service
+            </button>
+
+            <h3 style={{ marginTop: 30 }}>Availability</h3>
+            {Object.entries(availability).map(([day, data]) => (
+              <div key={day} style={{ marginBottom: 10 }}>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={data.enabled}
+                    onChange={() => handleAvailabilityToggle(day)}
+                  />{" "}
+                  {day}
+                </label>
+                {data.enabled && (
+                  <>
+                    <input
+                      type="time"
+                      value={data.start}
+                      onChange={(e) =>
+                        setAvailability((prev) => ({
+                          ...prev,
+                          [day]: { ...data, start: e.target.value },
+                        }))
+                      }
+                      style={{ marginLeft: 10 }}
+                    />
+                    <input
+                      type="time"
+                      value={data.end}
+                      onChange={(e) =>
+                        setAvailability((prev) => ({
+                          ...prev,
+                          [day]: { ...data, end: e.target.value },
+                        }))
+                      }
+                      style={{ marginLeft: 10 }}
+                    />
+                  </>
+                )}
               </div>
             ))}
 
+            <div style={{ marginTop: 20 }}>
+              <h4>Unavailable Dates</h4>
+              <input
+                type="date"
+                onChange={(e) =>
+                  setUnavailableDates([...unavailableDates, e.target.value])
+                }
+              />
+              <ul>
+                {unavailableDates.map((d, i) => (
+                  <li key={i}>{d}</li>
+                ))}
+              </ul>
+            </div>
+
             <button
-              onClick={saveSchedule}
+              onClick={saveDashboard}
               disabled={saving}
               style={{
+                marginTop: 30,
                 background: "#4caf50",
                 color: "#fff",
-                border: "none",
                 padding: "10px 16px",
-                borderRadius: "8px",
+                borderRadius: 8,
+                border: "none",
                 cursor: "pointer",
-                marginTop: 10,
-                opacity: saving ? 0.7 : 1,
               }}
             >
-              {saving ? "Saving..." : "Save Schedule"}
+              {saving ? "Saving..." : "Save All Changes"}
             </button>
           </>
+        )}
+
+        {activeTab === "calendar" && (
+          <div>
+            <h2 style={{ color: "#de8d2b" }}>Calendar (Coming Soon)</h2>
+            <p>
+              This tab will show booked appointments, similar to Calendly’s
+              timeline view.
+            </p>
+          </div>
+        )}
+
+        {activeTab === "account" && (
+          <div>
+            <h2 style={{ color: "#de8d2b" }}>Account Settings</h2>
+            <p>Business ID: {business?.BusinessId}</p>
+            <p>Email: {business?.BusinessEmail}</p>
+            <p>Access PIN: Stored securely</p>
+          </div>
         )}
       </div>
     </div>
