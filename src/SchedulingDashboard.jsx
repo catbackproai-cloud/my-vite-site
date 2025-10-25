@@ -42,38 +42,37 @@ export default function SchedulingDashboard() {
 
 /* ---------- AUTH GUARD ---------- */
 useEffect(() => {
-  if (!routeId) return; // wait until route param exists
+  if (!routeId) return; // wait for router
 
   const token = sessionStorage.getItem("catback_token");
   const lastActive = sessionStorage.getItem("catback_lastActive");
+  const now = Date.now();
 
-  // handle missing token or mismatch silently, no alerts/popups
+  // wrong/missing token → silent redirect
   if (!token || token !== routeId) {
     sessionStorage.clear();
-    // use a short async delay so navigation happens after render is ready
-    setTimeout(() => navigate("/dashboard", { replace: true }), 0);
+    navigate("/dashboard", { replace: true });
     return;
   }
 
-  // expire after 1 hour (no popup)
-  if (lastActive && Date.now() - parseInt(lastActive, 10) > 3600000) {
+  // 1-hour idle timeout (adjust if you want)
+  if (lastActive && now - parseInt(lastActive, 10) > 3600000) {
     sessionStorage.clear();
-    setTimeout(() => navigate("/dashboard", { replace: true }), 0);
+    navigate("/dashboard", { replace: true });
     return;
   }
 
-  // refresh timer on any activity
-  const updateActivity = () =>
-    sessionStorage.setItem("catback_lastActive", Date.now().toString());
-
-  window.addEventListener("mousemove", updateActivity);
-  window.addEventListener("keydown", updateActivity);
+  // refresh activity timestamp while tab is used
+  const bump = () => sessionStorage.setItem("catback_lastActive", Date.now().toString());
+  window.addEventListener("mousemove", bump);
+  window.addEventListener("keydown", bump);
 
   return () => {
-    window.removeEventListener("mousemove", updateActivity);
-    window.removeEventListener("keydown", updateActivity);
+    window.removeEventListener("mousemove", bump);
+    window.removeEventListener("keydown", bump);
   };
 }, [routeId, navigate]);
+
 
   /* ---------- FETCH BUSINESS + EXISTING THEME ---------- */
   useEffect(() => {
@@ -292,7 +291,12 @@ useEffect(() => {
       </header>
 
       {/* Body */}
-      if (!sessionStorage.getItem("catback_token")) 
+      // 👇 after state/hooks and BEFORE the big `return (...)`
+const token = sessionStorage.getItem("catback_token");
+if (!routeId) return null;                    // wait for router param
+if (!token) {                                 // no session → send to login
+  sessionStorage.clear()
+}
       <main style={{ maxWidth: 1050, margin: "0 auto", padding: "24px 16px", width: "100%" }}>
         {statusMsg && (
           <div

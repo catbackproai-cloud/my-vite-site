@@ -12,12 +12,23 @@
     <!-- ✅ Let Vite handle this automatically -->
     <script type="module" src="/src/main.jsx"></script>
   </body>
-   <script
-  src="https://chat.heroai.pro/heroai-embed.js?v=5"
-  data-heroai-ns="cat_back"
-  data-bot-origin="https://bot.heroai.pro"
-  data-show-launcher="true"
-  data-force-open="true"
-  data-delay-ms="0"
-></script>
+<!-- HeroAI embed -->
+<!-- HeroAI embed: load on public pages only (NOT /dashboard/*) -->
+<script>
+  (function () {
+    try {
+      var p = location.pathname || "/";
+      if (!p.startsWith("/dashboard")) {
+        var s = document.createElement("script");
+        s.src = "https://chat.heroai.pro/heroai-embed.js";
+        s.dataset.heroaiNs = "cat_back";
+        s.dataset.head = "left";
+        s.dataset.autoOpen = "0";
+        s.dataset.autostartMs = "6000";
+        s.dataset.launcher = "off";
+        document.head.appendChild(s);
+      }
+    } catch (e) { /* no-op */ }
+  })();
+</script>
 </html>
