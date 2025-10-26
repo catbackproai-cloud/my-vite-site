@@ -337,57 +337,86 @@ export default function SchedulingDashboard() {
             </section>
 
             {/* Live Preview */}
-            <section style={{ marginBottom: 26 }}>
-              <h2 style={{ color: "#de8d2b" }}>Live Booking Form Preview</h2>
-              <div
-                style={{
-                  border: "1px solid #eee",
-                  borderRadius: 12,
-                  overflow: "hidden",
-                  background: colorScheme.background,
-                  color: colorScheme.text,
-                  transition: "all 0.3s ease",
-                }}
-              >
-                <div
-                  style={{
-                    background: colorScheme.header,
-                    color: "#fff",
-                    padding: "16px 20px",
-                    fontWeight: "bold",
-                    fontSize: 18,
-                  }}
-                >
-                  Booking Form Example
-                </div>
-                <div style={{ padding: 16, display: "grid", gap: 10 }}>
-                  <input type="text" placeholder="Your Name" style={fieldStyle} />
-                  <input type="text" placeholder="Phone Number" style={fieldStyle} />
-                  <select style={fieldStyle}>
-                    <option>Select a Service</option>
-                    {services.map((s, i) => (
-                      <option key={i}>
-                        {s.name} — ${s.price} ({s.duration} min)
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    style={{
-                      background: colorScheme.accent,
-                      border: "none",
-                      borderRadius: 8,
-                      padding: "10px 14px",
-                      color: "#fff",
-                      cursor: "pointer",
-                      fontWeight: "bold",
-                    }}
-                  >
-                    Book Now
-                  </button>
-                </div>
-              </div>
-            </section>
+{/* Live Preview */}
+<section style={{ marginBottom: 26 }}>
+  <h2 style={{ color: "#de8d2b" }}>Live Booking Form Preview</h2>
+  <div
+    style={{
+      border: "1px solid #eee",
+      borderRadius: 12,
+      overflow: "hidden",
+      background: colorScheme.background,
+      color: colorScheme.text,
+      transition: "all 0.3s ease",
+    }}
+  >
+    {/* Header */}
+    <div
+      style={{
+        background: colorScheme.header,
+        color: "#fff",
+        padding: "16px 20px",
+        fontWeight: "bold",
+        fontSize: 18,
+      }}
+    >
+      Booking Form Example
+    </div>
 
+    {/* Form Body */}
+    <div style={{ padding: 16, display: "grid", gap: 10 }}>
+      <input
+        type="text"
+        placeholder="Your Name"
+        style={{
+          ...fieldStyle,
+          color: colorScheme.text,
+          background: "#fff",
+          border: "1px solid #ccc",
+        }}
+      />
+      <input
+        type="text"
+        placeholder="Phone Number"
+        style={{
+          ...fieldStyle,
+          color: colorScheme.text,
+          background: "#fff",
+          border: "1px solid #ccc",
+        }}
+      />
+      <select
+        style={{
+          ...fieldStyle,
+          color: colorScheme.text,
+          background: "#fff",
+          border: "1px solid #ccc",
+        }}
+      >
+        <option style={{ color: colorScheme.text }}>Select a Service</option>
+        {services.map((s, i) => (
+          <option key={i} style={{ color: colorScheme.text }}>
+            {s.name} — ${s.price} ({s.duration} min)
+          </option>
+        ))}
+      </select>
+      <button
+        style={{
+          background: colorScheme.accent,
+          border: "none",
+          borderRadius: 8,
+          padding: "10px 14px",
+          color: "#fff",
+          cursor: "pointer",
+          fontWeight: "bold",
+          transition: "background 0.3s ease",
+        }}
+      >
+        Book Now
+      </button>
+    </div>
+  </div>
+</section>
             {/* Services */}
             <section style={{ marginBottom: 26 }}>
               <h2 style={{ color: "#de8d2b" }}>Services</h2>
