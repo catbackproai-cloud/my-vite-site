@@ -4,11 +4,178 @@ import logo from "./assets/Y-Logo.png"; // ✅ exact file name
 import { useNavigate } from "react-router-dom";
 
 function App() {
+  // 🔹 openChatbot: prefer real embed if loaded; fallback to your alert
   const openChatbot = (topic) => {
+    try {
+      // If our working widget is mounted, show it
+      const wrap = document.querySelector(".heroai-iframe-wrap");
+      if (wrap) {
+        wrap.style.display = "block";
+        const iframe = wrap.querySelector("iframe");
+        try { iframe?.contentWindow?.postMessage({ type: "HERO_CHAT_OPEN" }, "*"); } catch {}
+        return;
+      }
+    } catch {}
+    // Fallback — preserve your existing behavior
     alert(`Chatbot opened for: ${topic}`);
-  }
+  };
+
   const navigate = useNavigate();
-;
+
+  /* ---------------- Old working chatbot logic (mounted in App.jsx) ---------------- */
+  useEffect(() => {
+    const NS = "cat_back"; // ← client namespace
+    const I = "https://bot.heroai.pro/?ns=" + encodeURIComponent(NS) + "&hideLauncher=1";
+
+    // Avoid duplicates across hot-reloads / SPA re-mounts
+    document.querySelectorAll(".heroai-iframe-wrap, .heroai-launcher").forEach((n) => n.remove());
+
+    // CSS (same as old working version)
+    const st = document.createElement("style");
+    st.textContent =
+      ".heroai-launcher{position:fixed;right:20px;bottom:20px;min-width:56px;height:56px;padding:0 18px;border:0;border-radius:999px;font-weight:700;box-shadow:0 12px 28px rgba(13,27,62,.15);cursor:pointer;z-index:2147483646;display:inline-flex;align-items:center;justify-content:center}" +
+      ".heroai-iframe-wrap{position:fixed;right:20px;bottom:90px;width:380px;height:560px;display:none;border-radius:16px;overflow:hidden;box-shadow:0 18px 60px rgba(0,0,0,.22);z-index:2147483647;background:#fff}" +
+      "@media(max-width:480px){.heroai-iframe-wrap{left:0;right:0;bottom:0;width:100vw;height:70vh;border-radius:16px 16px 0 0}}" +
+      ".heroai-iframe{width:100%;height:100%;border:0}";
+    document.head.appendChild(st);
+
+    // DOM (same as old working version)
+    const wrap = document.createElement("div");
+    wrap.className = "heroai-iframe-wrap";
+    const iframe = document.createElement("iframe");
+    iframe.className = "heroai-iframe";
+    iframe.src = I;
+    iframe.title = "Hero AI Assistant";
+    iframe.allow = "clipboard-read; clipboard-write";
+    wrap.appendChild(iframe);
+    document.body.appendChild(wrap);
+
+    const btn = document.createElement("button");
+    btn.className = "heroai-launcher";
+    btn.textContent = "Chat";
+    btn.style.background = "#0a4fd3";
+    btn.style.color = "#fff";
+    document.body.appendChild(btn);
+
+    // State + helpers (same as old)
+    let open = false;
+    const setOpen = (v) => {
+      open = v;
+      wrap.style.display = v ? "block" : "none";
+      if (v) {
+        try { iframe.contentWindow.postMessage({ type: "HERO_CHAT_OPEN" }, "*"); } catch {}
+      }
+    };
+    const toggle = () => setOpen(!open);
+
+    btn.addEventListener("click", toggle);
+
+    // Open-on-ready handshake (same as old)
+    const onMsg = (e) => {
+      if (e.source !== iframe.contentWindow) return;
+      if (e.data?.type === "HERO_READY" && open) {
+        try { iframe.contentWindow.postMessage({ type: "HERO_CHAT_OPEN" }, "*"); } catch {}
+      }
+    };
+    window.addEventListener("message", onMsg);
+
+    // --- Auto-open logic (unchanged from old working code) ---
+    const qs = new URLSearchParams(location.search);
+    const urlAuto = (qs.get("auto_open") || "").toLowerCase(); // "off" to force disable
+    const urlOnce = (qs.get("once") || "").toLowerCase();      // "session" | "day"
+    const urlDelay = Number(qs.get("autostart_ms")) || 0;
+
+    const sessionKey = `hero_auto_opened_${NS}`;
+    const dayKey = `hero_last_open_${NS}`;
+
+    function shouldSkipOnce(mode) {
+      const now = Date.now();
+      if (mode === "session") return sessionStorage.getItem(sessionKey) === "1";
+      if (mode === "day") {
+        const last = parseInt(localStorage.getItem(dayKey) || "0", 10);
+        return now - last < 86400000; // 24h
+      }
+      return false;
+    }
+    function recordOnce(mode) {
+      const now = Date.now();
+      if (mode === "session") sessionStorage.setItem(sessionKey, "1");
+      if (mode === "day") localStorage.setItem(dayKey, String(now));
+    }
+
+    function scheduleAutoOpen({ enabled, delayMs, onceMode }) {
+      if (!enabled) return;
+      if (shouldSkipOnce(onceMode)) return;
+
+      const start = () => {
+        if (open) return;
+        setTimeout(() => {
+          if (open) return;
+          setOpen(true);
+          recordOnce(onceMode);
+        }, delayMs);
+      };
+
+      if (document.visibilityState === "visible") start();
+      else {
+        const onVis = () => {
+          if (document.visibilityState === "visible") {
+            document.removeEventListener("visibilitychange", onVis);
+            start();
+          }
+        };
+        document.addEventListener("visibilitychange", onVis);
+      }
+    }
+
+    // Pull label/colors + autostart from ns-config (same as old)
+    fetch(
+      "https://n8n.srv845865.hstgr.cloud/webhook/ns-config?ns=" +
+        encodeURIComponent(NS) +
+        "&_=" +
+        Date.now(),
+      { headers: { "cache-control": "no-cache" }, credentials: "omit" }
+    )
+      .then((r) => r.json())
+      .then((cfg) => {
+        const ui = cfg?.ui || {};
+        const c = cfg?.colors || {};
+
+        // Launcher label/colors
+        btn.textContent = (ui.launcher_text || "Chat").trim();
+        if (c.launcher_bg) btn.style.background = String(c.launcher_bg).trim();
+        if (c.launcher_text) btn.style.color = String(c.launcher_text).trim();
+
+        // Auto-open settings
+        const cfgEnabled = ui.autostart !== false; // default true
+        const cfgDelay = Number(ui.autostart_ms || 3000);
+        const onceMode = urlOnce || "session"; // support ?once=day
+
+        const enabled = urlAuto === "off" ? false : cfgEnabled;
+        const delayMs = urlDelay > 0 ? urlDelay : cfgDelay;
+
+        scheduleAutoOpen({ enabled, delayMs, onceMode });
+      })
+      .catch(() => {
+        // Fallback: safe defaults if ns-config fails
+        scheduleAutoOpen({
+          enabled: urlAuto !== "off",
+          delayMs: urlDelay || 3000,
+          onceMode: urlOnce || "session",
+        });
+      });
+
+    // Cleanup (same as old)
+    return () => {
+      try {
+        window.removeEventListener("message", onMsg);
+        btn.remove();
+        wrap.remove();
+        st.remove();
+      } catch {}
+    };
+  }, []);
+  /* ---------------- End old chatbot logic ---------------- */
 
   /* ---------- signup form state ---------- */
   const [formData, setFormData] = useState({
@@ -73,7 +240,6 @@ function App() {
     "BusinessName",
     "BusinessEmail",
     "BusinessPhoneNumber",
-    
     "Consent",
   ];
   const completedCount = requiredFields.filter((f) =>
@@ -301,10 +467,10 @@ function App() {
 
         `}</style>
         {/* ✅ SEO/OG basics */}
-        <title>CatBackAI — Bookings, Reminders & Follow‑ups</title>
+        <title>CatBackAI — Bookings, Reminders & Follow-ups</title>
         <meta
           name="description"
-          content="Automate bookings, confirmations, reminders, and follow‑ups for service businesses with CatBackAI."
+          content="Automate bookings, confirmations, reminders, and follow-ups for service businesses with CatBackAI."
         />
         <meta property="og:title" content="CatBackAI" />
         <meta
@@ -312,7 +478,9 @@ function App() {
           content="Smart bookings and reminders for service businesses."
         />
         <meta property="og:image" content={logo} />
-        <script type="application/ld+json">{JSON.stringify({
+        <script
+          type="application/ld+json"
+        >{JSON.stringify({
           "@context": "https://schema.org",
           "@type": "SoftwareApplication",
           name: "CatBackAI",
@@ -354,19 +522,19 @@ function App() {
 
         <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
           <button
-  onClick={() => navigate("/dashboard")}
-  style={{
-    background: "transparent",
-    border: "none",
-    color: "#000",
-    fontWeight: 600,
-    fontSize: 16,
-    cursor: "pointer",
-    textDecoration: "underline",
-  }}
->
-  Log In
-</button>
+            onClick={() => navigate("/dashboard")}
+            style={{
+              background: "transparent",
+              border: "none",
+              color: "#000",
+              fontWeight: 600,
+              fontSize: 16,
+              cursor: "pointer",
+              textDecoration: "underline",
+            }}
+          >
+            Log In
+          </button>
         </div>
       </header>
 
@@ -529,34 +697,17 @@ function App() {
               />
 
               <label style={label}>Logo URL (optional)</label>
-<input
-  type="url"
-  name="LogoFile"
-  value={formData.LogoFile}
-  onChange={handleChange}
-  placeholder="https://example.com/logo.png"
-  style={input}
-/>
-<p style={{ ...muted, fontSize: 12 }}>
-  Paste a direct image link (from your site, Imgur, Cloudinary, etc.)
-</p>
-
-
-
-              
-
-                
-                  
-                
-                    
-                   
-
-               
-
-
-
-             
-            
+              <input
+                type="url"
+                name="LogoFile"
+                value={formData.LogoFile}
+                onChange={handleChange}
+                placeholder="https://example.com/logo.png"
+                style={input}
+              />
+              <p style={{ ...muted, fontSize: 12 }}>
+                Paste a direct image link (from your site, Imgur, Cloudinary, etc.)
+              </p>
 
               <label style={label}>Requests / Notes</label>
               <textarea
