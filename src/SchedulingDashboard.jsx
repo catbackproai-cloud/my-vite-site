@@ -786,50 +786,6 @@ export default function SchedulingDashboard() {
               </div>
             </Card>
 
-            {/* Unavailable Dates (all-day) */}
-            <Card title="Unavailable Dates (one-off)" accent={colorScheme.accent}>
-              <div style={{ display: "grid", gap: 10 }}>
-                <div style={{ display: "flex", gap: 10 }}>
-                  <input type="date" onChange={(e) => addBlackout(e.target.value)} style={fieldStyle} />
-                </div>
-                {!!unavailableDates.length && (
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                    {unavailableDates.map((d, i) => (
-                      <span
-                        key={d + i}
-                        style={{
-                          background: "#fff",
-                          border: "1px solid #ddd",
-                          borderRadius: 999,
-                          padding: "6px 10px",
-                          fontSize: 12,
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: 8,
-                        }}
-                      >
-                        {d}
-                        <button
-                          type="button"
-                          onClick={() => removeBlackout(i)}
-                          style={{
-                            border: "none",
-                            background: "transparent",
-                            color: "#c00",
-                            cursor: "pointer",
-                            fontWeight: 700,
-                          }}
-                          aria-label={`Remove ${d}`}
-                        >
-                          ×
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </Card>
-
             {/* Add Unavailability (partial-day blocks) */}
             <Card title="Add Unavailability (specific times)" accent={colorScheme.accent}>
               <AddUnavailabilityForm onAdd={addUnavailability} accent={colorScheme.accent} />
