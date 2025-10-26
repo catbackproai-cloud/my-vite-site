@@ -13,6 +13,9 @@ function App() {
         wrap.style.display = "block";
         const iframe = wrap.querySelector("iframe");
         try { iframe?.contentWindow?.postMessage({ type: "HERO_CHAT_OPEN" }, "*"); } catch {}
+        // Also hide launcher when we programmatically open
+        const btn = document.querySelector(".heroai-launcher");
+        if (btn) btn.style.display = "none";
         return;
       }
     } catch {}
@@ -30,12 +33,18 @@ function App() {
     // Avoid duplicates across hot-reloads / SPA re-mounts
     document.querySelectorAll(".heroai-iframe-wrap, .heroai-launcher").forEach((n) => n.remove());
 
-    // CSS (same as old working version)
+    // Kill any legacy/default embed so it can't leave a white panel
+    const stKillDefault = document.createElement("style");
+    stKillDefault.textContent = `.heroai-wrap, .heroai-wrap * { display:none !important; visibility:hidden !important; }`;
+    document.head.appendChild(stKillDefault);
+
+    // CSS (same as old working version, with fullscreen mobile + white bg)
     const st = document.createElement("style");
     st.textContent =
       ".heroai-launcher{position:fixed;right:20px;bottom:20px;min-width:56px;height:56px;padding:0 18px;border:0;border-radius:999px;font-weight:700;box-shadow:0 12px 28px rgba(13,27,62,.15);cursor:pointer;z-index:2147483646;display:inline-flex;align-items:center;justify-content:center}" +
       ".heroai-iframe-wrap{position:fixed;right:20px;bottom:90px;width:380px;height:560px;display:none;border-radius:16px;overflow:hidden;box-shadow:0 18px 60px rgba(0,0,0,.22);z-index:2147483647;background:#fff}" +
-      "@media(max-width:480px){.heroai-iframe-wrap{left:0;right:0;bottom:0;width:100vw;height:70vh;border-radius:16px 16px 0 0}}" +
+      // ⬇️ Full-screen on mobile
+      "@media(max-width:768px){.heroai-iframe-wrap{left:0;right:0;top:0;bottom:0;width:100vw;height:100vh;border-radius:0;padding-bottom:env(safe-area-inset-bottom)}}" +
       ".heroai-iframe{width:100%;height:100%;border:0}";
     document.head.appendChild(st);
 
@@ -57,25 +66,52 @@ function App() {
     btn.style.color = "#fff";
     document.body.appendChild(btn);
 
-    // State + helpers (same as old)
+    // State + helpers (same as old, with launcher show/hide + ✕ close support)
     let open = false;
+
+    const showLauncher = (show) => {
+      btn.style.display = show ? "inline-flex" : "none";
+    };
+
     const setOpen = (v) => {
       open = v;
       wrap.style.display = v ? "block" : "none";
-      if (v) {
-        try { iframe.contentWindow.postMessage({ type: "HERO_CHAT_OPEN" }, "*"); } catch {}
-      }
+      showLauncher(!v); // hide launcher while chat is open
+
+      // Also hide any stray default-embed iframes
+      try {
+        const stray = document.querySelectorAll('iframe[src*="bot.heroai.pro"]');
+        stray.forEach((ifr) => {
+          if (ifr === iframe) return;
+          ifr.style.display = v ? "block" : "none";
+          if (ifr.parentElement) ifr.parentElement.style.display = v ? "block" : "none";
+        });
+      } catch {}
+
+      try {
+        iframe.contentWindow?.postMessage({ type: v ? "HERO_CHAT_OPEN" : "HERO_CHAT_CLOSE" }, "*");
+      } catch {}
     };
-    const toggle = () => setOpen(!open);
 
-    btn.addEventListener("click", toggle);
+    // Launcher now only OPENS (closing is handled by ✕ inside the chat)
+    btn.addEventListener("click", () => setOpen(true));
 
-    // Open-on-ready handshake (same as old)
+    // Open-on-ready handshake + listen for bot close to remove white panel
     const onMsg = (e) => {
       if (e.source !== iframe.contentWindow) return;
-      if (e.data?.type === "HERO_READY" && open) {
+      const t = e?.data?.type;
+
+      if (t === "HERO_READY" && open) {
         try { iframe.contentWindow.postMessage({ type: "HERO_CHAT_OPEN" }, "*"); } catch {}
       }
+
+      // When user taps the ✕ inside the bot
+      if (t === "HERO_CHAT_CLOSED") {
+        setOpen(false); // hide our wrapper and re-show launcher
+      }
+
+      // Defensive: if bot broadcasts opened, hide launcher
+      if (t === "HERO_OPENED") showLauncher(false);
     };
     window.addEventListener("message", onMsg);
 
@@ -165,13 +201,14 @@ function App() {
         });
       });
 
-    // Cleanup (same as old)
+    // Cleanup (same as old + remove kill style)
     return () => {
       try {
         window.removeEventListener("message", onMsg);
         btn.remove();
         wrap.remove();
         st.remove();
+        stKillDefault.remove();
       } catch {}
     };
   }, []);
