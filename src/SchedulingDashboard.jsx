@@ -3,19 +3,6 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import logo from "./assets/Y-Logo.png";
 
-/**
- * Professional Scheduling Dashboard
- * - Live Preview reflects header/text/background/accent colors (text color fixed)
- * - Services: price required (number), duration dropdown (Calendly-style)
- * - Availability: Deputy-style with multiple ranges per day
- * - Unavailable dates: simple picker with chips
- * - Copy public link button
- * - Sticky save bar
- *
- * Compatible with your existing n8n endpoints. Gracefully upgrades older availability
- * { start, end } shape into the new { ranges: [{start,end}, ...] } shape.
- */
-
 const DAY_ORDER = [
   "Monday",
   "Tuesday",
@@ -48,16 +35,19 @@ export default function SchedulingDashboard() {
   // services: name, price (required), duration(min dropdown), description
   const [services, setServices] = useState([]);
 
-  // availability: per day -> { enabled, ranges: [{start,end}, ...] }
+  // availability: per day -> { enabled, start, end } (single range)
   const [availability, setAvailability] = useState(
     DAY_ORDER.reduce((acc, d) => {
-      acc[d] = { enabled: false, ranges: [] };
+      acc[d] = { enabled: false, start: "09:00", end: "17:00" };
       return acc;
     }, {})
   );
 
   // blackout dates (array of YYYY-MM-DD)
   const [unavailableDates, setUnavailableDates] = useState([]);
+
+  // specific time blocks a.k.a. partial-day unavailability
+  const [unavailability, setUnavailability] = useState([]); // [{ date, start, end, allDay }]
 
   /* ---------- AUTH GUARD ---------- */
   useEffect(() => {
@@ -91,6 +81,7 @@ export default function SchedulingDashboard() {
   /* ---------- FETCH BUSINESS + EXISTING THEME ---------- */
   useEffect(() => {
     if (routeId) fetchAllData(routeId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [routeId]);
 
   const fetchAllData = async (id) => {
@@ -110,7 +101,7 @@ export default function SchedulingDashboard() {
           const parsed = JSON.parse(bizData.business.ColorScheme);
           if (parsed && typeof parsed === "object") setColorScheme((p) => ({ ...p, ...parsed }));
         } catch {
-          // ignore invalid json
+          /* ignore invalid json */
         }
       }
 
@@ -138,34 +129,56 @@ export default function SchedulingDashboard() {
           );
         }
 
-        // availability (upgrade old shape -> new ranges)
+        // availability
         if (schedJson.availability && typeof schedJson.availability === "object") {
-          const upgraded = { ...availability };
+          // Gracefully upgrade older shape {enabled,start,end} and also accept old ranges
+          const next = { ...availability };
           for (const day of DAY_ORDER) {
             const raw = schedJson.availability[day];
             if (!raw) continue;
-            if (Array.isArray(raw?.ranges)) {
-              upgraded[day] = {
-                enabled: !!raw.enabled && raw.ranges.length > 0,
-                ranges: raw.ranges.map((r) => ({ start: r.start || "", end: r.end || "" })),
+
+            // If it already matches our single-range shape
+            if (typeof raw?.start === "string" || typeof raw?.end === "string") {
+              next[day] = {
+                enabled: !!raw.enabled && !!(raw.start && raw.end),
+                start: raw.start || "09:00",
+                end: raw.end || "17:00",
               };
-            } else {
-              // old shape: { enabled, start, end }
-              const start = raw.start || "";
-              const end = raw.end || "";
-              const has = !!(start && end);
-              upgraded[day] = {
-                enabled: !!raw.enabled && has,
-                ranges: has ? [{ start, end }] : [],
-              };
+              continue;
             }
+
+            // If it's an older "ranges" array, adopt the FIRST range
+            if (Array.isArray(raw?.ranges) && raw.ranges.length > 0) {
+              const first = raw.ranges[0] || {};
+              next[day] = {
+                enabled: !!raw.enabled && !!(first.start && first.end),
+                start: first.start || "09:00",
+                end: first.end || "17:00",
+              };
+              continue;
+            }
+
+            // fallback
+            next[day] = { enabled: false, start: "09:00", end: "17:00" };
           }
-          setAvailability(upgraded);
+          setAvailability(next);
         }
 
         // blackout dates
         if (Array.isArray(schedJson.unavailableDates)) {
           setUnavailableDates(schedJson.unavailableDates);
+        }
+
+        // partial-day unavailability (new)
+        if (Array.isArray(schedJson.unavailability)) {
+          setUnavailability(
+            schedJson.unavailability.map((u) => ({
+              date: u.date || "",
+              start: u.start || "",
+              end: u.end || "",
+              allDay: !!u.allDay,
+            }))
+          );
         }
       }
     } catch (err) {
@@ -204,6 +217,7 @@ export default function SchedulingDashboard() {
       })),
       availability,
       unavailableDates,
+      unavailability, // NEW
     };
 
     try {
@@ -245,54 +259,42 @@ export default function SchedulingDashboard() {
 
   const removeService = (i) => setServices((arr) => arr.filter((_, idx) => idx !== i));
 
-  // availability helpers
   const toggleDay = (day) =>
     setAvailability((prev) => {
-      const next = { ...prev };
       const enabled = !prev[day].enabled;
-      // if enabling with no ranges, seed a default 09:00-17:00
-      const seeded =
-        enabled && prev[day].ranges.length === 0
-          ? [{ start: "09:00", end: "17:00" }]
-          : prev[day].ranges;
-      next[day] = { ...prev[day], enabled, ranges: seeded };
-      return next;
-    });
-
-  const addRange = (day) =>
-    setAvailability((prev) => {
-      const next = { ...prev };
-      next[day] = {
-        ...prev[day],
-        enabled: true,
-        ranges: [...prev[day].ranges, { start: "09:00", end: "17:00" }],
+      return {
+        ...prev,
+        [day]: {
+          ...prev[day],
+          enabled,
+          // Keep last start/end; if enabling first time, keep defaults already set
+        },
       };
-      return next;
     });
 
-  const updateRange = (day, idx, key, val) =>
-    setAvailability((prev) => {
-      const next = { ...prev };
-      const ranges = [...prev[day].ranges];
-      ranges[idx] = { ...ranges[idx], [key]: val };
-      next[day] = { ...prev[day], ranges };
-      return next;
-    });
-
-  const removeRange = (day, idx) =>
-    setAvailability((prev) => {
-      const next = { ...prev };
-      const ranges = prev[day].ranges.filter((_, i) => i !== idx);
-      next[day] = { ...prev[day], ranges, enabled: ranges.length > 0 && prev[day].enabled };
-      return next;
-    });
+  const updateDay = (day, key, val) =>
+    setAvailability((prev) => ({
+      ...prev,
+      [day]: { ...prev[day], [key]: val },
+    }));
 
   const addBlackout = (d) => {
     if (!d) return;
     setUnavailableDates((list) => Array.from(new Set([...list, d])));
   };
+
   const removeBlackout = (i) =>
     setUnavailableDates((list) => list.filter((_, idx) => idx !== i));
+
+  const addUnavailability = (entry) => {
+    if (!entry.date) return;
+    // if allDay is on, clear times
+    const clean = entry.allDay ? { ...entry, start: "", end: "" } : entry;
+    setUnavailability((list) => [...list, clean]);
+  };
+
+  const removeUnavailability = (i) =>
+    setUnavailability((list) => list.filter((_, idx) => idx !== i));
 
   const bookingUrl = useMemo(() => `https://catbackai.com/book/${routeId}`, [routeId]);
 
@@ -499,18 +501,38 @@ export default function SchedulingDashboard() {
                   <input
                     type="text"
                     placeholder="Your Name"
-                    style={{ ...fieldStyle, color: colorScheme.text, background: "#fff" }}
+                    style={{
+                      ...fieldStyle,
+                      color: colorScheme.text,
+                      background: "#fff",
+                      borderColor: "#ddd",
+                    }}
                   />
                   <input
                     type="text"
                     placeholder="Phone Number"
-                    style={{ ...fieldStyle, color: colorScheme.text, background: "#fff" }}
+                    style={{
+                      ...fieldStyle,
+                      color: colorScheme.text,
+                      background: "#fff",
+                      borderColor: "#ddd",
+                    }}
                   />
-                  <select style={{ ...fieldStyle, color: colorScheme.text }}>
+                  <select
+                    style={{
+                      ...fieldStyle,
+                      color: colorScheme.text,
+                      background: "#fff",
+                      borderColor: "#ddd",
+                      // force text color for Safari/Chrome
+                      WebkitTextFillColor: colorScheme.text,
+                    }}
+                  >
                     <option style={{ color: colorScheme.text }}>Select a Service</option>
                     {services.map((s, i) => (
                       <option key={i} style={{ color: colorScheme.text }}>
-                        {s.name} — ${s.price}{s.duration ? ` (${s.duration} min)` : ""}
+                        {s.name} — ${s.price}
+                        {s.duration ? ` (${s.duration} min)` : ""}
                       </option>
                     ))}
                   </select>
@@ -603,7 +625,7 @@ export default function SchedulingDashboard() {
               </button>
             </Card>
 
-            {/* Availability */}
+            {/* Availability (single time range per day) */}
             <Card title="Availability (weekly)" accent={colorScheme.accent}>
               <div style={{ display: "grid", gap: 12 }}>
                 {DAY_ORDER.map((day) => {
@@ -617,76 +639,35 @@ export default function SchedulingDashboard() {
                         borderRadius: 10,
                         padding: 12,
                         display: "grid",
+                        gridTemplateColumns: "auto 140px 140px",
                         gap: 10,
+                        alignItems: "center",
                       }}
                     >
-                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                        <label style={{ fontWeight: 700, minWidth: 110 }}>
-                          <input
-                            type="checkbox"
-                            checked={!!data.enabled}
-                            onChange={() => toggleDay(day)}
-                            style={{ marginRight: 8 }}
-                          />
-                          {day}
-                        </label>
+                      <label style={{ fontWeight: 700 }}>
+                        <input
+                          type="checkbox"
+                          checked={!!data.enabled}
+                          onChange={() => toggleDay(day)}
+                          style={{ marginRight: 8 }}
+                        />
+                        {day}
+                      </label>
 
-                        <div style={{ opacity: data.enabled ? 1 : 0.5, width: "100%" }}>
-                          {data.ranges.length === 0 ? (
-                            <div style={{ fontSize: 12, color: "#777" }}>No time ranges added.</div>
-                          ) : (
-                            data.ranges.map((r, idx) => (
-                              <div
-                                key={idx}
-                                style={{
-                                  display: "grid",
-                                  gridTemplateColumns: "140px 140px auto",
-                                  gap: 10,
-                                  alignItems: "center",
-                                  marginBottom: 6,
-                                }}
-                              >
-                                <input
-                                  type="time"
-                                  disabled={!data.enabled}
-                                  value={r.start}
-                                  onChange={(e) =>
-                                    updateRange(day, idx, "start", e.target.value)
-                                  }
-                                  style={fieldStyle}
-                                />
-                                <input
-                                  type="time"
-                                  disabled={!data.enabled}
-                                  value={r.end}
-                                  onChange={(e) => updateRange(day, idx, "end", e.target.value)}
-                                  style={fieldStyle}
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() => removeRange(day, idx)}
-                                  disabled={!data.enabled}
-                                  style={btnGhostSmall}
-                                >
-                                  remove range
-                                </button>
-                              </div>
-                            ))
-                          )}
-
-                          <button
-                            type="button"
-                            onClick={() => addRange(day)}
-                            disabled={!data.enabled}
-                            style={{
-                              ...miniButton(colorScheme.accent),
-                              opacity: data.enabled ? 1 : 0.6,
-                            }}
-                          >
-                            + Add range
-                          </button>
-                        </div>
-                      </div>
+                      <input
+                        type="time"
+                        disabled={!data.enabled}
+                        value={data.start}
+                        onChange={(e) => updateDay(day, "start", e.target.value)}
+                        style={fieldStyle}
+                      />
+                      <input
+                        type="time"
+                        disabled={!data.enabled}
+                        value={data.end}
+                        onChange={(e) => updateDay(day, "end", e.target.value)}
+                        style={fieldStyle}
+                      />
                     </div>
                   );
                 })}
@@ -736,6 +717,45 @@ export default function SchedulingDashboard() {
                 )}
               </div>
             </Card>
+
+            {/* Add Unavailability (partial-day blocks) */}
+            <Card title="Add Unavailability" accent={colorScheme.accent}>
+              <AddUnavailabilityForm onAdd={addUnavailability} accent={colorScheme.accent} />
+              <div style={{ marginTop: 16 }}>
+                {unavailability.length > 0 ? (
+                  unavailability.map((u, i) => (
+                    <div
+                      key={`${u.date}-${i}`}
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        background: "#fff",
+                        border: "1px solid #eee",
+                        borderRadius: 8,
+                        padding: "8px 12px",
+                        marginBottom: 6,
+                      }}
+                    >
+                      <span>
+                        🗓️ {u.date} — {u.allDay ? "All Day" : `${u.start || "--"} → ${u.end || "--"}`}
+                      </span>
+                      <button
+                        onClick={() => removeUnavailability(i)}
+                        style={btnGhostSmall}
+                        aria-label="remove unavailability"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))
+                ) : (
+                  <p style={{ color: "#777", fontSize: 14, margin: 0 }}>
+                    No unavailability added yet.
+                  </p>
+                )}
+              </div>
+            </Card>
           </>
         )}
       </main>
@@ -762,6 +782,54 @@ export default function SchedulingDashboard() {
       <footer style={{ padding: 16, textAlign: "center", color: "#888", marginBottom: 60 }}>
         © {new Date().getFullYear()} CatBackAI
       </footer>
+    </div>
+  );
+}
+
+/* ---------- Add Unavailability Inline Form ---------- */
+function AddUnavailabilityForm({ onAdd, accent }) {
+  const [form, setForm] = useState({ date: "", start: "", end: "", allDay: false });
+
+  const handleAdd = () => {
+    if (!form.date) return;
+    if (!form.allDay && (!form.start || !form.end)) return;
+    onAdd(form);
+    setForm({ date: "", start: "", end: "", allDay: false });
+  };
+
+  return (
+    <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+      <input
+        type="date"
+        value={form.date}
+        onChange={(e) => setForm({ ...form, date: e.target.value })}
+        style={fieldStyle}
+      />
+      <input
+        type="time"
+        value={form.start}
+        disabled={form.allDay}
+        onChange={(e) => setForm({ ...form, start: e.target.value })}
+        style={fieldStyle}
+      />
+      <input
+        type="time"
+        value={form.end}
+        disabled={form.allDay}
+        onChange={(e) => setForm({ ...form, end: e.target.value })}
+        style={fieldStyle}
+      />
+      <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 14 }}>
+        <input
+          type="checkbox"
+          checked={form.allDay}
+          onChange={(e) => setForm({ ...form, allDay: e.target.checked })}
+        />
+        All Day
+      </label>
+      <button onClick={handleAdd} style={miniButton(accent)}>
+        + Add Unavailability
+      </button>
     </div>
   );
 }
