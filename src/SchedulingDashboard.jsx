@@ -13,7 +13,6 @@ export default function SchedulingDashboard() {
   const [loading, setLoading] = useState(false);
   const [statusMsg, setStatusMsg] = useState("");
 
-  // color scheme used by the PUBLIC booking form (not the dashboard itself)
   const [colorScheme, setColorScheme] = useState({
     header: "#de8d2b",
     text: "#000000",
@@ -21,12 +20,8 @@ export default function SchedulingDashboard() {
     accent: "#de8d2b",
   });
 
-  // services: name, price, duration(min), description
-  const [services, setServices] = useState([
-    // { name: "", price: "", duration: "", description: "" }
-  ]);
+  const [services, setServices] = useState([]);
 
-  // weekly availability (Deputy-like on/off with start & end)
   const [availability, setAvailability] = useState({
     Monday: { enabled: false, start: "", end: "" },
     Tuesday: { enabled: false, start: "", end: "" },
@@ -37,43 +32,38 @@ export default function SchedulingDashboard() {
     Sunday: { enabled: false, start: "", end: "" },
   });
 
-  // blackout dates (array of YYYY-MM-DD)
   const [unavailableDates, setUnavailableDates] = useState([]);
 
-/* ---------- AUTH GUARD ---------- */
-useEffect(() => {
-  if (!routeId) return; // wait until route param exists
+  /* ---------- AUTH GUARD ---------- */
+  useEffect(() => {
+    if (!routeId) return;
 
-  const token = sessionStorage.getItem("catback_token");
-  const lastActive = sessionStorage.getItem("catback_lastActive");
+    const token = sessionStorage.getItem("catback_token");
+    const lastActive = sessionStorage.getItem("catback_lastActive");
 
-  // handle missing token or mismatch silently, no alerts/popups
-  if (!token || token !== routeId) {
-    sessionStorage.clear();
-    // use a short async delay so navigation happens after render is ready
-    setTimeout(() => navigate("/dashboard", { replace: true }), 0);
-    return;
-  }
+    if (!token || token !== routeId) {
+      sessionStorage.clear();
+      setTimeout(() => navigate("/dashboard", { replace: true }), 0);
+      return;
+    }
 
-  // expire after 1 hour (no popup)
-  if (lastActive && Date.now() - parseInt(lastActive, 10) > 3600000) {
-    sessionStorage.clear();
-    setTimeout(() => navigate("/dashboard", { replace: true }), 0);
-    return;
-  }
+    if (lastActive && Date.now() - parseInt(lastActive, 10) > 3600000) {
+      sessionStorage.clear();
+      setTimeout(() => navigate("/dashboard", { replace: true }), 0);
+      return;
+    }
 
-  // refresh timer on any activity
-  const updateActivity = () =>
-    sessionStorage.setItem("catback_lastActive", Date.now().toString());
+    const updateActivity = () =>
+      sessionStorage.setItem("catback_lastActive", Date.now().toString());
 
-  window.addEventListener("mousemove", updateActivity);
-  window.addEventListener("keydown", updateActivity);
+    window.addEventListener("mousemove", updateActivity);
+    window.addEventListener("keydown", updateActivity);
 
-  return () => {
-    window.removeEventListener("mousemove", updateActivity);
-    window.removeEventListener("keydown", updateActivity);
-  };
-}, [routeId, navigate]);
+    return () => {
+      window.removeEventListener("mousemove", updateActivity);
+      window.removeEventListener("keydown", updateActivity);
+    };
+  }, [routeId, navigate]);
 
   /* ---------- FETCH BUSINESS + EXISTING THEME ---------- */
   useEffect(() => {
@@ -84,7 +74,6 @@ useEffect(() => {
     setLoading(true);
     setStatusMsg("");
     try {
-      // business basics (and maybe stored ColorScheme JSON)
       const bizRes = await fetch(
         `https://jacobtf007.app.n8n.cloud/webhook/catbackai_getbusiness?businessId=${id}`
       );
@@ -92,17 +81,13 @@ useEffect(() => {
       if (!bizData?.business) throw new Error("Business not found");
       setBusiness(bizData.business);
 
-      // load saved color scheme if present in sheet
       if (bizData.business.ColorScheme) {
         try {
           const parsed = JSON.parse(bizData.business.ColorScheme);
           if (parsed && typeof parsed === "object") setColorScheme(parsed);
-        } catch {
-          // ignore invalid json
-        }
+        } catch {}
       }
 
-      // load schedule/services/availability if you’re storing them separately
       const schedRes = await fetch(
         "https://jacobtf007.app.n8n.cloud/webhook/catbackai_getschedule",
         {
@@ -114,7 +99,6 @@ useEffect(() => {
       const schedJson = await schedRes.json();
 
       if (schedJson?.result === "ok") {
-        // services
         if (Array.isArray(schedJson.services)) {
           setServices(
             schedJson.services.map((s) => ({
@@ -124,31 +108,10 @@ useEffect(() => {
               description: s.description ?? s.Description ?? "",
             }))
           );
-        } else if (Array.isArray(schedJson.schedule)) {
-          // older structure
-          setServices(
-            schedJson.schedule.map((s) => ({
-              name: s.ServiceName || "",
-              price: s.Price || "",
-              duration: s.Duration || "",
-              description: s.Description || "",
-            }))
-          );
-        } else if (typeof schedJson.servicesCsv === "string") {
-          setServices(
-            schedJson.servicesCsv
-              .split(",")
-              .map((n) => ({ name: n.trim(), price: "", duration: "", description: "" }))
-              .filter((x) => x.name)
-          );
         }
-
-        // availability
         if (schedJson.availability && typeof schedJson.availability === "object") {
           setAvailability((prev) => ({ ...prev, ...schedJson.availability }));
         }
-
-        // blackout dates
         if (Array.isArray(schedJson.unavailableDates)) {
           setUnavailableDates(schedJson.unavailableDates);
         }
@@ -160,7 +123,7 @@ useEffect(() => {
     }
   };
 
-  /* ---------- SAVE ALL (BOOKING THEME + SCHEDULING) ---------- */
+  /* ---------- SAVE ALL ---------- */
   const saveDashboard = async () => {
     setSaving(true);
     setStatusMsg("Saving your booking form settings...");
@@ -208,8 +171,7 @@ useEffect(() => {
       return copy;
     });
 
-  const removeService = (i) =>
-    setServices((arr) => arr.filter((_, idx) => idx !== i));
+  const removeService = (i) => setServices((arr) => arr.filter((_, idx) => idx !== i));
 
   const toggleDay = (day) =>
     setAvailability((prev) => ({
@@ -274,9 +236,9 @@ useEffect(() => {
           </a>
           <button
             onClick={() => {
-  sessionStorage.clear();
-  navigate("/dashboard");
-}}
+              sessionStorage.clear();
+              navigate("/dashboard");
+            }}
             style={{
               background: "transparent",
               color: "#fff",
@@ -291,8 +253,6 @@ useEffect(() => {
         </div>
       </header>
 
-      {/* Body */}
-      if (!sessionStorage.getItem("catback_token")) 
       <main style={{ maxWidth: 1050, margin: "0 auto", padding: "24px 16px", width: "100%" }}>
         {statusMsg && (
           <div
@@ -312,7 +272,6 @@ useEffect(() => {
           <p>Loading…</p>
         ) : (
           <>
-            {/* Business Summary */}
             {business && (
               <div
                 style={{
@@ -377,6 +336,58 @@ useEffect(() => {
               </div>
             </section>
 
+            {/* Live Preview */}
+            <section style={{ marginBottom: 26 }}>
+              <h2 style={{ color: "#de8d2b" }}>Live Booking Form Preview</h2>
+              <div
+                style={{
+                  border: "1px solid #eee",
+                  borderRadius: 12,
+                  overflow: "hidden",
+                  background: colorScheme.background,
+                  color: colorScheme.text,
+                  transition: "all 0.3s ease",
+                }}
+              >
+                <div
+                  style={{
+                    background: colorScheme.header,
+                    color: "#fff",
+                    padding: "16px 20px",
+                    fontWeight: "bold",
+                    fontSize: 18,
+                  }}
+                >
+                  Booking Form Example
+                </div>
+                <div style={{ padding: 16, display: "grid", gap: 10 }}>
+                  <input type="text" placeholder="Your Name" style={fieldStyle} />
+                  <input type="text" placeholder="Phone Number" style={fieldStyle} />
+                  <select style={fieldStyle}>
+                    <option>Select a Service</option>
+                    {services.map((s, i) => (
+                      <option key={i}>
+                        {s.name} — ${s.price} ({s.duration} min)
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    style={{
+                      background: colorScheme.accent,
+                      border: "none",
+                      borderRadius: 8,
+                      padding: "10px 14px",
+                      color: "#fff",
+                      cursor: "pointer",
+                      fontWeight: "bold",
+                    }}
+                  >
+                    Book Now
+                  </button>
+                </div>
+              </div>
+            </section>
+
             {/* Services */}
             <section style={{ marginBottom: 26 }}>
               <h2 style={{ color: "#de8d2b" }}>Services</h2>
@@ -398,13 +409,17 @@ useEffect(() => {
                       value={s.name}
                       onChange={(e) => updateService(i, "name", e.target.value)}
                       style={fieldStyle}
+                      required
                     />
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                       <input
-                        placeholder="Price (optional)"
+                        type="number"
+                        min="0"
+                        placeholder="Price"
                         value={s.price}
                         onChange={(e) => updateService(i, "price", e.target.value)}
                         style={fieldStyle}
+                        required
                       />
                       <input
                         placeholder="Duration (mins)"
@@ -420,11 +435,7 @@ useEffect(() => {
                       rows={2}
                       style={fieldStyle}
                     />
-                    <button
-                      type="button"
-                      onClick={() => removeService(i)}
-                      style={btnGhost}
-                    >
+                    <button type="button" onClick={() => removeService(i)} style={btnGhost}>
                       Remove
                     </button>
                   </div>
@@ -526,7 +537,6 @@ useEffect(() => {
         )}
       </main>
 
-      {/* Footer spacer to avoid “getting shorter” feel and ensure full page height */}
       <footer style={{ padding: 16, textAlign: "center", color: "#888" }}>
         © {new Date().getFullYear()} CatBackAI
       </footer>
@@ -542,6 +552,7 @@ const fieldStyle = {
   background: "#fff",
   width: "100%",
 };
+
 const btnPrimary = {
   marginTop: 10,
   background: "#de8d2b",
@@ -551,6 +562,7 @@ const btnPrimary = {
   borderRadius: 10,
   cursor: "pointer",
 };
+
 const btnGhost = {
   background: "transparent",
   color: "#c00",
@@ -560,7 +572,9 @@ const btnGhost = {
   cursor: "pointer",
   width: "fit-content",
 };
+
 const btnGhostSmall = { ...btnGhost, padding: "2px 8px", fontSize: 12 };
+
 const btnSave = {
   background: "#4caf50",
   color: "#fff",
