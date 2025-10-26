@@ -44,7 +44,8 @@ function App() {
       ".heroai-launcher{position:fixed;right:20px;bottom:20px;min-width:56px;height:56px;padding:0 18px;border:0;border-radius:999px;font-weight:700;box-shadow:0 12px 28px rgba(13,27,62,.15);cursor:pointer;z-index:2147483646;display:inline-flex;align-items:center;justify-content:center}" +
       ".heroai-iframe-wrap{position:fixed;right:20px;bottom:90px;width:380px;height:560px;display:none;border-radius:16px;overflow:hidden;box-shadow:0 18px 60px rgba(0,0,0,.22);z-index:2147483647;background:#fff}" +
       // ⬇️ Full-screen on mobile
-      "@media(max-width:768px){.heroai-iframe-wrap{left:0;right:0;top:0;bottom:0;width:100vw;height:100vh;border-radius:0;padding-bottom:env(safe-area-inset-bottom)}}" +
+      "@media(max-width:768px){.heroai-iframe-wrap{left:0;right:0;top:0;bottom:0;width:100vw;height:100vh;height:100dvh;border-radius:0}}"
+      "@media(max-width:768px){.heroai-iframe{height:calc(100dvh - env(safe-area-inset-bottom) - 14px)}}"
       ".heroai-iframe{width:100%;height:100%;border:0}";
     document.head.appendChild(st);
 
