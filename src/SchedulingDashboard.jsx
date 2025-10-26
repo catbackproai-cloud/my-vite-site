@@ -1,7 +1,11 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import logo from "./assets/Y-Logo.png";
+
+/* -------------------------------------------------------------------------- */
+/*                               Constants & Utils                            */
+/* -------------------------------------------------------------------------- */
 
 const DAY_ORDER = [
   "Monday",
@@ -14,6 +18,60 @@ const DAY_ORDER = [
 ];
 
 const DURATION_OPTIONS = [15, 30, 45, 60, 90, 120, 150, 180];
+
+// Map JS Date.getDay() (0=Sun) to our DAY_ORDER names
+const JS_DAY_TO_NAME = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+// Helpers to parse "HH:mm" → minutes and back
+function toMinutes(hhmm = "") {
+  if (!hhmm) return null;
+  const [h, m] = hhmm.split(":").map((n) => parseInt(n || "0", 10));
+  if (Number.isNaN(h) || Number.isNaN(m)) return null;
+  return h * 60 + m;
+}
+function toHHMM(minutes) {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  const pad = (n) => (n < 10 ? `0${n}` : `${n}`);
+  return `${pad(h)}:${pad(m)}`;
+}
+
+// Check if two [start,end] minute ranges overlap
+function overlap(aStart, aEnd, bStart, bEnd) {
+  if (aStart == null || aEnd == null || bStart == null || bEnd == null) return false;
+  return aStart < bEnd && bStart < aEnd;
+}
+
+// Build an array of dates for a calendar month grid (6 rows x 7 cols typical)
+function buildMonthGrid(year, month /* 0-indexed */) {
+  const firstOfMonth = new Date(year, month, 1);
+  const startDay = firstOfMonth.getDay(); // 0=Sun..6=Sat
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+  const grid = [];
+  // leading days from previous month
+  const prevMonthDays = (startDay + 6) % 7; // shift so Mon-Sun grid if needed; but we’ll keep Sun-Sat here
+  const startDate = new Date(year, month, 1 - prevMonthDays);
+
+  for (let i = 0; i < 42; i++) {
+    const d = new Date(startDate);
+    d.setDate(startDate.getDate() + i);
+    grid.push(d);
+  }
+  return grid;
+}
+
+// Format date to YYYY-MM-DD
+function fmtYMD(date) {
+  const y = date.getFullYear();
+  const m = `${date.getMonth() + 1}`.padStart(2, "0");
+  const d = `${date.getDate()}`.padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+/* -------------------------------------------------------------------------- */
+/*                               Main Component                               */
+/* -------------------------------------------------------------------------- */
 
 export default function SchedulingDashboard() {
   const { businessId: routeId } = useParams();
@@ -46,8 +104,21 @@ export default function SchedulingDashboard() {
   // blackout dates (array of YYYY-MM-DD)
   const [unavailableDates, setUnavailableDates] = useState([]);
 
-  // specific time blocks a.k.a. partial-day unavailability
-  const [unavailability, setUnavailability] = useState([]); // [{ date, start, end, allDay }]
+  // partial-day unavailability: [{ date, start, end, allDay }]
+  const [unavailability, setUnavailability] = useState([]);
+
+  // calendar preview month/year
+  const today = new Date();
+  const [monthCursor, setMonthCursor] = useState({ y: today.getFullYear(), m: today.getMonth() });
+
+  // for smooth scroll to day section
+  const dayRefs = useRef({});
+  DAY_ORDER.forEach((d) => {
+    if (!dayRefs.current[d]) dayRefs.current[d] = { current: null };
+  });
+
+  // Auto-save interval ref (to clear on unmount)
+  const autosaveRef = useRef(null);
 
   /* ---------- AUTH GUARD ---------- */
   useEffect(() => {
@@ -123,7 +194,7 @@ export default function SchedulingDashboard() {
             schedJson.services.map((s) => ({
               name: s.name || s.ServiceName || "",
               price: (s.price ?? s.Price ?? "").toString(),
-              duration: (s.duration ?? s.Duration ?? "").toString(),
+              duration: (s.duration ?? s.Duration ?? "60").toString(),
               description: s.description ?? s.Description ?? "",
             }))
           );
@@ -188,22 +259,29 @@ export default function SchedulingDashboard() {
     }
   };
 
-  /* ---------- SAVE ALL ---------- */
-  const saveDashboard = async () => {
-    setSaving(true);
-    setStatusMsg("Saving your booking form settings...");
+  /* ---------- SAVE ALL + AUTOSAVE (30s) ---------- */
+  const lastSavedPayloadRef = useRef(null);
+
+  const saveDashboard = async (opts = { silent: false }) => {
+    // if user is typing we still save silently if triggered by autosave
+    if (!opts.silent) setSaving(true);
+    if (!opts.silent) setStatusMsg("Saving your booking form settings...");
 
     // basic validation: services -> price required, duration numeric or empty
     for (const s of services) {
       if (!s.name?.trim()) {
-        setSaving(false);
-        setStatusMsg("⚠️ Each service needs a name.");
-        return;
+        if (!opts.silent) {
+          setSaving(false);
+          setStatusMsg("⚠️ Each service needs a name.");
+        }
+        return false;
       }
       if (s.price === "" || isNaN(Number(s.price))) {
-        setSaving(false);
-        setStatusMsg("⚠️ Price is required and must be a number for each service.");
-        return;
+        if (!opts.silent) {
+          setSaving(false);
+          setStatusMsg("⚠️ Price is required and must be a number for each service.");
+        }
+        return false;
       }
     }
 
@@ -217,8 +295,14 @@ export default function SchedulingDashboard() {
       })),
       availability,
       unavailableDates,
-      unavailability, // NEW
+      unavailability,
     };
+
+    // Skip network if nothing changed since last save (for autosave)
+    const payloadString = JSON.stringify(payload);
+    if (opts.silent && lastSavedPayloadRef.current === payloadString) {
+      return true; // no-op
+    }
 
     try {
       const res = await fetch(
@@ -226,17 +310,33 @@ export default function SchedulingDashboard() {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
+          body: payloadString,
         }
       );
       if (!res.ok) throw new Error(await res.text());
-      setStatusMsg("✅ Saved! Your booking page will use these settings.");
+      lastSavedPayloadRef.current = payloadString;
+      if (!opts.silent) setStatusMsg("✅ Saved! Your booking page will use these settings.");
+      return true;
     } catch (err) {
-      setStatusMsg("❌ " + err.message);
+      if (!opts.silent) setStatusMsg("❌ " + err.message);
+      return false;
     } finally {
-      setSaving(false);
+      if (!opts.silent) setSaving(false);
     }
   };
+
+  // Auto-save every 30s
+  useEffect(() => {
+    if (autosaveRef.current) clearInterval(autosaveRef.current);
+    autosaveRef.current = setInterval(() => {
+      // silent autosave
+      saveDashboard({ silent: true });
+    }, 30000);
+    return () => {
+      if (autosaveRef.current) clearInterval(autosaveRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [routeId, colorScheme, services, availability, unavailableDates, unavailability]);
 
   /* ---------- HANDLERS ---------- */
   const hexOk = (c) => /^#[0-9A-Fa-f]{6}$/.test(c);
@@ -248,7 +348,7 @@ export default function SchedulingDashboard() {
   };
 
   const addService = () =>
-    setServices((s) => [...s, { name: "", price: "", duration: "30", description: "" }]);
+    setServices((s) => [...s, { name: "", price: "", duration: "60", description: "" }]);
 
   const updateService = (i, k, v) =>
     setServices((arr) => {
@@ -267,7 +367,6 @@ export default function SchedulingDashboard() {
         [day]: {
           ...prev[day],
           enabled,
-          // Keep last start/end; if enabling first time, keep defaults already set
         },
       };
     });
@@ -307,6 +406,19 @@ export default function SchedulingDashboard() {
       setStatusMsg("⚠️ Copy failed. You can select and copy the text manually.");
     }
   };
+
+  // Derived: quick lookups for previews
+  const unavailableDateSet = useMemo(() => new Set(unavailableDates), [unavailableDates]);
+
+  const unavailabilityByDate = useMemo(() => {
+    const map = {};
+    for (const u of unavailability) {
+      if (!u.date) continue;
+      if (!map[u.date]) map[u.date] = [];
+      map[u.date].push(u);
+    }
+    return map;
+  }, [unavailability]);
 
   /* ---------- UI ---------- */
   return (
@@ -418,7 +530,7 @@ export default function SchedulingDashboard() {
       )}
 
       {/* Body */}
-      <main style={{ maxWidth: 1080, margin: "14px auto 90px", padding: "0 16px", width: "100%" }}>
+      <main style={{ maxWidth: 1080, margin: "14px auto 120px", padding: "0 16px", width: "100%" }}>
         {loading ? (
           <p>Loading…</p>
         ) : (
@@ -474,7 +586,7 @@ export default function SchedulingDashboard() {
               </div>
             </Card>
 
-            {/* Live Preview */}
+            {/* Live Preview (Form) */}
             <Card title="Live Booking Form Preview" accent={colorScheme.accent}>
               <div
                 style={{
@@ -524,7 +636,6 @@ export default function SchedulingDashboard() {
                       color: colorScheme.text,
                       background: "#fff",
                       borderColor: "#ddd",
-                      // force text color for Safari/Chrome
                       WebkitTextFillColor: colorScheme.text,
                     }}
                   >
@@ -633,6 +744,7 @@ export default function SchedulingDashboard() {
                   return (
                     <div
                       key={day}
+                      ref={(el) => (dayRefs.current[day] = el)}
                       style={{
                         background: "#fff",
                         border: "1px solid #eee",
@@ -674,7 +786,7 @@ export default function SchedulingDashboard() {
               </div>
             </Card>
 
-            {/* Blackout Dates */}
+            {/* Unavailable Dates (all-day) */}
             <Card title="Unavailable Dates (one-off)" accent={colorScheme.accent}>
               <div style={{ display: "grid", gap: 10 }}>
                 <div style={{ display: "flex", gap: 10 }}>
@@ -719,7 +831,7 @@ export default function SchedulingDashboard() {
             </Card>
 
             {/* Add Unavailability (partial-day blocks) */}
-            <Card title="Add Unavailability" accent={colorScheme.accent}>
+            <Card title="Add Unavailability (specific times)" accent={colorScheme.accent}>
               <AddUnavailabilityForm onAdd={addUnavailability} accent={colorScheme.accent} />
               <div style={{ marginTop: 16 }}>
                 {unavailability.length > 0 ? (
@@ -737,8 +849,9 @@ export default function SchedulingDashboard() {
                         marginBottom: 6,
                       }}
                     >
-                      <span>
-                        🗓️ {u.date} — {u.allDay ? "All Day" : `${u.start || "--"} → ${u.end || "--"}`}
+                      <span style={{ fontSize: 14 }}>
+                        🗓️ <strong>{u.date}</strong>{" "}
+                        — {u.allDay ? "All Day" : `${u.start || "--"} → ${u.end || "--"}`}
                       </span>
                       <button
                         onClick={() => removeUnavailability(i)}
@@ -754,6 +867,34 @@ export default function SchedulingDashboard() {
                     No unavailability added yet.
                   </p>
                 )}
+              </div>
+            </Card>
+
+            {/* ------------------------- Previews (Below) ------------------------ */}
+            <Card title="Calendar Preview" accent={colorScheme.accent}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                {/* Calendly-style Month Preview */}
+                <MonthPreview
+                  colorScheme={colorScheme}
+                  monthCursor={monthCursor}
+                  setMonthCursor={setMonthCursor}
+                  availability={availability}
+                  unavailableDateSet={unavailableDateSet}
+                  unavailabilityByDate={unavailabilityByDate}
+                  onPickDay={(dateObj) => {
+                    const name = JS_DAY_TO_NAME[dateObj.getDay()];
+                    const el = dayRefs.current[name];
+                    if (el && el.scrollIntoView) el.scrollIntoView({ behavior: "smooth", block: "center" });
+                  }}
+                />
+
+                {/* Deputy-style Weekly Preview */}
+                <WeeklyPreview
+                  colorScheme={colorScheme}
+                  availability={availability}
+                  unavailabilityByDate={unavailabilityByDate}
+                  unavailableDateSet={unavailableDateSet}
+                />
               </div>
             </Card>
           </>
@@ -772,9 +913,10 @@ export default function SchedulingDashboard() {
           padding: "12px 16px",
           display: "flex",
           justifyContent: "center",
+          zIndex: 50,
         }}
       >
-        <button type="button" onClick={saveDashboard} disabled={saving} style={btnSave}>
+        <button type="button" onClick={() => saveDashboard({ silent: false })} disabled={saving} style={btnSave}>
           {saving ? "Saving…" : "Save All Changes"}
         </button>
       </div>
@@ -786,7 +928,10 @@ export default function SchedulingDashboard() {
   );
 }
 
-/* ---------- Add Unavailability Inline Form ---------- */
+/* -------------------------------------------------------------------------- */
+/*                            AddUnavailability Form                          */
+/* -------------------------------------------------------------------------- */
+
 function AddUnavailabilityForm({ onAdd, accent }) {
   const [form, setForm] = useState({ date: "", start: "", end: "", allDay: false });
 
@@ -798,28 +943,40 @@ function AddUnavailabilityForm({ onAdd, accent }) {
   };
 
   return (
-    <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-      <input
-        type="date"
-        value={form.date}
-        onChange={(e) => setForm({ ...form, date: e.target.value })}
-        style={fieldStyle}
-      />
-      <input
-        type="time"
-        value={form.start}
-        disabled={form.allDay}
-        onChange={(e) => setForm({ ...form, start: e.target.value })}
-        style={fieldStyle}
-      />
-      <input
-        type="time"
-        value={form.end}
-        disabled={form.allDay}
-        onChange={(e) => setForm({ ...form, end: e.target.value })}
-        style={fieldStyle}
-      />
-      <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 14 }}>
+    <div style={{ display: "grid", gridTemplateColumns: "1fr 120px 120px auto auto", gap: 10, alignItems: "center" }}>
+      <div>
+        <label style={labelStyle}>Date</label>
+        <input
+          type="date"
+          value={form.date}
+          onChange={(e) => setForm({ ...form, date: e.target.value })}
+          style={fieldStyle}
+        />
+      </div>
+
+      <div>
+        <label style={labelStyle}>From</label>
+        <input
+          type="time"
+          value={form.start}
+          disabled={form.allDay}
+          onChange={(e) => setForm({ ...form, start: e.target.value })}
+          style={fieldStyle}
+        />
+      </div>
+
+      <div>
+        <label style={labelStyle}>To</label>
+        <input
+          type="time"
+          value={form.end}
+          disabled={form.allDay}
+          onChange={(e) => setForm({ ...form, end: e.target.value })}
+          style={fieldStyle}
+        />
+      </div>
+
+      <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
         <input
           type="checkbox"
           checked={form.allDay}
@@ -827,14 +984,332 @@ function AddUnavailabilityForm({ onAdd, accent }) {
         />
         All Day
       </label>
+
       <button onClick={handleAdd} style={miniButton(accent)}>
-        + Add Unavailability
+        + Add
       </button>
     </div>
   );
 }
 
-/* ---------- Reusable Card ---------- */
+/* -------------------------------------------------------------------------- */
+/*                               Month Preview                                */
+/* -------------------------------------------------------------------------- */
+
+function MonthPreview({
+  colorScheme,
+  monthCursor,
+  setMonthCursor,
+  availability,
+  unavailableDateSet,
+  unavailabilityByDate,
+  onPickDay,
+}) {
+  const { y, m } = monthCursor;
+  const grid = useMemo(() => buildMonthGrid(y, m), [y, m]);
+
+  const goPrev = () => {
+    const nm = m - 1;
+    if (nm < 0) setMonthCursor({ y: y - 1, m: 0 });
+    else setMonthCursor({ y, m: nm });
+  };
+  const goNext = () => {
+    const nm = m + 1;
+    if (nm > 11) setMonthCursor({ y: y + 1, m: 11 });
+    else setMonthCursor({ y, m: nm });
+  };
+
+  return (
+    <div
+      style={{
+        border: "1px solid #eee",
+        borderRadius: 12,
+        background: "#fff",
+        overflow: "hidden",
+      }}
+    >
+      <div
+        style={{
+          background: colorScheme.header,
+          color: "#fff",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "10px 12px",
+        }}
+      >
+        <button
+          onClick={goPrev}
+          style={{
+            background: "rgba(255,255,255,.2)",
+            color: "#fff",
+            border: "none",
+            borderRadius: 8,
+            padding: "6px 10px",
+            cursor: "pointer",
+          }}
+        >
+          ‹
+        </button>
+        <div style={{ fontWeight: 700 }}>
+          {new Date(y, m, 1).toLocaleString(undefined, { month: "long", year: "numeric" })}
+        </div>
+        <button
+          onClick={goNext}
+          style={{
+            background: "rgba(255,255,255,.2)",
+            color: "#fff",
+            border: "none",
+            borderRadius: 8,
+            padding: "6px 10px",
+            cursor: "pointer",
+          }}
+        >
+          ›
+        </button>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", padding: "8px 8px 0 8px", color: "#666", fontSize: 12 }}>
+        {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
+          <div key={d} style={{ textAlign: "center", padding: "6px 0" }}>
+            {d}
+          </div>
+        ))}
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 6, padding: 8 }}>
+        {grid.map((dateObj, idx) => {
+          const sameMonth = dateObj.getMonth() === m;
+          const ymd = fmtYMD(dateObj);
+          const dowName = JS_DAY_TO_NAME[dateObj.getDay()];
+          const dayAvail = availability[dowName] || { enabled: false };
+
+          const allDayUnavailable = unavailableDateSet.has(ymd);
+          const dayUnavailability = unavailabilityByDate[ymd] || [];
+
+            // determine tile color
+          let bg = "#fff";
+          let label = "";
+
+          // is working day?
+          if (sameMonth && dayAvail.enabled) {
+            bg = "#fff";
+            label = "Available";
+          } else {
+            bg = "#fafafa"; // not working
+            label = "Off";
+          }
+
+          // if any unavailability exists: mark gray
+          let hasPartial = false;
+          for (const u of dayUnavailability) {
+            hasPartial = true;
+            if (u.allDay) {
+              // full-day unavailability
+              bg = "#eee"; // gray for unavailable
+              label = "Unavailable (All Day)";
+              break;
+            }
+          }
+          if (!allDayUnavailable && hasPartial) {
+            bg = "#f1f1f1"; // lighter gray for partial
+            if (label === "Available") label = "Partial Unavailable";
+          }
+
+          // blackout date overrides
+          if (allDayUnavailable) {
+            bg = "#eee";
+            label = "Unavailable";
+          }
+
+          const color = sameMonth ? "#111" : "#aaa";
+          const border = sameMonth ? "1px solid #eee" : "1px dashed #f0f0f0";
+
+          return (
+            <button
+              key={ymd + idx}
+              onClick={() => onPickDay(dateObj)}
+              style={{
+                aspectRatio: "1 / 1",
+                border,
+                borderRadius: 10,
+                background: bg,
+                color,
+                cursor: "pointer",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "flex-start",
+                justifyContent: "space-between",
+                padding: 8,
+              }}
+              title={`${ymd} — ${label}`}
+            >
+              <span style={{ fontWeight: 700, opacity: sameMonth ? 1 : 0.6 }}>{dateObj.getDate()}</span>
+              <span style={{ fontSize: 10, color: "#777" }}>{sameMonth ? label : ""}</span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/*                               Weekly Preview                               */
+/* -------------------------------------------------------------------------- */
+
+function WeeklyPreview({ colorScheme, availability, unavailabilityByDate, unavailableDateSet }) {
+  // Build next 7 days starting today, show bars for availability vs unavailability
+  const start = new Date();
+  const days = [...Array(7)].map((_, i) => {
+    const d = new Date(start);
+    d.setDate(start.getDate() + i);
+    return d;
+  });
+
+  // Render a 24h horizontal (0..24) with an orange bar for available range, gray overlays for unavailability
+  return (
+    <div style={{ background: "#fff", border: "1px solid #eee", borderRadius: 12, padding: 12 }}>
+      <div style={{ fontWeight: 700, marginBottom: 10 }}>Next 7 Days</div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "140px 1fr", rowGap: 16, columnGap: 12 }}>
+        {days.map((d) => {
+          const ymd = fmtYMD(d);
+          const dowName = JS_DAY_TO_NAME[d.getDay()];
+          const avail = availability[dowName] || { enabled: false };
+          const dayUnavailability = unavailabilityByDate[ymd] || [];
+          const isBlackout = unavailableDateSet.has(ymd);
+
+          // layout constants
+          const totalMinutes = 24 * 60; // 1440
+          const toPercent = (min) => `${(min / totalMinutes) * 100}%`;
+
+          // base availability bar
+          const availStart = avail.enabled ? toMinutes(avail.start) : null;
+          const availEnd = avail.enabled ? toMinutes(avail.end) : null;
+
+          return (
+            <div key={ymd} style={{ display: "contents" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div style={{ fontWeight: 700 }}>{d.toLocaleDateString(undefined, { weekday: "short" })}</div>
+                <div style={{ color: "#777", fontSize: 12 }}>{ymd}</div>
+              </div>
+
+              <div
+                style={{
+                  position: "relative",
+                  height: 26,
+                  borderRadius: 999,
+                  background: "#f3f3f3",
+                  overflow: "hidden",
+                }}
+                title="24-hour day timeline"
+              >
+                {/* availability bar */}
+                {avail.enabled && availStart != null && availEnd != null && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      left: toPercent(availStart),
+                      width: toPercent(Math.max(0, availEnd - availStart)),
+                      top: 2,
+                      bottom: 2,
+                      background: colorScheme.accent,
+                      opacity: 0.9,
+                      borderRadius: 999,
+                    }}
+                    title={`Available ${avail.start} - ${avail.end}`}
+                  />
+                )}
+
+                {/* blackout overrides: whole bar gray overlay */}
+                {isBlackout && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      left: 0,
+                      right: 0,
+                      top: 2,
+                      bottom: 2,
+                      background: "#d9d9d9", // gray
+                      opacity: 0.9,
+                    }}
+                    title="Unavailable (All Day)"
+                  />
+                )}
+
+                {/* unavailability overlays (gray) */}
+                {dayUnavailability.map((u, i) => {
+                  if (u.allDay) {
+                    return (
+                      <div
+                        key={i}
+                        style={{
+                          position: "absolute",
+                          left: 0,
+                          right: 0,
+                          top: 2,
+                          bottom: 2,
+                          background: "#d9d9d9",
+                          opacity: 0.9,
+                        }}
+                        title="Unavailable (All Day)"
+                      />
+                    );
+                  }
+                  const s = toMinutes(u.start);
+                  const e = toMinutes(u.end);
+                  if (s == null || e == null) return null;
+
+                  // draw gray block — if it overlaps orange, it visually “blocks” it
+                  return (
+                    <div
+                      key={i}
+                      style={{
+                        position: "absolute",
+                        left: toPercent(s),
+                        width: toPercent(Math.max(0, e - s)),
+                        top: 2,
+                        bottom: 2,
+                        background: "#e5e5e5", // partial gray
+                        opacity: 1,
+                      }}
+                      title={`Unavailable ${u.start} - ${u.end}`}
+                    />
+                  );
+                })}
+
+                {/* hour ticks */}
+                {[0, 6, 12, 18, 24].map((h) => (
+                  <div
+                    key={h}
+                    style={{
+                      position: "absolute",
+                      left: toPercent(h * 60),
+                      top: 0,
+                      bottom: 0,
+                      width: 1,
+                      background: "rgba(0,0,0,.06)",
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div style={{ marginTop: 10, color: "#777", fontSize: 12 }}>
+        Orange = available; Gray = unavailable/blocked
+      </div>
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/*                                  Card                                      */
+/* -------------------------------------------------------------------------- */
+
 function Card({ title, accent = "#de8d2b", children }) {
   return (
     <section
@@ -857,7 +1332,17 @@ function Card({ title, accent = "#de8d2b", children }) {
   );
 }
 
-/* ---------- tiny style helpers ---------- */
+/* -------------------------------------------------------------------------- */
+/*                              Style Helpers                                 */
+/* -------------------------------------------------------------------------- */
+
+const labelStyle = {
+  display: "block",
+  fontSize: 12,
+  color: "#666",
+  marginBottom: 6,
+};
+
 const fieldStyle = {
   padding: "10px",
   borderRadius: 10,
