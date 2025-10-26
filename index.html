@@ -4,21 +4,22 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vite + React</title>
+    <title>CatBackAI — Smart Booking System</title>
   </head>
-  <script
-  src="https://chat.heroai.pro/heroai-embed.js?v=4"   
-  data-hero-ns="YOUR_NAMESPACE"
-  data-head="left"
-  data-auto-open="1"           
-  data-autostart-ms="3000"      
-  data-launcher="off">           
-</script>
-
-<!-- Any element on the page can open/close -->
-<button data-hero-open>Chat with us</button>
   <body>
     <div id="root"></div>
+
+    <!-- React entry -->
     <script type="module" src="/src/main.jsx"></script>
+
+    <!-- HeroAI embed -->
+    <script
+      src="https://chat.heroai.pro/heroai-embed.js"
+      data-heroai-ns="cat_back"
+      data-head="left"
+      data-auto-open="0"
+      data-autostart-ms="6000"
+      data-launcher="off">
+    </script>
   </body>
 </html>
