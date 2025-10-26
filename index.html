@@ -12,14 +12,15 @@
     <!-- React entry -->
     <script type="module" src="/src/main.jsx"></script>
 
-<script>
-  (function () {
-    if (window.HeroAIChat) {
-      window.heroaiOpen   = window.HeroAIChat.open;
-      window.heroaiClose  = window.HeroAIChat.close;
-      window.heroaiToggle = window.HeroAIChat.toggle;
-    }
-  })();
-</script>
+<!-- HeroAI Chat -->
+<script
+  src="https://chat.heroai.pro/heroai-embed.js"
+  data-hero-ns="cat_back"
+  data-autostart="true"
+  data-autostart_ms="3000"
+  data-once="session"
+  defer
+></script>
+
   </body>
 </html>
