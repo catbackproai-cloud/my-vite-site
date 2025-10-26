@@ -7,31 +7,19 @@
     <title>CatBackAI — Smart Booking System</title>
   </head>
   <body>
-  <div id="root"></div>
-  <script type="module" src="/src/main.jsx"></script>
-  <!-- (Optional) the guarded HeroAI block goes here, still inside <body> -->
-</body>
-<!-- HeroAI embed -->
-<!-- HeroAI embed: load on public pages only (NOT /dashboard/*) -->
-<script>
-  (function () {
-    try {
-      var p = location.pathname || "/";
-      // load ONLY on home or /book/*  — never on /dashboard
-      var allow = (p === "/" || p.startsWith("/book/"));
-      if (!allow) return;
+    <div id="root"></div>
 
-      var s = document.createElement("script");
-      s.src = "https://chat.heroai.pro/heroai-embed.js";
-      s.async = true;
-      s.defer = true;
-      s.dataset.heroaiNs = "cat_back";
-      s.dataset.head = "left";
-      s.dataset.autoOpen = "0";
-      s.dataset.autostartMs = "0";  // don't auto-open anything
-      s.dataset.launcher = "off";
-      document.body.appendChild(s);
-    } catch (e) {}
-  })();
-</script>
+    <!-- React entry -->
+    <script type="module" src="/src/main.jsx"></script>
+
+    <!-- HeroAI embed -->
+    <script
+      src="https://chat.heroai.pro/heroai-embed.js"
+      data-heroai-ns="cat_back"
+      data-head="left"
+      data-auto-open="0"
+      data-autostart-ms="6000"
+      data-launcher="off">
+    </script>
+  </body>
 </html>
