@@ -4,17 +4,8 @@ import { Helmet } from "react-helmet-async";
 import logo from "./assets/Y-Logo.png";
 
 /* ==========================================================================
-   CatBackAI — SchedulingDashboard.jsx (Blackout Removed)
-   --------------------------------------------------------------------------
-   Includes:
-     ✅ Logo URL input + live preview
-     ✅ Color scheme controls
-     ✅ Services manager
-     ✅ Availability (weekly)
-     ✅ Unavailability (specific/all-day)
-     ✅ Live Booking Form Preview
-     ✅ Calendar + Weekly Previews
-     ✅ Auto-save + status messages
+   CatBackAI — SchedulingDashboard.jsx
+   (Tabs + Live Preview on Right, “Load failed” removed, Blackout removed)
    ========================================================================== */
 
 const DAY_ORDER = [
@@ -26,7 +17,9 @@ const DAY_ORDER = [
   "Saturday",
   "Sunday",
 ];
+
 const DURATION_OPTIONS = [15, 30, 45, 60, 90, 120, 150, 180];
+
 const JS_DAY_TO_NAME = [
   "Sunday",
   "Monday",
@@ -37,6 +30,7 @@ const JS_DAY_TO_NAME = [
   "Saturday",
 ];
 
+// time helpers
 function toMinutes(hhmm = "") {
   if (!hhmm) return null;
   const [h, m] = hhmm.split(":").map((n) => parseInt(n || "0", 10));
@@ -56,29 +50,35 @@ function fmtYMD(date) {
   return `${y}-${m}-${d}`;
 }
 function buildMonthGrid(year, month) {
-  const first = new Date(year, month, 1);
-  const startDay = first.getDay();
-  const prevDays = (startDay + 6) % 7;
-  const startDate = new Date(year, month, 1 - prevDays);
-  const out = [];
+  const firstOfMonth = new Date(year, month, 1);
+  const startDay = firstOfMonth.getDay(); // 0=Sun..6=Sat
+  const prevMonthDays = (startDay + 6) % 7; // lead cells
+  const startDate = new Date(year, month, 1 - prevMonthDays);
+  const grid = [];
   for (let i = 0; i < 42; i++) {
     const d = new Date(startDate);
     d.setDate(startDate.getDate() + i);
-    out.push(d);
+    grid.push(d);
   }
-  return out;
+  return grid;
 }
 
 /* -------------------------------------------------------------------------- */
 /*                               Main Component                               */
 /* -------------------------------------------------------------------------- */
+
 export default function SchedulingDashboard() {
   const { businessId: routeId } = useParams();
   const navigate = useNavigate();
 
+  // Tabs: "setup" | "calendar"
+  const [tab, setTab] = useState("setup");
+
   const [business, setBusiness] = useState(null);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  // a soft, non-blocking toast text
   const [statusMsg, setStatusMsg] = useState("");
 
   const [colorScheme, setColorScheme] = useState({
@@ -87,14 +87,21 @@ export default function SchedulingDashboard() {
     background: "#ffffff",
     accent: "#de8d2b",
   });
+
   const [logoLink, setLogoLink] = useState("");
+  const [logoOk, setLogoOk] = useState(true); // avoid “load failed” visuals
+
+  // services
   const [services, setServices] = useState([]);
+
+  // availability (single range per day)
   const [availability, setAvailability] = useState(
     DAY_ORDER.reduce((acc, d) => {
       acc[d] = { enabled: false, start: "09:00", end: "17:00" };
       return acc;
     }, {})
   );
+
   // partial/all-day unavailability entries
   const [unavailability, setUnavailability] = useState([]);
 
@@ -104,17 +111,19 @@ export default function SchedulingDashboard() {
     m: today.getMonth(),
   });
 
+  const autosaveRef = useRef(null);
+  const lastSavedPayloadRef = useRef(null);
+
+  // for scroll-to-day from calendar
   const dayRefs = useRef({});
   DAY_ORDER.forEach((d) => {
     if (!dayRefs.current[d]) dayRefs.current[d] = { current: null };
   });
 
-  const autosaveRef = useRef(null);
-  const lastSavedPayloadRef = useRef(null);
-
   /* ------------------------------ Auth Guard ----------------------------- */
   useEffect(() => {
     if (!routeId) return;
+
     const token = sessionStorage.getItem("catback_token");
     const lastActive = sessionStorage.getItem("catback_lastActive");
 
@@ -123,6 +132,7 @@ export default function SchedulingDashboard() {
       setTimeout(() => navigate("/dashboard", { replace: true }), 0);
       return;
     }
+
     if (lastActive && Date.now() - parseInt(lastActive, 10) > 3600000) {
       sessionStorage.clear();
       setTimeout(() => navigate("/dashboard", { replace: true }), 0);
@@ -139,7 +149,7 @@ export default function SchedulingDashboard() {
     };
   }, [routeId, navigate]);
 
-  /* ------------------------------ Fetch All ------------------------------ */
+  /* ------------------------------ Load Data ------------------------------ */
   useEffect(() => {
     if (routeId) fetchAllData(routeId);
   }, [routeId]);
@@ -148,22 +158,34 @@ export default function SchedulingDashboard() {
     setLoading(true);
     setStatusMsg("");
     try {
+      // 1) Business + Color Scheme
       const bizRes = await fetch(
         `https://jacobtf007.app.n8n.cloud/webhook/catbackai_getbusiness?businessId=${id}`
       );
-      const bizData = await bizRes.json();
-      if (!bizData?.business) throw new Error("Business not found");
-      setBusiness(bizData.business);
 
-      if (bizData.business.ColorScheme) {
-        try {
-          const parsed = JSON.parse(bizData.business.ColorScheme);
-          if (parsed && typeof parsed === "object")
-            setColorScheme((p) => ({ ...p, ...parsed }));
-        } catch {}
+      if (!bizRes.ok) {
+        // Gentle notice, no scary big error
+        setStatusMsg("Couldn’t load business profile yet. You can still edit.");
       }
-      if (bizData.business.LogoLink) setLogoLink(bizData.business.LogoLink);
 
+      const bizData = await safeJson(bizRes);
+      if (bizData?.business) {
+        setBusiness(bizData.business);
+
+        if (bizData.business.ColorScheme) {
+          try {
+            const parsed = JSON.parse(bizData.business.ColorScheme);
+            if (parsed && typeof parsed === "object") {
+              setColorScheme((p) => ({ ...p, ...parsed }));
+            }
+          } catch {
+            /* ignore */
+          }
+        }
+        if (bizData.business.LogoLink) setLogoLink(bizData.business.LogoLink);
+      }
+
+      // 2) Schedule/services/availability
       const schedRes = await fetch(
         "https://jacobtf007.app.n8n.cloud/webhook/catbackai_getschedule",
         {
@@ -172,7 +194,12 @@ export default function SchedulingDashboard() {
           body: JSON.stringify({ businessId: id }),
         }
       );
-      const schedJson = await schedRes.json();
+
+      if (!schedRes.ok) {
+        setStatusMsg((s) => s || "Couldn’t load schedule yet. You can still edit.");
+      }
+
+      const schedJson = await safeJson(schedRes);
 
       if (schedJson?.result === "ok") {
         if (Array.isArray(schedJson.services)) {
@@ -191,6 +218,7 @@ export default function SchedulingDashboard() {
           for (const day of DAY_ORDER) {
             const raw = schedJson.availability[day];
             if (!raw) continue;
+
             if (typeof raw?.start === "string" || typeof raw?.end === "string") {
               next[day] = {
                 enabled: !!raw.enabled && !!(raw.start && raw.end),
@@ -220,27 +248,44 @@ export default function SchedulingDashboard() {
           );
         }
       }
-    } catch (err) {
-      setStatusMsg("❌ " + err.message);
+    } catch {
+      // Silent fallback — don’t show “Load failed”
+      setStatusMsg("Some data couldn’t be fetched, but you can continue editing.");
     } finally {
       setLoading(false);
     }
   }
 
+  async function safeJson(res) {
+    try {
+      const txt = await res.text();
+      if (!txt) return null;
+      return JSON.parse(txt);
+    } catch {
+      return null;
+    }
+  }
+
   /* ------------------------------- Save All ------------------------------ */
   const saveDashboard = async (opts = { silent: false }) => {
-    if (!opts.silent) setSaving(true);
-    if (!opts.silent) setStatusMsg("Saving your booking form settings...");
+    if (!opts.silent) {
+      setSaving(true);
+      setStatusMsg("Saving your booking form settings…");
+    }
 
     for (const s of services) {
       if (!s.name?.trim()) {
-        setSaving(false);
-        setStatusMsg("⚠️ Each service needs a name.");
+        if (!opts.silent) {
+          setSaving(false);
+          setStatusMsg("Each service needs a name.");
+        }
         return false;
       }
       if (s.price === "" || isNaN(Number(s.price))) {
-        setSaving(false);
-        setStatusMsg("⚠️ Price is required and must be a number.");
+        if (!opts.silent) {
+          setSaving(false);
+          setStatusMsg("Price is required and must be a number.");
+        }
         return false;
       }
     }
@@ -272,71 +317,88 @@ export default function SchedulingDashboard() {
       );
       if (!res.ok) throw new Error(await res.text());
       lastSavedPayloadRef.current = payloadString;
-      if (!opts.silent)
-        setStatusMsg("✅ Saved! Your booking page will use these settings.");
+      if (!opts.silent) setStatusMsg("Saved! Your booking page will use these settings.");
       return true;
-    } catch (err) {
-      setStatusMsg("❌ " + err.message);
+    } catch {
+      if (!opts.silent) setStatusMsg("Could not save right now. Try again.");
       return false;
     } finally {
       if (!opts.silent) setSaving(false);
     }
   };
 
+  // autosave
   useEffect(() => {
     if (autosaveRef.current) clearInterval(autosaveRef.current);
-    autosaveRef.current = setInterval(() => saveDashboard({ silent: true }), 30000);
-    return () => clearInterval(autosaveRef.current);
+    autosaveRef.current = setInterval(() => {
+      saveDashboard({ silent: true });
+    }, 30000);
+    return () => {
+      if (autosaveRef.current) clearInterval(autosaveRef.current);
+    };
   }, [routeId, colorScheme, logoLink, services, availability, unavailability]);
 
-  /* ------------------------------ Handlers ------------------------------- */
+  /* ------------------------------ Handlers -------------------------------- */
   const hexOk = (c) => /^#[0-9A-Fa-f]{6}$/.test(c);
-  const setColor = (key, value) =>
-    hexOk(value)
-      ? setColorScheme((p) => ({ ...p, [key]: value }))
-      : setStatusMsg("⚠️ Use valid hex (e.g., #000000).");
+  const setColor = (field, value) => {
+    if (hexOk(value)) {
+      setColorScheme((p) => ({ ...p, [field]: value }));
+      setStatusMsg("");
+    } else setStatusMsg("Use valid hex (e.g., #000000).");
+  };
 
   const addService = () =>
     setServices((s) => [...s, { name: "", price: "", duration: "60", description: "" }]);
+
   const updateService = (i, k, v) =>
-    setServices((a) => {
-      const c = [...a];
-      c[i] = { ...c[i], [k]: v };
-      return c;
+    setServices((arr) => {
+      const copy = [...arr];
+      copy[i] = { ...copy[i], [k]: v };
+      return copy;
     });
-  const removeService = (i) =>
-    setServices((a) => a.filter((_, idx) => idx !== i));
 
-  const toggleDay = (d) =>
-    setAvailability((p) => ({
-      ...p,
-      [d]: { ...p[d], enabled: !p[d].enabled },
-    }));
-  const updateDay = (d, k, v) =>
-    setAvailability((p) => ({
-      ...p,
-      [d]: { ...p[d], [k]: v },
+  const removeService = (i) => setServices((arr) => arr.filter((_, idx) => idx !== i));
+
+  const toggleDay = (day) =>
+    setAvailability((prev) => {
+      const enabled = !prev[day].enabled;
+      return {
+        ...prev,
+        [day]: {
+          ...prev[day],
+          enabled,
+        },
+      };
+    });
+
+  const updateDay = (day, key, val) =>
+    setAvailability((prev) => ({
+      ...prev,
+      [day]: { ...prev[day], [key]: val },
     }));
 
-  const addUnavailability = (u) => {
-    if (!u.date) return;
-    const clean = u.allDay ? { ...u, start: "", end: "" } : u;
+  const addUnavailability = (entry) => {
+    if (!entry.date) return;
+    const clean = entry.allDay ? { ...entry, start: "", end: "" } : entry;
     setUnavailability((list) => [...list, clean]);
   };
+
   const removeUnavailability = (i) =>
-    setUnavailability((l) => l.filter((_, idx) => idx !== i));
+    setUnavailability((list) => list.filter((_, idx) => idx !== i));
 
   const bookingUrl = useMemo(() => `https://catbackai.com/book/${routeId}`, [routeId]);
+
   const copyLink = async () => {
     try {
       await navigator.clipboard.writeText(bookingUrl);
-      setStatusMsg("🔗 Booking link copied!");
+      setStatusMsg("Booking link copied!");
       setTimeout(() => setStatusMsg(""), 2000);
     } catch {
-      setStatusMsg("⚠️ Copy failed.");
+      setStatusMsg("Copy failed. You can select and copy the text manually.");
     }
   };
 
+  // derived for previews
   const unavailabilityByDate = useMemo(() => {
     const map = {};
     for (const u of unavailability) {
@@ -347,15 +409,15 @@ export default function SchedulingDashboard() {
     return map;
   }, [unavailability]);
 
-  /* ------------------------------- UI ----------------------------------- */
+  /* ------------------------------- UI ------------------------------------ */
   return (
     <div
       style={{
         fontFamily: "Inter, system-ui, sans-serif",
         minHeight: "100vh",
-        background: "#f7f7f8",
         display: "flex",
         flexDirection: "column",
+        background: "#f7f7f8",
       }}
     >
       <Helmet>
@@ -371,13 +433,15 @@ export default function SchedulingDashboard() {
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
+          gap: 12,
         }}
       >
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
           <img src={logo} alt="CatBackAI" style={{ height: 36 }} />
-          <strong>Scheduling Dashboard</strong>
+          <strong style={{ fontSize: 18 }}>Scheduling Dashboard</strong>
         </div>
-        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <div
             style={{
               background: "rgba(255,255,255,.15)",
@@ -417,6 +481,7 @@ export default function SchedulingDashboard() {
               Copy
             </button>
           </div>
+
           <button
             onClick={() => {
               sessionStorage.clear();
@@ -436,45 +501,114 @@ export default function SchedulingDashboard() {
         </div>
       </header>
 
+      {/* Status banner (soft) */}
       {statusMsg && (
         <div
           style={{
-            background: "#fff4eb",
+            background: "#fffdf7",
             border: "1px solid #f4c89a",
             padding: 12,
             borderRadius: 10,
             margin: "16px auto 0",
-            maxWidth: 1080,
+            maxWidth: 1280,
+            width: "100%",
+            color: "#7a4b0c",
+            fontSize: 13,
           }}
         >
           {statusMsg}
         </div>
       )}
 
-      <main
+      {/* Tabs */}
+      <div
+        className="container"
         style={{
-          maxWidth: 1080,
-          margin: "14px auto 120px",
+          maxWidth: 1280,
+          margin: "14px auto 6px",
           padding: "0 16px",
           width: "100%",
+          display: "flex",
+          gap: 10,
+        }}
+      >
+        <button
+          onClick={() => setTab("setup")}
+          style={{
+            ...tabBtnBase,
+            ...(tab === "setup" ? tabBtnActive(colorScheme.header) : tabBtnInactive(colorScheme.header)),
+          }}
+        >
+          Booking Setup
+        </button>
+        <button
+          onClick={() => setTab("calendar")}
+          style={{
+            ...tabBtnBase,
+            ...(tab === "calendar" ? tabBtnActive(colorScheme.header) : tabBtnInactive(colorScheme.header)),
+          }}
+        >
+          Calendar Preview
+        </button>
+      </div>
+
+      {/* Body */}
+      <main
+        style={{
+          width: "100%",
+          maxWidth: 1280,
+          margin: "0 auto 120px",
+          padding: "0 16px",
         }}
       >
         {loading ? (
           <p>Loading…</p>
+        ) : tab === "calendar" ? (
+          // ---------------- TAB: CALENDAR PREVIEW ----------------
+          <Card>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+              <MonthPreview
+                colorScheme={colorScheme}
+                monthCursor={monthCursor}
+                setMonthCursor={setMonthCursor}
+                availability={availability}
+                unavailabilityByDate={unavailabilityByDate}
+                onPickDay={(dateObj) => {
+                  // Clicking a date will switch back to setup and scroll to that day
+                  const name = JS_DAY_TO_NAME[dateObj.getDay()];
+                  setTab("setup");
+                  setTimeout(() => {
+                    const el = dayRefs.current[name];
+                    if (el && el.scrollIntoView)
+                      el.scrollIntoView({ behavior: "smooth", block: "center" });
+                  }, 50);
+                }}
+              />
+              <WeeklyPreview
+                colorScheme={colorScheme}
+                availability={availability}
+                unavailabilityByDate={unavailabilityByDate}
+              />
+            </div>
+          </Card>
         ) : (
+          // ---------------- TAB: BOOKING SETUP ----------------
           <>
+            {/* Business Summary (compact) */}
             {business && (
               <Card>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  {logoLink ? (
+                  {logoLink && logoOk ? (
                     <img
                       src={logoLink}
                       alt="Logo"
+                      onError={() => setLogoOk(false)}
                       style={{
                         height: 48,
                         width: 48,
                         objectFit: "cover",
                         borderRadius: 8,
+                        border: "1px solid #eee",
                       }}
                     />
                   ) : (
@@ -494,9 +628,7 @@ export default function SchedulingDashboard() {
                     </div>
                   )}
                   <div>
-                    <div style={{ fontWeight: 700 }}>
-                      {business.BusinessName}
-                    </div>
+                    <div style={{ fontWeight: 700 }}>{business.BusinessName}</div>
                     <div style={{ fontSize: 12, color: "#666" }}>
                       Public booking: catbackai.com/book/{routeId}
                     </div>
@@ -505,292 +637,307 @@ export default function SchedulingDashboard() {
               </Card>
             )}
 
-            {/* Branding */}
-            <Card title="Branding & Colors" accent={colorScheme.accent}>
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))",
-                  gap: 12,
-                }}
-              >
-                {["header", "text", "background", "accent"].map((key) => (
-                  <div key={key}>
-                    <label style={{ fontWeight: 600 }}>{key}</label>
-                    <input
-                      type="color"
-                      value={colorScheme[key]}
-                      onChange={(e) => setColor(key, e.target.value)}
-                      style={{
-                        width: "100%",
-                        height: 42,
-                        borderRadius: 10,
-                        border: "1px solid #ddd",
-                        background: "#fff",
-                        cursor: "pointer",
-                      }}
-                    />
-                  </div>
-                ))}
-              </div>
-              <div style={{ marginTop: 16, display: "grid", gridTemplateColumns: "1fr auto", gap: 12, alignItems: "center" }}>
-                <div>
-                  <label style={{ fontWeight: 600, display: "block", marginBottom: 6 }}>
-                    Logo URL
-                  </label>
-                  <input
-                    value={logoLink}
-                    onChange={(e) => setLogoLink(e.target.value)}
-                    placeholder="https://example.com/logo.png"
-                    style={fieldStyle}
-                  />
-                  <p style={{ color: "#777", fontSize: 12, marginTop: 6 }}>
-                    Paste a direct image link (from your site, Imgur, Cloudinary, etc.).
-                  </p>
-                </div>
-                <div>
-                  {logoLink ? (
-                    <img
-                      src={logoLink}
-                      alt="preview"
-                      style={{
-                        height: 56,
-                        width: 56,
-                        objectFit: "cover",
-                        borderRadius: 10,
-                        border: "1px solid #eee",
-                      }}
-                    />
-                  ) : (
-                    <div
-                      style={{
-                        height: 56,
-                        width: 56,
-                        borderRadius: 10,
-                        border: "1px dashed #ddd",
-                        display: "grid",
-                        placeItems: "center",
-                        color: "#999",
-                        fontSize: 11,
-                      }}
-                    >
-                      Preview
-                    </div>
-                  )}
-                </div>
-              </div>
-            </Card>
-
-            {/* Services */}
-            <Card title="Services" accent={colorScheme.accent}>
-              <div style={{ display: "grid", gap: 12 }}>
-                {services.map((s, i) => (
+            {/* Two column layout: editors (left) + live booking preview (right) */}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "minmax(360px, 1fr) 1.1fr",
+                gap: 16,
+                alignItems: "start",
+              }}
+            >
+              {/* LEFT EDITORS */}
+              <div style={{ display: "grid", gap: 16 }}>
+                {/* Branding & Colors + Logo URL */}
+                <Card title="Branding & Colors" accent={colorScheme.accent}>
                   <div
-                    key={i}
                     style={{
-                      background: "#fff",
-                      border: "1px solid #eee",
-                      borderRadius: 12,
-                      padding: 12,
                       display: "grid",
-                      gap: 10,
+                      gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))",
+                      gap: 12,
                     }}
                   >
-                    <input
-                      placeholder="Service name"
-                      value={s.name}
-                      onChange={(e) => updateService(i, "name", e.target.value)}
-                      style={fieldStyle}
-                      required
-                    />
-                    <div
-                      style={{
-                        display: "grid",
-                        gridTemplateColumns: "160px 1fr",
-                        gap: 10,
-                        alignItems: "center",
-                      }}
-                    >
+                    {["header", "text", "background", "accent"].map((key) => (
+                      <div key={key} style={{ display: "grid", gap: 6 }}>
+                        <label style={{ textTransform: "capitalize", fontWeight: 600 }}>
+                          {key}
+                        </label>
+                        <input
+                          type="color"
+                          value={colorScheme[key]}
+                          onChange={(e) => setColor(key, e.target.value)}
+                          style={{
+                            width: "100%",
+                            height: 42,
+                            borderRadius: 10,
+                            border: "1px solid #ddd",
+                            background: "#fff",
+                            cursor: "pointer",
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  <div
+                    style={{
+                      height: 1,
+                      background: "#f0f0f0",
+                      margin: "14px 0",
+                    }}
+                  />
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr auto",
+                      gap: 12,
+                      alignItems: "center",
+                    }}
+                  >
+                    <div>
+                      <label style={{ display: "block", fontWeight: 600, marginBottom: 6 }}>
+                        Logo URL
+                      </label>
                       <input
-                        type="number"
-                        min="0"
-                        placeholder="Price"
-                        value={s.price}
-                        onChange={(e) => updateService(i, "price", e.target.value)}
+                        value={logoLink}
+                        onChange={(e) => {
+                          setLogoLink(e.target.value);
+                          setLogoOk(true);
+                        }}
+                        placeholder="https://example.com/logo.png"
                         style={fieldStyle}
-                        required
                       />
+                      <p style={{ color: "#777", fontSize: 12, marginTop: 6 }}>
+                        Paste a direct image link (from your site, Imgur, Cloudinary, etc.).
+                      </p>
+                    </div>
+                    <div>
+                      {logoLink && logoOk ? (
+                        <img
+                          src={logoLink}
+                          alt="preview"
+                          onError={() => setLogoOk(false)}
+                          style={{
+                            height: 56,
+                            width: 56,
+                            objectFit: "cover",
+                            borderRadius: 10,
+                            border: "1px solid #eee",
+                          }}
+                        />
+                      ) : (
+                        <div
+                          style={{
+                            height: 56,
+                            width: 56,
+                            borderRadius: 10,
+                            border: "1px dashed #ddd",
+                            display: "grid",
+                            placeItems: "center",
+                            color: "#999",
+                            fontSize: 11,
+                          }}
+                        >
+                          Preview
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </Card>
+
+                {/* Services */}
+                <Card title="Services" accent={colorScheme.accent}>
+                  <div style={{ display: "grid", gap: 12 }}>
+                    {services.map((s, i) => (
                       <div
+                        key={i}
                         style={{
+                          background: "#fff",
+                          border: "1px solid #eee",
+                          borderRadius: 12,
+                          padding: 12,
                           display: "grid",
-                          gridTemplateColumns: "180px 1fr",
                           gap: 10,
                         }}
                       >
-                        <select
-                          value={s.duration || "60"}
-                          onChange={(e) => updateService(i, "duration", e.target.value)}
+                        <input
+                          placeholder="Service name"
+                          value={s.name}
+                          onChange={(e) => updateService(i, "name", e.target.value)}
                           style={fieldStyle}
+                          required
+                        />
+                        <div
+                          style={{
+                            display: "grid",
+                            gridTemplateColumns: "160px 1fr",
+                            gap: 10,
+                            alignItems: "center",
+                          }}
                         >
-                          {DURATION_OPTIONS.map((m) => (
-                            <option key={m} value={m}>
-                              {m} min
-                            </option>
-                          ))}
-                        </select>
-                        <input
-                          placeholder="Description (optional)"
-                          value={s.description}
-                          onChange={(e) => updateService(i, "description", e.target.value)}
-                          style={fieldStyle}
-                        />
+                          <input
+                            type="number"
+                            min="0"
+                            placeholder="Price"
+                            value={s.price}
+                            onChange={(e) => updateService(i, "price", e.target.value)}
+                            style={fieldStyle}
+                            required
+                          />
+                          <div
+                            style={{
+                              display: "grid",
+                              gridTemplateColumns: "180px 1fr",
+                              gap: 10,
+                            }}
+                          >
+                            <select
+                              value={s.duration || "60"}
+                              onChange={(e) => updateService(i, "duration", e.target.value)}
+                              style={fieldStyle}
+                            >
+                              {DURATION_OPTIONS.map((m) => (
+                                <option key={m} value={m}>
+                                  {m} min
+                                </option>
+                              ))}
+                            </select>
+                            <input
+                              placeholder="Description (optional)"
+                              value={s.description}
+                              onChange={(e) =>
+                                updateService(i, "description", e.target.value)
+                              }
+                              style={fieldStyle}
+                            />
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeService(i)}
+                          style={btnGhost}
+                        >
+                          Remove
+                        </button>
                       </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => removeService(i)}
-                      style={btnGhost}
-                    >
-                      Remove
-                    </button>
+                    ))}
                   </div>
-                ))}
+
+                  <button
+                    type="button"
+                    onClick={addService}
+                    style={btnPrimary(colorScheme.accent)}
+                  >
+                    + Add Service
+                  </button>
+                </Card>
+
+                {/* Availability */}
+                <Card title="Availability (weekly)" accent={colorScheme.accent}>
+                  <div style={{ display: "grid", gap: 12 }}>
+                    {DAY_ORDER.map((day) => {
+                      const data = availability[day];
+                      return (
+                        <div
+                          key={day}
+                          ref={(el) => (dayRefs.current[day] = el)}
+                          style={{
+                            background: "#fff",
+                            border: "1px solid #eee",
+                            borderRadius: 10,
+                            padding: 12,
+                            display: "grid",
+                            gridTemplateColumns: "auto 140px 140px",
+                            gap: 10,
+                            alignItems: "center",
+                          }}
+                        >
+                          <label style={{ fontWeight: 700 }}>
+                            <input
+                              type="checkbox"
+                              checked={!!data.enabled}
+                              onChange={() => toggleDay(day)}
+                              style={{ marginRight: 8 }}
+                            />
+                            {day}
+                          </label>
+
+                          <input
+                            type="time"
+                            disabled={!data.enabled}
+                            value={data.start}
+                            onChange={(e) => updateDay(day, "start", e.target.value)}
+                            style={fieldStyle}
+                          />
+                          <input
+                            type="time"
+                            disabled={!data.enabled}
+                            value={data.end}
+                            onChange={(e) => updateDay(day, "end", e.target.value)}
+                            style={fieldStyle}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                </Card>
+
+                {/* Unavailability */}
+                <Card title="Add Unavailability (specific times)" accent={colorScheme.accent}>
+                  <AddUnavailabilityForm
+                    onAdd={addUnavailability}
+                    accent={colorScheme.accent}
+                  />
+                  <div style={{ marginTop: 16 }}>
+                    {unavailability.length > 0 ? (
+                      unavailability.map((u, i) => (
+                        <div
+                          key={`${u.date}-${i}`}
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            background: "#fff",
+                            border: "1px solid #eee",
+                            borderRadius: 8,
+                            padding: "8px 12px",
+                            marginBottom: 6,
+                          }}
+                        >
+                          <span style={{ fontSize: 14 }}>
+                            🗓️ <strong>{u.date}</strong>{" "}
+                            — {u.allDay ? "All Day" : `${u.start || "--"} → ${u.end || "--"}`}
+                          </span>
+                          <button
+                            onClick={() => removeUnavailability(i)}
+                            style={btnGhostSmall}
+                            aria-label="remove unavailability"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))
+                    ) : (
+                      <p style={{ color: "#777", fontSize: 14, margin: 0 }}>
+                        No unavailability added yet.
+                      </p>
+                    )}
+                  </div>
+                </Card>
               </div>
-              <button
-                type="button"
-                onClick={addService}
-                style={btnPrimary(colorScheme.accent)}
-              >
-                + Add Service
-              </button>
-            </Card>
 
-            {/* Availability (single range per day) */}
-            <Card title="Availability (weekly)" accent={colorScheme.accent}>
-              <div style={{ display: "grid", gap: 12 }}>
-                {DAY_ORDER.map((day) => {
-                  const data = availability[day];
-                  return (
-                    <div
-                      key={day}
-                      ref={(el) => (dayRefs.current[day] = el)}
-                      style={{
-                        background: "#fff",
-                        border: "1px solid #eee",
-                        borderRadius: 10,
-                        padding: 12,
-                        display: "grid",
-                        gridTemplateColumns: "auto 140px 140px",
-                        gap: 10,
-                        alignItems: "center",
-                      }}
-                    >
-                      <label style={{ fontWeight: 700 }}>
-                        <input
-                          type="checkbox"
-                          checked={!!data.enabled}
-                          onChange={() => toggleDay(day)}
-                          style={{ marginRight: 8 }}
-                        />
-                        {day}
-                      </label>
-                      <input
-                        type="time"
-                        disabled={!data.enabled}
-                        value={data.start}
-                        onChange={(e) => updateDay(day, "start", e.target.value)}
-                        style={fieldStyle}
-                      />
-                      <input
-                        type="time"
-                        disabled={!data.enabled}
-                        value={data.end}
-                        onChange={(e) => updateDay(day, "end", e.target.value)}
-                        style={fieldStyle}
-                      />
-                    </div>
-                  );
-                })}
+              {/* RIGHT: LIVE BOOKING PREVIEW */}
+              <div style={{ position: "sticky", top: 16 }}>
+                <Card title="Live Booking Form Preview" accent={colorScheme.accent}>
+                  <BookingFormPreview
+                    businessName={business?.BusinessName || "Business Name"}
+                    logoLink={logoOk ? logoLink : ""}
+                    colorScheme={colorScheme}
+                    services={services}
+                    availability={availability}
+                  />
+                </Card>
               </div>
-            </Card>
-
-            {/* Add Unavailability (specific times) */}
-            <Card title="Add Unavailability (specific times)" accent={colorScheme.accent}>
-              <AddUnavailabilityForm onAdd={addUnavailability} accent={colorScheme.accent} />
-              <div style={{ marginTop: 16 }}>
-                {unavailability.length > 0 ? (
-                  unavailability.map((u, i) => (
-                    <div
-                      key={`${u.date}-${i}`}
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        background: "#fff",
-                        border: "1px solid #eee",
-                        borderRadius: 8,
-                        padding: "8px 12px",
-                        marginBottom: 6,
-                      }}
-                    >
-                      <span style={{ fontSize: 14 }}>
-                        🗓️ <strong>{u.date}</strong>{" "}
-                        — {u.allDay ? "All Day" : `${u.start || "--"} → ${u.end || "--"}`}
-                      </span>
-                      <button
-                        onClick={() => removeUnavailability(i)}
-                        style={btnGhostSmall}
-                        aria-label="remove unavailability"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))
-                ) : (
-                  <p style={{ color: "#777", fontSize: 14, margin: 0 }}>
-                    No unavailability added yet.
-                  </p>
-                )}
-              </div>
-            </Card>
-
-            {/* ------------------------- Previews (Below) ------------------------ */}
-            <Card title="Calendar Preview" accent={colorScheme.accent}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-                {/* Month Preview */}
-                <MonthPreview
-                  colorScheme={colorScheme}
-                  monthCursor={monthCursor}
-                  setMonthCursor={setMonthCursor}
-                  availability={availability}
-                  unavailabilityByDate={unavailabilityByDate}
-                  onPickDay={(dateObj) => {
-                    const name = JS_DAY_TO_NAME[dateObj.getDay()];
-                    const el = dayRefs.current[name];
-                    if (el && el.scrollIntoView)
-                      el.scrollIntoView({ behavior: "smooth", block: "center" });
-                  }}
-                />
-
-                {/* Weekly Preview */}
-                <WeeklyPreview
-                  colorScheme={colorScheme}
-                  availability={availability}
-                  unavailabilityByDate={unavailabilityByDate}
-                />
-              </div>
-            </Card>
-
-            {/* Live Booking Form Preview */}
-            <Card title="Live Booking Form Preview" accent={colorScheme.accent}>
-              <BookingFormPreview
-                businessName={business?.BusinessName || "Business Name"}
-                logoLink={logoLink}
-                colorScheme={colorScheme}
-                services={services}
-                availability={availability}
-              />
-            </Card>
+            </div>
           </>
         )}
       </main>
@@ -830,7 +977,14 @@ export default function SchedulingDashboard() {
 /* -------------------------------------------------------------------------- */
 /*                          Booking Form Preview Card                          */
 /* -------------------------------------------------------------------------- */
-function BookingFormPreview({ businessName, logoLink, colorScheme, services, availability }) {
+
+function BookingFormPreview({
+  businessName,
+  logoLink,
+  colorScheme,
+  services,
+  availability,
+}) {
   const serviceDuration = useMemo(() => {
     const first = services[0];
     const d = parseInt(first?.duration || "60", 10);
@@ -873,6 +1027,7 @@ function BookingFormPreview({ businessName, logoLink, colorScheme, services, ava
     date: "",
     time: "",
   });
+
   useEffect(() => {
     if (!form.service && services[0]?.name)
       setForm((f) => ({ ...f, service: services[0].name }));
@@ -918,6 +1073,10 @@ function BookingFormPreview({ businessName, logoLink, colorScheme, services, ava
               objectFit: "cover",
               borderRadius: 6,
               border: "1px solid rgba(255,255,255,.5)",
+            }}
+            onError={(e) => {
+              // hide broken preview silently
+              e.currentTarget.style.display = "none";
             }}
           />
         )}
@@ -1029,8 +1188,9 @@ function buildSlots(startHHMM, endHHMM, stepMinutes) {
 }
 
 /* -------------------------------------------------------------------------- */
-/*                        AddUnavailability Form (Left)                       */
+/*                            AddUnavailability Form                          */
 /* -------------------------------------------------------------------------- */
+
 function AddUnavailabilityForm({ onAdd, accent }) {
   const [form, setForm] = useState({ date: "", start: "", end: "", allDay: false });
 
@@ -1094,6 +1254,7 @@ function AddUnavailabilityForm({ onAdd, accent }) {
 /* -------------------------------------------------------------------------- */
 /*                               Month Preview                                */
 /* -------------------------------------------------------------------------- */
+
 function MonthPreview({
   colorScheme,
   monthCursor,
@@ -1117,7 +1278,14 @@ function MonthPreview({
   };
 
   return (
-    <div style={{ border: "1px solid #eee", borderRadius: 12, background: "#fff", overflow: "hidden" }}>
+    <div
+      style={{
+        border: "1px solid #eee",
+        borderRadius: 12,
+        background: "#fff",
+        overflow: "hidden",
+      }}
+    >
       <div
         style={{
           background: colorScheme.header,
@@ -1142,7 +1310,10 @@ function MonthPreview({
           ‹
         </button>
         <div style={{ fontWeight: 700 }}>
-          {new Date(y, m, 1).toLocaleString(undefined, { month: "long", year: "numeric" })}
+          {new Date(y, m, 1).toLocaleString(undefined, {
+            month: "long",
+            year: "numeric",
+          })}
         </div>
         <button
           onClick={goNext}
@@ -1159,7 +1330,15 @@ function MonthPreview({
         </button>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", padding: "8px 8px 0 8px", color: "#666", fontSize: 12 }}>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(7, 1fr)",
+          padding: "8px 8px 0 8px",
+          color: "#666",
+          fontSize: 12,
+        }}
+      >
         {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
           <div key={d} style={{ textAlign: "center", padding: "6px 0" }}>
             {d}
@@ -1167,7 +1346,14 @@ function MonthPreview({
         ))}
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 6, padding: 8 }}>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(7, 1fr)",
+          gap: 6,
+          padding: 8,
+        }}
+      >
         {grid.map((dateObj, idx) => {
           const sameMonth = dateObj.getMonth() === m;
           const ymd = fmtYMD(dateObj);
@@ -1187,7 +1373,6 @@ function MonthPreview({
             label = "Off";
           }
 
-          // if any unavailability exists: mark gray
           let hasPartial = false;
           for (const u of dayUnavailability) {
             hasPartial = true;
@@ -1241,6 +1426,7 @@ function MonthPreview({
 /* -------------------------------------------------------------------------- */
 /*                               Weekly Preview                               */
 /* -------------------------------------------------------------------------- */
+
 function WeeklyPreview({ colorScheme, availability, unavailabilityByDate }) {
   const start = new Date();
   const days = [...Array(7)].map((_, i) => {
@@ -1260,7 +1446,7 @@ function WeeklyPreview({ colorScheme, availability, unavailabilityByDate }) {
           const avail = availability[dowName] || { enabled: false };
           const dayUnavailability = unavailabilityByDate[ymd] || [];
 
-          const totalMinutes = 24 * 60;
+          const totalMinutes = 24 * 60; // 1440
           const toPercent = (min) => `${(min / totalMinutes) * 100}%`;
 
           const availStart = avail.enabled ? toMinutes(avail.start) : null;
@@ -1324,6 +1510,8 @@ function WeeklyPreview({ colorScheme, availability, unavailabilityByDate }) {
                   const s = toMinutes(u.start);
                   const e = toMinutes(u.end);
                   if (s == null || e == null) return null;
+
+                  // draw gray block — if it overlaps orange, it visually “blocks” it
                   return (
                     <div
                       key={i}
@@ -1333,7 +1521,7 @@ function WeeklyPreview({ colorScheme, availability, unavailabilityByDate }) {
                         width: toPercent(Math.max(0, e - s)),
                         top: 2,
                         bottom: 2,
-                        background: "#e5e5e5",
+                        background: "#e5e5e5", // partial gray
                         opacity: 1,
                       }}
                       title={`Unavailable ${u.start} - ${u.end}`}
@@ -1341,6 +1529,7 @@ function WeeklyPreview({ colorScheme, availability, unavailabilityByDate }) {
                   );
                 })}
 
+                {/* hour ticks */}
                 {[0, 6, 12, 18, 24].map((h) => (
                   <div
                     key={h}
@@ -1368,8 +1557,9 @@ function WeeklyPreview({ colorScheme, availability, unavailabilityByDate }) {
 }
 
 /* -------------------------------------------------------------------------- */
-/*                               Card & Styles                                */
+/*                                  Card                                      */
 /* -------------------------------------------------------------------------- */
+
 function Card({ title, accent = "#de8d2b", children }) {
   return (
     <section
@@ -1392,12 +1582,17 @@ function Card({ title, accent = "#de8d2b", children }) {
   );
 }
 
+/* -------------------------------------------------------------------------- */
+/*                               Styles & Buttons                             */
+/* -------------------------------------------------------------------------- */
+
 const labelStyle = {
   display: "block",
   fontSize: 12,
   color: "#666",
   marginBottom: 6,
 };
+
 const fieldStyle = {
   padding: "10px",
   borderRadius: 10,
@@ -1406,6 +1601,7 @@ const fieldStyle = {
   width: "100%",
   outline: "none",
 };
+
 const btnPrimary = (accent) => ({
   marginTop: 10,
   background: accent,
@@ -1416,6 +1612,7 @@ const btnPrimary = (accent) => ({
   cursor: "pointer",
   fontWeight: 600,
 });
+
 const miniButton = (accent) => ({
   background: "transparent",
   color: accent,
@@ -1425,6 +1622,7 @@ const miniButton = (accent) => ({
   cursor: "pointer",
   fontWeight: 600,
 });
+
 const btnGhost = {
   background: "transparent",
   color: "#c00",
@@ -1435,7 +1633,9 @@ const btnGhost = {
   width: "fit-content",
   fontWeight: 600,
 };
+
 const btnGhostSmall = { ...btnGhost, padding: "4px 8px", fontSize: 12 };
+
 const btnSave = {
   background: "#4caf50",
   color: "#fff",
@@ -1447,3 +1647,28 @@ const btnSave = {
   maxWidth: 360,
   fontWeight: 700,
 };
+
+/* Tabs */
+const tabBtnBase = {
+  borderRadius: 999,
+  padding: "8px 14px",
+  fontWeight: 700,
+  cursor: "pointer",
+  border: "2px solid",
+};
+
+function tabBtnActive(color) {
+  return {
+    background: color,
+    color: "#fff",
+    borderColor: color,
+    boxShadow: "inset 0 1px 0 rgba(255,255,255,.25)",
+  };
+}
+function tabBtnInactive(color) {
+  return {
+    background: "#fff",
+    color,
+    borderColor: color,
+  };
+}
