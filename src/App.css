@@ -1,87 +1,74 @@
-/* app.css — mobile-first responsive baseline for CatBackAI */
+/* --- Mobile Navbar Styles --- */
 
-html, body, #root {
-  margin: 0;
-  padding: 0;
-  height: 100%;
-  width: 100%;
-  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
-  background-color: #fff;
-  color: #000;
+.main-nav {
+  display: flex;
+  gap: 40px;
+  justify-content: center;
+  align-items: center;
+  transition: transform 0.3s ease, opacity 0.3s ease;
 }
 
-/* Remove the old centering that broke layout */
-#root {
-  max-width: none;
-  padding: 0;
-  text-align: left;
+#menu-toggle {
+  display: none;
 }
 
-/* Container utility */
-.container {
-  width: 100%;
-  max-width: 1200px;
-  margin-inline: auto;
-  padding-inline: 20px;
-}
-
-/* Responsive grid and text behavior */
-@media (max-width: 1024px) {
-  section.container {
-    padding: 40px 20px;
+/* Mobile state */
+@media (max-width: 820px) {
+  #menu-toggle {
+    display: block !important;
   }
-  nav {
-    flex-wrap: wrap;
-    gap: 20px;
-  }
-  nav a {
-    font-size: 15px;
-  }
-}
 
-@media (max-width: 768px) {
-  header {
+  .main-nav {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 70%;
+    height: 100vh;
+    background: #fff;
     flex-direction: column;
-    align-items: flex-start !important;
-    gap: 12px;
-    padding: 16px 24px !important;
+    justify-content: center;
+    gap: 24px;
+    box-shadow: -2px 0 15px rgba(0, 0, 0, 0.1);
+    transform: translateX(100%);
+    opacity: 0;
+    z-index: 999;
   }
 
-  section.container {
-    padding: 40px 20px !important;
+  body.menu-open .main-nav {
+    transform: translateX(0%);
+    opacity: 1;
   }
 
-  /* Stack hero section vertically */
-  section.container[style*="gridTemplateColumns: \"1fr 1fr\""] {
-    display: flex !important;
-    flex-direction: column !important;
+  /* Dim background behind open menu */
+  body.menu-open::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    z-index: 998;
+    backdrop-filter: blur(3px);
   }
 
-  .btnHero {
-    width: 100%;
-    text-align: center;
-  }
-
-  footer .container {
-    flex-direction: column;
-    gap: 12px;
-    text-align: center;
-  }
-}
-
-@media (max-width: 480px) {
-  h1 {
-    font-size: 26px !important;
-    line-height: 1.2;
-  }
-  h2.sectionTitle {
-    font-size: 20px !important;
-  }
-  p, li {
-    font-size: 14px !important;
-  }
-  .btnHero {
+  /* Animate links in */
+  .main-nav a,
+  .main-nav .login-btn {
     font-size: 18px;
-    padding: 16px 32px;
+    opacity: 0;
+    transform: translateY(10px);
+    animation: slideIn 0.4s ease forwards;
+  }
+
+  body.menu-open .main-nav a:nth-child(1) { animation-delay: 0.05s; }
+  body.menu-open .main-nav a:nth-child(2) { animation-delay: 0.1s; }
+  body.menu-open .main-nav a:nth-child(3) { animation-delay: 0.15s; }
+  body.menu-open .main-nav a:nth-child(4) { animation-delay: 0.2s; }
+  body.menu-open .main-nav a:nth-child(5) { animation-delay: 0.25s; }
+  body.menu-open .main-nav a:nth-child(6) { animation-delay: 0.3s; }
+
+  @keyframes slideIn {
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 }
