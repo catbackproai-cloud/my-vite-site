@@ -1,42 +1,87 @@
+/* app.css — mobile-first responsive baseline for CatBackAI */
+
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+  background-color: #fff;
+  color: #000;
+}
+
+/* Remove the old centering that broke layout */
 #root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+  max-width: none;
+  padding: 0;
+  text-align: left;
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+/* Container utility */
+.container {
+  width: 100%;
+  max-width: 1200px;
+  margin-inline: auto;
+  padding-inline: 20px;
 }
 
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
+/* Responsive grid and text behavior */
+@media (max-width: 1024px) {
+  section.container {
+    padding: 40px 20px;
   }
-  to {
-    transform: rotate(360deg);
+  nav {
+    flex-wrap: wrap;
+    gap: 20px;
   }
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
+  nav a {
+    font-size: 15px;
   }
 }
 
-.card {
-  padding: 2em;
+@media (max-width: 768px) {
+  header {
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 12px;
+    padding: 16px 24px !important;
+  }
+
+  section.container {
+    padding: 40px 20px !important;
+  }
+
+  /* Stack hero section vertically */
+  section.container[style*="gridTemplateColumns: \"1fr 1fr\""] {
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  .btnHero {
+    width: 100%;
+    text-align: center;
+  }
+
+  footer .container {
+    flex-direction: column;
+    gap: 12px;
+    text-align: center;
+  }
 }
 
-.read-the-docs {
-  color: #888;
+@media (max-width: 480px) {
+  h1 {
+    font-size: 26px !important;
+    line-height: 1.2;
+  }
+  h2.sectionTitle {
+    font-size: 20px !important;
+  }
+  p, li {
+    font-size: 14px !important;
+  }
+  .btnHero {
+    font-size: 18px;
+    padding: 16px 32px;
+  }
 }
