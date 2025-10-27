@@ -1,4 +1,55 @@
-/* --- Mobile Navbar Styles --- */
+/* ----------------------------------------------------------- */
+/*                  GLOBAL & BASE STYLES                       */
+/* ----------------------------------------------------------- */
+
+body {
+  margin: 0;
+  font-family: "Inter", sans-serif;
+  color: #222;
+  background-color: #fff;
+  overflow-x: hidden;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 700;
+  margin: 0;
+}
+
+p {
+  margin: 0 0 1rem 0;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+/* ----------------------------------------------------------- */
+/*                  NAVBAR STYLES                              */
+/* ----------------------------------------------------------- */
+
+header {
+  width: 100%;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+  padding: 18px 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.logo img {
+  height: 32px;
+}
 
 .main-nav {
   display: flex;
@@ -8,14 +59,17 @@
   transition: transform 0.3s ease, opacity 0.3s ease;
 }
 
-/* Hide the toggle by default (desktop) */
+.main-nav a {
+  font-weight: 500;
+  color: #333;
+}
+
 #menu-toggle {
   display: none;
 }
 
-/* Mobile styles */
+/* ------------------ MOBILE NAVBAR ------------------ */
 @media (max-width: 820px) {
-  /* Show the hamburger icon */
   #menu-toggle {
     display: block !important;
     background: none;
@@ -29,7 +83,6 @@
     z-index: 1001;
   }
 
-  /* Convert nav into a slide-out panel */
   .main-nav {
     position: fixed;
     top: 0;
@@ -48,14 +101,12 @@
     z-index: 999;
   }
 
-  /* When the menu is open */
   body.menu-open .main-nav {
     transform: translateX(0);
     opacity: 1;
     pointer-events: all;
   }
 
-  /* Dim background when menu is open */
   body.menu-open::before {
     content: "";
     position: fixed;
@@ -65,14 +116,11 @@
     z-index: 998;
   }
 
-  /* Prevent background scroll when menu open */
   body.menu-open {
     overflow: hidden;
   }
 
-  /* Animate links in */
-  .main-nav a,
-  .main-nav .login-btn {
+  .main-nav a {
     font-size: 18px;
     opacity: 0;
     transform: translateY(10px);
@@ -92,4 +140,175 @@
       transform: translateY(0);
     }
   }
+}
+
+/* ----------------------------------------------------------- */
+/*                  HERO / ONBOARDING SECTION                  */
+/* ----------------------------------------------------------- */
+
+.hero-section {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 60px 10%;
+  background: #fff6ee;
+  gap: 60px;
+}
+
+.hero-left {
+  flex: 1;
+}
+
+.hero-left .tag {
+  background: #ffe8cc;
+  color: #a85c00;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  display: inline-block;
+  margin-bottom: 1rem;
+}
+
+.hero-left h1 {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  line-height: 1.2;
+}
+
+.hero-left p {
+  font-size: 1.1rem;
+  color: #444;
+}
+
+.hero-left ul {
+  margin: 1.2rem 0;
+  padding-left: 20px;
+  color: #333;
+}
+
+.hero-left li {
+  margin-bottom: 8px;
+}
+
+.cta-btn {
+  background-color: #de8d2b;
+  color: white;
+  padding: 12px 24px;
+  border-radius: 6px;
+  font-weight: 600;
+  display: inline-block;
+  transition: background-color 0.2s ease;
+}
+
+.cta-btn:hover {
+  background-color: #c5781d;
+}
+
+/* ------------------ FORM CARD ------------------ */
+
+.hero-right {
+  flex: 1;
+  max-width: 400px;
+}
+
+.business-onboarding {
+  background: white;
+  border-radius: 12px;
+  padding: 28px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.business-onboarding input,
+.business-onboarding select,
+.business-onboarding textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+  font-size: 1rem;
+  margin-bottom: 12px;
+}
+
+.business-onboarding button {
+  width: 100%;
+  background-color: #de8d2b;
+  border: none;
+  color: white;
+  font-weight: 600;
+  padding: 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.business-onboarding button:hover {
+  background-color: #c5781d;
+}
+
+/* ----------------------------------------------------------- */
+/*                  MOBILE LAYOUT FIXES                        */
+/* ----------------------------------------------------------- */
+
+@media (max-width: 820px) {
+  .hero-section {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 24px;
+    padding: 40px 20px;
+  }
+
+  .hero-left,
+  .hero-right {
+    width: 100%;
+  }
+
+  .hero-right {
+    order: 2; /* move form below */
+  }
+
+  .hero-left {
+    order: 1;
+  }
+
+  .hero-left h1 {
+    font-size: 2rem;
+  }
+
+  .hero-left p {
+    font-size: 1rem;
+  }
+
+  .hero-left ul {
+    margin: 1rem auto;
+    padding-left: 1.2rem;
+    text-align: left;
+    max-width: 300px;
+  }
+
+  .cta-btn {
+    display: inline-block;
+    width: 100%;
+    max-width: 300px;
+    margin: 1rem auto;
+  }
+
+  .business-onboarding {
+    width: 100%;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1);
+    border-radius: 12px;
+    padding: 20px;
+  }
+}
+
+/* ----------------------------------------------------------- */
+/*                  FOOTER / MISC                              */
+/* ----------------------------------------------------------- */
+
+footer {
+  text-align: center;
+  padding: 40px 0;
+  color: #777;
+  font-size: 0.9rem;
 }
