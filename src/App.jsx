@@ -18,8 +18,6 @@ function App() {
     BusinessName: "",
     BusinessEmail: "",
     BusinessPhoneNumber: "",
-    Address: "",
-    LogoFile: "", // ✅ now a URL string instead of a file
     Notes: "",
     Consent: false,
     BusinessId: "", // hidden, auto-handled
@@ -29,7 +27,6 @@ function App() {
     done: false,
     error: "",
     businessId: "",
-    bookingLink: "",
   });
 
   // ✅ New: non-breaking enhancements
@@ -40,10 +37,6 @@ function App() {
   useEffect(() => {
     try {
       const toSave = { ...formData };
-      if (toSave.LogoFile) {
-        // files can't be serialized; omit pointer
-        toSave.LogoFile = null;
-      }
       localStorage.setItem(
         "catbackai_onboarding_draft",
         JSON.stringify(toSave)
@@ -527,37 +520,7 @@ function App() {
                 required
                 style={input}
               />
-
-              <label style={label}>Logo URL (optional)</label>
-<input
-  type="url"
-  name="LogoFile"
-  value={formData.LogoFile}
-  onChange={handleChange}
-  placeholder="https://example.com/logo.png"
-  style={input}
-/>
-<p style={{ ...muted, fontSize: 12 }}>
-  Paste a direct image link (from your site, Imgur, Cloudinary, etc.)
-</p>
-
-
-
               
-
-                
-                  
-                
-                    
-                   
-
-               
-
-
-
-             
-            
-
               <label style={label}>Requests / Notes</label>
               <textarea
                 name="Notes"
