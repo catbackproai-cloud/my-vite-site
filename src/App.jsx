@@ -4,6 +4,7 @@ import logo from "./assets/Y-Logo.png"; // ✅ exact file name
 import { useNavigate } from "react-router-dom";
 
 function App() {
+  const env = useClientEnv(); // <-- adds body classes for CSS
   const openChatbot = (topic) => {
     alert(`Chatbot opened for: ${topic}`);
   }
@@ -314,86 +315,110 @@ function App() {
         })}</script>
       </Helmet>
 
-      {/* NAVBAR */}
-      <header
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          padding: "20px 60px",
-          background: "#fff",
-          boxShadow: "0 2px 6px rgba(0,0,0,0.05)",
-          position: "sticky",
-          top: 0,
-          zIndex: 100,
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-          <img src={logo} alt="CatBackAI Logo" style={{ width: 42, height: 42 }} />
-          <span style={{ fontWeight: 900, fontSize: 22, color: "#000" }}>
-            CatBackAI
-          </span>
-        </div>
-<button
-  className="mobile-toggle"
-  onClick={() => document.body.classList.toggle("menu-open")}
-  aria-label="Toggle menu"
->
-  ☰
-</button>
-        <nav style={{ display: "flex", gap: "40px", flex: 1, justifyContent: "center" }}>
-          <a href="#who-we-are">Who We Are</a>
-          <a href="#why-catbackai">Why CatBackAI</a>
-          <a href="#features">Features</a>
-          <a href="#reviews">Reviews</a>
-          <a href="#pricing">Pricing</a>
-          <a href="#faq">FAQ</a>
-          <a href="#contact">Contact</a>
-        </nav>
-<div className="mobile-menu">
-  <a href="#who-we-are" onClick={() => document.body.classList.remove("menu-open")}>Who We Are</a>
-  <a href="#why-catbackai" onClick={() => document.body.classList.remove("menu-open")}>Why CatBackAI</a>
-  <a href="#features" onClick={() => document.body.classList.remove("menu-open")}>Features</a>
-  <a href="#reviews" onClick={() => document.body.classList.remove("menu-open")}>Reviews</a>
-  <a href="#pricing" onClick={() => document.body.classList.remove("menu-open")}>Pricing</a>
-  <a href="#faq" onClick={() => document.body.classList.remove("menu-open")}>FAQ</a>
-  <a href="#contact" onClick={() => document.body.classList.remove("menu-open")}>Contact</a>
-  <button
-    onClick={() => {
-      document.body.classList.remove("menu-open");
-      navigate("/dashboard");
-    }}
-    style={{
-      marginTop: "10px",
-      background: "#de8d2b",
-      color: "#000",
-      border: "none",
-      padding: "10px 22px",
-      borderRadius: "8px",
-      fontWeight: "700",
-      fontSize: "16px",
-    }}
-  >
-    Log In
-  </button>
-</div>
-        <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
-          <button
-  onClick={() => navigate("/dashboard")}
+      {/* NAVBAR (dynamic version) */}
+<header
+  id="site-header"
   style={{
-    background: "transparent",
-    border: "none",
-    color: "#000",
-    fontWeight: 600,
-    fontSize: 16,
-    cursor: "pointer",
-    textDecoration: "underline",
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: "20px 60px",
+    background: "#fff",
+    boxShadow: "0 2px 6px rgba(0,0,0,0.05)",
+    position: "sticky",
+    top: 0,
+    zIndex: 100,
   }}
 >
-  Log In
-</button>
-        </div>
-      </header>
+  {/* Left logo + brand */}
+  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+    <img src={logo} alt="CatBackAI Logo" style={{ width: 42, height: 42 }} />
+    <span style={{ fontWeight: 900, fontSize: 22, color: "#000" }}>
+      CatBackAI
+    </span>
+  </div>
+
+  {/* Mobile hamburger toggle */}
+  <button
+    className="mobile-toggle"
+    onClick={() => document.body.classList.toggle("menu-open")}
+    aria-label="Toggle menu"
+  >
+    ☰
+  </button>
+
+  {/* Desktop navigation */}
+  <nav className="main-nav">
+    <a href="#who-we-are">Who We Are</a>
+    <a href="#why-catbackai">Why CatBackAI</a>
+    <a href="#features">Features</a>
+    <a href="#reviews">Reviews</a>
+    <a href="#pricing">Pricing</a>
+    <a href="#faq">FAQ</a>
+    <a href="#contact">Contact</a>
+  </nav>
+
+  {/* Slide-out mobile menu (auto activated via body.menu-open) */}
+  <div className="mobile-menu">
+    <a href="#who-we-are" onClick={() => document.body.classList.remove("menu-open")}>
+      Who We Are
+    </a>
+    <a href="#why-catbackai" onClick={() => document.body.classList.remove("menu-open")}>
+      Why CatBackAI
+    </a>
+    <a href="#features" onClick={() => document.body.classList.remove("menu-open")}>
+      Features
+    </a>
+    <a href="#reviews" onClick={() => document.body.classList.remove("menu-open")}>
+      Reviews
+    </a>
+    <a href="#pricing" onClick={() => document.body.classList.remove("menu-open")}>
+      Pricing
+    </a>
+    <a href="#faq" onClick={() => document.body.classList.remove("menu-open")}>
+      FAQ
+    </a>
+    <a href="#contact" onClick={() => document.body.classList.remove("menu-open")}>
+      Contact
+    </a>
+    <button
+      onClick={() => {
+        document.body.classList.remove("menu-open");
+        navigate("/dashboard");
+      }}
+      style={{
+        marginTop: "10px",
+        background: "#de8d2b",
+        color: "#000",
+        border: "none",
+        padding: "10px 22px",
+        borderRadius: "8px",
+        fontWeight: "700",
+        fontSize: "16px",
+      }}
+    >
+      Log In
+    </button>
+  </div>
+
+  {/* Desktop "Log In" button */}
+  <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
+    <button
+      onClick={() => navigate("/dashboard")}
+      style={{
+        background: "transparent",
+        border: "none",
+        color: "#000",
+        fontWeight: 600,
+        fontSize: 16,
+        cursor: "pointer",
+        textDecoration: "underline",
+      }}
+    >
+      Log In
+    </button>
+  </div>
+</header>
 
       {/* HERO SECTION */}
       <section
@@ -982,5 +1007,81 @@ const errorBox = {
   padding: "8px 10px",
   fontSize: 13,
 };
+function useClientEnv() {
+  const [env, setEnv] = useState({
+    isTouch: false,
+    isMobile: false,
+    isIOS: false,
+    isAndroid: false,
+    isSafari: false,
+    isChrome: false,
+    isFirefox: false,
+    isEdge: false,
+    isDesktop: true,
+  });
+
+  useEffect(() => {
+    const ua = navigator.userAgent || "";
+    const vendor = navigator.vendor || "";
+    const isTouch =
+      "ontouchstart" in window ||
+      navigator.maxTouchPoints > 0 ||
+      window.matchMedia("(pointer: coarse)").matches;
+
+    const isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    const isAndroid = /Android/.test(ua);
+
+    const isSafari =
+      /^Apple/.test(vendor) &&
+      /Safari/.test(ua) &&
+      !/CriOS|FxiOS|EdgiOS|Chrome|Chromium/.test(ua);
+
+    const isChrome = /Chrome|Chromium|CriOS/.test(ua) && !/Edg/.test(ua);
+    const isFirefox = /Firefox|FxiOS/.test(ua);
+    const isEdge = /Edg|EdgiOS|EdgA/.test(ua);
+
+    const isMobile =
+      isTouch ||
+      /Mobi|Android|iPhone|iPad|iPod/.test(ua) ||
+      window.matchMedia("(max-width: 820px)").matches;
+
+    const isDesktop = !isMobile;
+
+    const flags = {
+      isTouch,
+      isMobile,
+      isIOS,
+      isAndroid,
+      isSafari,
+      isChrome,
+      isFirefox,
+      isEdge,
+      isDesktop,
+    };
+
+    setEnv(flags);
+
+    // expose as classes on <body> for CSS targeting
+    const cls = [
+      flags.isDesktop ? "env-desktop" : "env-mobile",
+      flags.isIOS && "env-ios",
+      flags.isAndroid && "env-android",
+      flags.isSafari && "env-safari",
+      flags.isChrome && "env-chrome",
+      flags.isFirefox && "env-firefox",
+      flags.isEdge && "env-edge",
+      flags.isTouch && "env-touch",
+    ]
+      .filter(Boolean)
+      .join(" ");
+
+    document.body.classList.add(...cls.split(" "));
+    return () => {
+      cls.split(" ").forEach(c => document.body.classList.remove(c));
+    };
+  }, []);
+
+  return env;
+}
 
 export default App;
