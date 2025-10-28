@@ -9,9 +9,6 @@ function App() {
   }
   const navigate = useNavigate();
 ;
-useEffect(() => {
-  document.body.style.overflow = showForm ? "hidden" : "auto";
-}, [showForm]);
 
   /* ---------- signup form state ---------- */
   const [formData, setFormData] = useState({
@@ -36,7 +33,6 @@ useEffect(() => {
   const [submitting, setSubmitting] = useState(false);
   const [copied, setCopied] = useState(false);
   const [savedDraftAt, setSavedDraftAt] = useState("");
-const [showForm, setShowForm] = useState(false);
 
   useEffect(() => {
     try {
@@ -369,17 +365,15 @@ const [showForm, setShowForm] = useState(false);
 
       {/* HERO SECTION */}
       <section
-  className="container"
-  style={{
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    textAlign: "center",
-    justifyContent: "center",
-    padding: "100px 20px",
-    gap: "30px",
-  }}
->
+        className="container"
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          alignItems: "start",
+          padding: "80px 60px",
+          gap: "50px",
+        }}
+      >
         {/* Left column */}
         <div>
           <div className="badge" style={{ marginBottom: 12 }}>
@@ -400,13 +394,9 @@ const [showForm, setShowForm] = useState(false);
             lasting client relationships with smart follow-ups.
           </p>
           <div style={{ display: "flex", gap: "18px", flexWrap: "wrap" }}>
-<button
-  className="btnHero"
-  onClick={() => setShowForm(true)}
-  style={{ border: "none" }}
->
-  Get Started
-</button>
+            <a className="btnHero" href="#signup-form">
+              Get Started
+            </a>
           </div>
           <ul
             style={{ marginTop: 22, color: "#333", fontSize: 15, lineHeight: 1.8 }}
@@ -415,6 +405,159 @@ const [showForm, setShowForm] = useState(false);
             <li>Automatic confirmations, reminders, and follow-ups</li>
             <li>Simple setup, no code required</li>
           </ul>
+        </div>
+
+        {/* Right column: SIGNUP FORM */}
+        <div>
+          {status.done ? (
+            <div style={card}>
+              <h3 style={title}>✅ Signup Received</h3>
+              <p style={muted}>
+                <strong>Your Business ID:</strong> {status.businessId}
+              </p>
+              <p style={muted}>
+                Your business is now <strong>pending approval</strong>. Once approved, you’ll
+                automatically receive your unique booking link by email or SMS.
+              </p>
+              <p style={muted}>
+                Keep this ID safe — it identifies your account for setup and support.
+              </p>
+              <button
+                onClick={copyToClipboard}
+                style={{
+                  ...btn,
+                  marginTop: "10px",
+                  background: copied ? "#4caf50" : "#de8d2b",
+                  color: copied ? "#fff" : "#000",
+                }}
+              >
+                {copied ? "Copied!" : "Copy Business ID"}
+              </button>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} style={card} id="signup-form">
+              <h3 style={title}>Business Onboarding</h3>
+
+              {/* ✅ New: inline progress bar */}
+              <div
+                className="progressOuter"
+                aria-label="Form completion"
+                title={`Completion: ${completionPct}%`}
+              >
+                <div
+                  className="progressInner"
+                  style={{ width: `${completionPct}%` }}
+                />
+              </div>
+              <p style={{ ...muted, marginTop: 6 }}>{completionPct}% complete</p>
+
+              <label style={label}>Business Type</label>
+              <select
+                name="BusinessType"
+                value={formData.BusinessType}
+                onChange={handleChange}
+                required
+                style={input}
+              >
+                <option value="">Select</option>
+                <option>Auto Detailing</option>
+                <option>Barber</option>
+                <option>Nail Salon</option>
+                <option>Spa</option>
+                <option>Fitness</option>
+                <option>Other</option>
+              </select>
+
+              {/* ✅ Conditional field for 'Other' business type */}
+              {formData.BusinessType === "Other" && (
+                <>
+                  <label style={label}>Please specify your business type</label>
+                  <input
+                    name="OtherBusinessType"
+                    value={formData.OtherBusinessType || ""}
+                    onChange={handleChange}
+                    placeholder="e.g. Tattoo Artist, Landscaping, etc."
+                    style={input}
+                    required
+                  />
+                </>
+              )}
+
+              <label style={label}>Owner Full Name</label>
+              <input
+                name="OwnerName"
+                value={formData.OwnerName}
+                onChange={handleChange}
+                required
+                style={input}
+              />
+
+              <label style={label}>Business Name</label>
+              <input
+                name="BusinessName"
+                value={formData.BusinessName}
+                onChange={handleChange}
+                required
+                style={input}
+              />
+
+              <label style={label}>Business Email</label>
+              <input
+                type="email"
+                name="BusinessEmail"
+                value={formData.BusinessEmail}
+                onChange={handleChange}
+                required
+                style={input}
+              />
+
+              <label style={label}>Business Phone Number</label>
+              <input
+                type="tel"
+                name="BusinessPhoneNumber"
+                value={formData.BusinessPhoneNumber}
+                onChange={handleChange}
+                required
+                style={input}
+              />
+              <label style={label}>Requests / Notes</label>
+              <textarea
+                name="Notes"
+                value={formData.Notes}
+                onChange={handleChange}
+                rows={3}
+                style={textarea}
+              />
+
+              <label
+                style={{ ...label, display: "flex", gap: 8, alignItems: "flex-start" }}
+              >
+                <input
+                  type="checkbox"
+                  name="Consent"
+                  checked={formData.Consent}
+                  onChange={handleChange}
+                  required
+                />
+                <span style={muted}>
+                  I acknowledge my clients may receive confirmations, reminders, and
+                  follow-ups from CatBackAI with opt-out instructions (Reply STOP).
+                </span>
+              </label>
+
+              {status.error && <div style={errorBox}>{status.error}</div>}
+              <button
+                type="submit"
+                style={{ ...btn, opacity: submitting ? 0.7 : 1 }}
+                disabled={submitting}
+              >
+                {submitting ? "Submitting…" : "Submit"}
+              </button>
+              {savedDraftAt && (
+                <p style={{ ...muted, marginTop: 8 }}>Draft saved: {savedDraftAt}</p>
+              )}
+            </form>
+          )}
         </div>
       </section>
 
@@ -469,13 +612,7 @@ const [showForm, setShowForm] = useState(false);
               <li><strong>See what’s working</strong> with simple tracking of bookings and outcomes.</li>
             </ul>
             <div style={{ marginTop: 18 }}>
-              <button
-  className="btnPrimary"
-  onClick={() => setShowForm(true)}
-  style={{ border: "none", cursor: "pointer" }}
->
-  Start Free
-</button>
+              <a className="btnPrimary" href="#signup-form">Start Free</a>
             </div>
           </div>
           <div style={{ ...card, padding: 24 }} className="hoverCard">
@@ -620,13 +757,9 @@ const [showForm, setShowForm] = useState(false);
               <li>SMS/email reminders</li>
               <li>Basic follow-ups</li>
             </ul>
-            <button
-  className="btnPrimary"
-  onClick={() => setShowForm(true)}
-  style={{ border: "none", cursor: "pointer" }}
->
-  Start Free
-</button>
+            <a className="btnPrimary" href="#signup-form" style={{ marginTop: 12, display: "inline-block" }}>
+              Start Starter
+            </a>
           </div>
 
           {/* Growth */}
@@ -638,13 +771,9 @@ const [showForm, setShowForm] = useState(false);
               <li>Advanced follow-ups & upsells</li>
               <li>Review nudges</li>
             </ul>
-           <button
-  className="btnPrimary"
-  onClick={() => setShowForm(true)}
-  style={{ border: "none", cursor: "pointer" }}
->
-  Start Free
-</button>
+            <a className="btnPrimary" href="#signup-form" style={{ marginTop: 12, display: "inline-block" }}>
+              Start Growth
+            </a>
           </div>
 
           {/* Pro */}
@@ -656,14 +785,9 @@ const [showForm, setShowForm] = useState(false);
               <li>Custom flows</li>
               <li>Priority support</li>
             </ul>
-           <button
-  className="btnPrimary"
-  onClick={() => setShowForm(true)}
-  style={{ border: "none", cursor: "pointer" }}
->
-  Start Free
-</button>
-
+            <a className="btnPrimary" href="#signup-form" style={{ marginTop: 12, display: "inline-block" }}>
+              Start Pro
+            </a>
           </div>
         </div>
       </section>
@@ -675,13 +799,9 @@ const [showForm, setShowForm] = useState(false);
           <p style={{ ...muted, marginTop: 8 }}>
             Create your booking link in minutes. No credit card required.
           </p>
-          <button
-  className="btnHero"
-  onClick={() => setShowForm(true)}
-  style={{ border: "none", cursor: "pointer" }}
->
-  Create My Link
-</button>
+          <a href="#signup-form" className="btnHero" style={{ marginTop: 12 }}>
+            Create My Link
+          </a>
         </div>
       </section>
 
@@ -784,54 +904,6 @@ const [showForm, setShowForm] = useState(false);
     </div>
   );
 }
-{/* FOOTER END ABOVE HERE */}
-
-{showForm && (
-  <div
-    className="form-modal-overlay"
-    onClick={(e) => {
-      if (e.target.classList.contains("form-modal-overlay")) {
-        setShowForm(false);
-      }
-    }}
-  >
-    <div className="form-modal">
-      <button
-        className="close-btn"
-        onClick={() => setShowForm(false)}
-        aria-label="Close form"
-      >
-        ✕
-      </button>
-
-      {status.done ? (
-        <div style={card}>
-          <h3 style={title}>✅ Signup Received</h3>
-          <p style={muted}><strong>Your Business ID:</strong> {status.businessId}</p>
-          <p style={muted}>
-            Your business is now <strong>pending approval</strong>.
-            You’ll receive your unique booking link once approved.
-          </p>
-          <button
-            onClick={copyToClipboard}
-            style={{
-              ...btn,
-              marginTop: "10px",
-              background: copied ? "#4caf50" : "#de8d2b",
-              color: copied ? "#fff" : "#000",
-            }}
-          >
-            {copied ? "Copied!" : "Copy Business ID"}
-          </button>
-        </div>
-      ) : (
-        <form onSubmit={handleSubmit}>
-          {/* Your fields (unchanged) */}
-        </form>
-      )}
-    </div>
-  </div>
-)}
 
 /* ---------- styles (kept original + extended) ---------- */
 const card = {
