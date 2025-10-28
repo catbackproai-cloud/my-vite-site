@@ -4,7 +4,6 @@ import logo from "./assets/Y-Logo.png"; // ✅ exact file name
 import { useNavigate } from "react-router-dom";
 
 function App() {
-  const env = useClientEnv(); // <-- adds body classes for CSS
   const openChatbot = (topic) => {
     alert(`Chatbot opened for: ${topic}`);
   }
@@ -315,134 +314,119 @@ function App() {
         })}</script>
       </Helmet>
 
-{/* HEADER */}
-      <header>
-        <div className="logo">
-          <img src={logo} alt="CatBackAI Logo" />
-          <span className="brand-name">CatBackAI</span>
+      {/* NAVBAR */}
+      <header
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          padding: "20px 60px",
+          background: "#fff",
+          boxShadow: "0 2px 6px rgba(0,0,0,0.05)",
+          position: "sticky",
+          top: 0,
+          zIndex: 100,
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <img src={logo} alt="CatBackAI Logo" style={{ width: 42, height: 42 }} />
+          <span style={{ fontWeight: 900, fontSize: 22, color: "#000" }}>
+            CatBackAI
+          </span>
         </div>
 
-        {!isMobile && (
-          <nav className="main-nav">
-            <a href="#who-we-are">Who We Are</a>
-            <a href="#why-catbackai">Why CatBackAI</a>
-            <a href="#features">Features</a>
-            <a href="#reviews">Reviews</a>
-            <a href="#pricing">Pricing</a>
-            <a href="#faq">FAQ</a>
-            <a href="#contact">Contact</a>
-          </nav>
-        )}
+        <nav style={{ display: "flex", gap: "40px", flex: 1, justifyContent: "center" }}>
+          <a href="#who-we-are">Who We Are</a>
+          <a href="#why-catbackai">Why CatBackAI</a>
+          <a href="#features">Features</a>
+          <a href="#reviews">Reviews</a>
+          <a href="#pricing">Pricing</a>
+          <a href="#faq">FAQ</a>
+          <a href="#contact">Contact</a>
+        </nav>
 
-        {isMobile && (
+        <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
           <button
-            id="menu-toggle"
-            onClick={() => document.body.classList.toggle("menu-open")}
-          >
-            ☰
-          </button>
-        )}
-
-        <div className="nav-right">
-          <button className="login-btn" onClick={() => navigate("/dashboard")}>
-            Log In
-          </button>
+  onClick={() => navigate("/dashboard")}
+  style={{
+    background: "transparent",
+    border: "none",
+    color: "#000",
+    fontWeight: 600,
+    fontSize: 16,
+    cursor: "pointer",
+    textDecoration: "underline",
+  }}
+>
+  Log In
+</button>
         </div>
-
-        {isMobile && (
-          <div className="mobile-menu">
-            {[
-              "Who We Are",
-              "Why CatBackAI",
-              "Features",
-              "Reviews",
-              "Pricing",
-              "FAQ",
-              "Contact",
-            ].map((label) => (
-              <a
-                key={label}
-                href={`#${label.toLowerCase().replace(/\s+/g, "-")}`}
-                onClick={() => document.body.classList.remove("menu-open")}
-              >
-                {label}
-              </a>
-            ))}
-            <button
-              onClick={() => {
-                document.body.classList.remove("menu-open");
-                navigate("/dashboard");
-              }}
-              className="mobile-login"
-            >
-              Log In
-            </button>
-          </div>
-        )}
       </header>
 
       {/* HERO SECTION */}
-      <section className={isMobile ? "hero-section-mobile" : "hero-section-desktop"}>
-        <div className="hero-left">
-          <div className="tag">Built for service businesses</div>
-          <h1>Bring in more sales and maintain your customers</h1>
-          <p>
+      <section
+        className="container"
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          alignItems: "start",
+          padding: "80px 60px",
+          gap: "50px",
+        }}
+      >
+        {/* Left column */}
+        <div>
+          <div className="badge" style={{ marginBottom: 12 }}>
+            Built for service businesses
+          </div>
+          <h1
+            style={{
+              fontSize: 38,
+              fontWeight: 900,
+              marginBottom: 16,
+              color: "#000",
+            }}
+          >
+            Bring in more sales and maintain your customers
+          </h1>
+          <p style={{ fontSize: 18, color: "#333", marginBottom: 28 }}>
             CatBackAI helps you automate bookings, reduce no-shows, and grow
             lasting client relationships with smart follow-ups.
           </p>
-          <a className="cta-btn" href="#signup-form">Get Started</a>
-          <ul>
+          <div style={{ display: "flex", gap: "18px", flexWrap: "wrap" }}>
+            <a className="btnHero" href="#signup-form">
+              Get Started
+            </a>
+          </div>
+          <ul
+            style={{ marginTop: 22, color: "#333", fontSize: 15, lineHeight: 1.8 }}
+          >
             <li>24/7 self-serve booking</li>
             <li>Automatic confirmations, reminders, and follow-ups</li>
             <li>Simple setup, no code required</li>
           </ul>
         </div>
 
-        <div className="hero-right">
-          {!status.done ? (
-            <form id="signup-form" className="business-onboarding" onSubmit={handleSubmit}>
-              <h3>Business Onboarding</h3>
-              <p style={{ fontSize: "0.9rem", marginBottom: "10px" }}>0% complete</p>
-
-              <label>Business Type</label>
-              <select required>
-                <option value="">Select</option>
-                <option value="Auto Detailing">Auto Detailing</option>
-                <option value="Barber">Barber</option>
-                <option value="Fitness">Fitness</option>
-                <option value="Nail Tech">Nail Tech</option>
-                <option value="Other">Other</option>
-              </select>
-
-              <label>Owner Full Name</label>
-              <input type="text" placeholder="Your name" required />
-
-              <label>Business Name</label>
-              <input type="text" placeholder="Your business" required />
-
-              <label>Business Email</label>
-              <input type="email" placeholder="example@email.com" required />
-
-              <label>Business Phone Number</label>
-              <input type="tel" placeholder="(123) 456-7890" required />
-
-              <label>Requests / Notes</label>
-              <textarea placeholder="Optional"></textarea>
-
-              <button type="submit">Submit</button>
-            </form>
-          ) : (
-            <div className="business-onboarding">
-              <h3>✅ Signup Received</h3>
-              <p>Your Business ID:</p>
-              <p style={{ fontWeight: "700" }}>{status.businessId}</p>
-              <p>
-                Your business is pending approval. Once approved, you’ll receive your booking link by email.
+        {/* Right column: SIGNUP FORM */}
+        <div>
+          {status.done ? (
+            <div style={card}>
+              <h3 style={title}>✅ Signup Received</h3>
+              <p style={muted}>
+                <strong>Your Business ID:</strong> {status.businessId}
+              </p>
+              <p style={muted}>
+                Your business is now <strong>pending approval</strong>. Once approved, you’ll
+                automatically receive your unique booking link by email or SMS.
+              </p>
+              <p style={muted}>
+                Keep this ID safe — it identifies your account for setup and support.
               </p>
               <button
-                type="button"
                 onClick={copyToClipboard}
                 style={{
+                  ...btn,
+                  marginTop: "10px",
                   background: copied ? "#4caf50" : "#de8d2b",
                   color: copied ? "#fff" : "#000",
                 }}
@@ -450,6 +434,129 @@ function App() {
                 {copied ? "Copied!" : "Copy Business ID"}
               </button>
             </div>
+          ) : (
+            <form onSubmit={handleSubmit} style={card} id="signup-form">
+              <h3 style={title}>Business Onboarding</h3>
+
+              {/* ✅ New: inline progress bar */}
+              <div
+                className="progressOuter"
+                aria-label="Form completion"
+                title={`Completion: ${completionPct}%`}
+              >
+                <div
+                  className="progressInner"
+                  style={{ width: `${completionPct}%` }}
+                />
+              </div>
+              <p style={{ ...muted, marginTop: 6 }}>{completionPct}% complete</p>
+
+              <label style={label}>Business Type</label>
+              <select
+                name="BusinessType"
+                value={formData.BusinessType}
+                onChange={handleChange}
+                required
+                style={input}
+              >
+                <option value="">Select</option>
+                <option>Auto Detailing</option>
+                <option>Barber</option>
+                <option>Nail Salon</option>
+                <option>Spa</option>
+                <option>Fitness</option>
+                <option>Other</option>
+              </select>
+
+              {/* ✅ Conditional field for 'Other' business type */}
+              {formData.BusinessType === "Other" && (
+                <>
+                  <label style={label}>Please specify your business type</label>
+                  <input
+                    name="OtherBusinessType"
+                    value={formData.OtherBusinessType || ""}
+                    onChange={handleChange}
+                    placeholder="e.g. Tattoo Artist, Landscaping, etc."
+                    style={input}
+                    required
+                  />
+                </>
+              )}
+
+              <label style={label}>Owner Full Name</label>
+              <input
+                name="OwnerName"
+                value={formData.OwnerName}
+                onChange={handleChange}
+                required
+                style={input}
+              />
+
+              <label style={label}>Business Name</label>
+              <input
+                name="BusinessName"
+                value={formData.BusinessName}
+                onChange={handleChange}
+                required
+                style={input}
+              />
+
+              <label style={label}>Business Email</label>
+              <input
+                type="email"
+                name="BusinessEmail"
+                value={formData.BusinessEmail}
+                onChange={handleChange}
+                required
+                style={input}
+              />
+
+              <label style={label}>Business Phone Number</label>
+              <input
+                type="tel"
+                name="BusinessPhoneNumber"
+                value={formData.BusinessPhoneNumber}
+                onChange={handleChange}
+                required
+                style={input}
+              />
+              <label style={label}>Requests / Notes</label>
+              <textarea
+                name="Notes"
+                value={formData.Notes}
+                onChange={handleChange}
+                rows={3}
+                style={textarea}
+              />
+
+              <label
+                style={{ ...label, display: "flex", gap: 8, alignItems: "flex-start" }}
+              >
+                <input
+                  type="checkbox"
+                  name="Consent"
+                  checked={formData.Consent}
+                  onChange={handleChange}
+                  required
+                />
+                <span style={muted}>
+                  I acknowledge my clients may receive confirmations, reminders, and
+                  follow-ups from CatBackAI with opt-out instructions (Reply STOP).
+                </span>
+              </label>
+
+              {status.error && <div style={errorBox}>{status.error}</div>}
+              <button
+                type="submit"
+                style={{ ...btn, opacity: submitting ? 0.7 : 1 }}
+                disabled={submitting}
+              >
+                {submitting ? "Submitting…" : "Submit"}
+              </button>
+              {savedDraftAt && (
+                <p style={{ ...muted, marginTop: 8 }}>Draft saved: {savedDraftAt}</p>
+              )}
+            </form>
           )}
         </div>
       </section>
@@ -843,81 +950,5 @@ const errorBox = {
   padding: "8px 10px",
   fontSize: 13,
 };
-function useClientEnv() {
-  const [env, setEnv] = useState({
-    isTouch: false,
-    isMobile: false,
-    isIOS: false,
-    isAndroid: false,
-    isSafari: false,
-    isChrome: false,
-    isFirefox: false,
-    isEdge: false,
-    isDesktop: true,
-  });
-
-  useEffect(() => {
-    const ua = navigator.userAgent || "";
-    const vendor = navigator.vendor || "";
-    const isTouch =
-      "ontouchstart" in window ||
-      navigator.maxTouchPoints > 0 ||
-      window.matchMedia("(pointer: coarse)").matches;
-
-    const isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-    const isAndroid = /Android/.test(ua);
-
-    const isSafari =
-      /^Apple/.test(vendor) &&
-      /Safari/.test(ua) &&
-      !/CriOS|FxiOS|EdgiOS|Chrome|Chromium/.test(ua);
-
-    const isChrome = /Chrome|Chromium|CriOS/.test(ua) && !/Edg/.test(ua);
-    const isFirefox = /Firefox|FxiOS/.test(ua);
-    const isEdge = /Edg|EdgiOS|EdgA/.test(ua);
-
-    const isMobile =
-      isTouch ||
-      /Mobi|Android|iPhone|iPad|iPod/.test(ua) ||
-      window.matchMedia("(max-width: 820px)").matches;
-
-    const isDesktop = !isMobile;
-
-    const flags = {
-      isTouch,
-      isMobile,
-      isIOS,
-      isAndroid,
-      isSafari,
-      isChrome,
-      isFirefox,
-      isEdge,
-      isDesktop,
-    };
-
-    setEnv(flags);
-
-    // expose as classes on <body> for CSS targeting
-    const cls = [
-      flags.isDesktop ? "env-desktop" : "env-mobile",
-      flags.isIOS && "env-ios",
-      flags.isAndroid && "env-android",
-      flags.isSafari && "env-safari",
-      flags.isChrome && "env-chrome",
-      flags.isFirefox && "env-firefox",
-      flags.isEdge && "env-edge",
-      flags.isTouch && "env-touch",
-    ]
-      .filter(Boolean)
-      .join(" ");
-
-    document.body.classList.add(...cls.split(" "));
-    return () => {
-      cls.split(" ").forEach(c => document.body.classList.remove(c));
-    };
-  }, []);
-
-  return env;
-}
 
 export default App;
