@@ -366,6 +366,7 @@ const [showForm, setShowForm] = useState(false);
       </header>
 
       {/* HERO SECTION */}
+      <section
         className="container"
         style={{
           display: "grid",
@@ -374,7 +375,7 @@ const [showForm, setShowForm] = useState(false);
           padding: "80px 60px",
           gap: "50px",
         }}
-      
+      ></section>
         {/* Left column */}
         <div>
           <div className="badge" style={{ marginBottom: 12 }}>
