@@ -33,6 +33,7 @@ function App() {
   const [submitting, setSubmitting] = useState(false);
   const [copied, setCopied] = useState(false);
   const [savedDraftAt, setSavedDraftAt] = useState("");
+const [showForm, setShowForm] = useState(false);
 
   useEffect(() => {
     try {
@@ -365,15 +366,17 @@ function App() {
 
       {/* HERO SECTION */}
       <section
-        className="container"
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          alignItems: "start",
-          padding: "80px 60px",
-          gap: "50px",
-        }}
-      >
+  className="container"
+  style={{
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    textAlign: "center",
+    justifyContent: "center",
+    padding: "100px 20px",
+    gap: "30px",
+  }}
+>
         {/* Left column */}
         <div>
           <div className="badge" style={{ marginBottom: 12 }}>
@@ -394,9 +397,13 @@ function App() {
             lasting client relationships with smart follow-ups.
           </p>
           <div style={{ display: "flex", gap: "18px", flexWrap: "wrap" }}>
-            <a className="btnHero" href="#signup-form">
-              Get Started
-            </a>
+            <button
+  className="btnHero"
+  onClick={() => setShowForm(true)}
+  style={{ cursor: "pointer" }}
+>
+  Get Started
+</button>
           </div>
           <ul
             style={{ marginTop: 22, color: "#333", fontSize: 15, lineHeight: 1.8 }}
@@ -405,159 +412,6 @@ function App() {
             <li>Automatic confirmations, reminders, and follow-ups</li>
             <li>Simple setup, no code required</li>
           </ul>
-        </div>
-
-        {/* Right column: SIGNUP FORM */}
-        <div>
-          {status.done ? (
-            <div style={card}>
-              <h3 style={title}>✅ Signup Received</h3>
-              <p style={muted}>
-                <strong>Your Business ID:</strong> {status.businessId}
-              </p>
-              <p style={muted}>
-                Your business is now <strong>pending approval</strong>. Once approved, you’ll
-                automatically receive your unique booking link by email or SMS.
-              </p>
-              <p style={muted}>
-                Keep this ID safe — it identifies your account for setup and support.
-              </p>
-              <button
-                onClick={copyToClipboard}
-                style={{
-                  ...btn,
-                  marginTop: "10px",
-                  background: copied ? "#4caf50" : "#de8d2b",
-                  color: copied ? "#fff" : "#000",
-                }}
-              >
-                {copied ? "Copied!" : "Copy Business ID"}
-              </button>
-            </div>
-          ) : (
-            <form onSubmit={handleSubmit} style={card} id="signup-form">
-              <h3 style={title}>Business Onboarding</h3>
-
-              {/* ✅ New: inline progress bar */}
-              <div
-                className="progressOuter"
-                aria-label="Form completion"
-                title={`Completion: ${completionPct}%`}
-              >
-                <div
-                  className="progressInner"
-                  style={{ width: `${completionPct}%` }}
-                />
-              </div>
-              <p style={{ ...muted, marginTop: 6 }}>{completionPct}% complete</p>
-
-              <label style={label}>Business Type</label>
-              <select
-                name="BusinessType"
-                value={formData.BusinessType}
-                onChange={handleChange}
-                required
-                style={input}
-              >
-                <option value="">Select</option>
-                <option>Auto Detailing</option>
-                <option>Barber</option>
-                <option>Nail Salon</option>
-                <option>Spa</option>
-                <option>Fitness</option>
-                <option>Other</option>
-              </select>
-
-              {/* ✅ Conditional field for 'Other' business type */}
-              {formData.BusinessType === "Other" && (
-                <>
-                  <label style={label}>Please specify your business type</label>
-                  <input
-                    name="OtherBusinessType"
-                    value={formData.OtherBusinessType || ""}
-                    onChange={handleChange}
-                    placeholder="e.g. Tattoo Artist, Landscaping, etc."
-                    style={input}
-                    required
-                  />
-                </>
-              )}
-
-              <label style={label}>Owner Full Name</label>
-              <input
-                name="OwnerName"
-                value={formData.OwnerName}
-                onChange={handleChange}
-                required
-                style={input}
-              />
-
-              <label style={label}>Business Name</label>
-              <input
-                name="BusinessName"
-                value={formData.BusinessName}
-                onChange={handleChange}
-                required
-                style={input}
-              />
-
-              <label style={label}>Business Email</label>
-              <input
-                type="email"
-                name="BusinessEmail"
-                value={formData.BusinessEmail}
-                onChange={handleChange}
-                required
-                style={input}
-              />
-
-              <label style={label}>Business Phone Number</label>
-              <input
-                type="tel"
-                name="BusinessPhoneNumber"
-                value={formData.BusinessPhoneNumber}
-                onChange={handleChange}
-                required
-                style={input}
-              />
-              <label style={label}>Requests / Notes</label>
-              <textarea
-                name="Notes"
-                value={formData.Notes}
-                onChange={handleChange}
-                rows={3}
-                style={textarea}
-              />
-
-              <label
-                style={{ ...label, display: "flex", gap: 8, alignItems: "flex-start" }}
-              >
-                <input
-                  type="checkbox"
-                  name="Consent"
-                  checked={formData.Consent}
-                  onChange={handleChange}
-                  required
-                />
-                <span style={muted}>
-                  I acknowledge my clients may receive confirmations, reminders, and
-                  follow-ups from CatBackAI with opt-out instructions (Reply STOP).
-                </span>
-              </label>
-
-              {status.error && <div style={errorBox}>{status.error}</div>}
-              <button
-                type="submit"
-                style={{ ...btn, opacity: submitting ? 0.7 : 1 }}
-                disabled={submitting}
-              >
-                {submitting ? "Submitting…" : "Submit"}
-              </button>
-              {savedDraftAt && (
-                <p style={{ ...muted, marginTop: 8 }}>Draft saved: {savedDraftAt}</p>
-              )}
-            </form>
-          )}
         </div>
       </section>
 
@@ -861,6 +715,123 @@ function App() {
           Use CatBackAI responsibly. Messaging must include opt-out instructions. Don’t spam. That’s it.
         </p>
       </section>
+{showForm && (
+  <div
+    className="form-modal-overlay"
+    onClick={(e) => {
+      if (e.target.classList.contains("form-modal-overlay")) {
+        setShowForm(false);
+      }
+    }}
+  >
+    <div className="form-modal">
+      {status.done ? (
+        <div style={card}>
+          <h3 style={title}>✅ Signup Received</h3>
+          <p style={muted}>
+            <strong>Your Business ID:</strong> {status.businessId}
+          </p>
+          <p style={muted}>
+            Your business is now <strong>pending approval</strong>. Once approved, you’ll
+            automatically receive your unique booking link by email or SMS.
+          </p>
+          <button
+            onClick={copyToClipboard}
+            style={{
+              ...btn,
+              marginTop: "10px",
+              background: copied ? "#4caf50" : "#de8d2b",
+              color: copied ? "#fff" : "#000",
+            }}
+          >
+            {copied ? "Copied!" : "Copy Business ID"}
+          </button>
+          <button
+            onClick={() => setShowForm(false)}
+            style={{ ...btn, background: "#ccc", color: "#000", marginTop: 10 }}
+          >
+            Close
+          </button>
+        </div>
+      ) : (
+        <form onSubmit={handleSubmit} style={card} id="signup-form">
+          <h3 style={title}>Business Onboarding</h3>
+          <div
+            className="progressOuter"
+            aria-label="Form completion"
+            title={`Completion: ${completionPct}%`}
+          >
+            <div className="progressInner" style={{ width: `${completionPct}%` }} />
+          </div>
+          <p style={{ ...muted, marginTop: 6 }}>{completionPct}% complete</p>
+
+          {/* your existing fields unchanged */}
+          <label style={label}>Business Type</label>
+          <select name="BusinessType" value={formData.BusinessType} onChange={handleChange} required style={input}>
+            <option value="">Select</option>
+            <option>Auto Detailing</option>
+            <option>Barber</option>
+            <option>Nail Salon</option>
+            <option>Spa</option>
+            <option>Fitness</option>
+            <option>Other</option>
+          </select>
+
+          {formData.BusinessType === "Other" && (
+            <>
+              <label style={label}>Please specify your business type</label>
+              <input
+                name="OtherBusinessType"
+                value={formData.OtherBusinessType || ""}
+                onChange={handleChange}
+                placeholder="e.g. Tattoo Artist, Landscaping, etc."
+                style={input}
+                required
+              />
+            </>
+          )}
+
+          <label style={label}>Owner Full Name</label>
+          <input name="OwnerName" value={formData.OwnerName} onChange={handleChange} required style={input} />
+
+          <label style={label}>Business Name</label>
+          <input name="BusinessName" value={formData.BusinessName} onChange={handleChange} required style={input} />
+
+          <label style={label}>Business Email</label>
+          <input type="email" name="BusinessEmail" value={formData.BusinessEmail} onChange={handleChange} required style={input} />
+
+          <label style={label}>Business Phone Number</label>
+          <input type="tel" name="BusinessPhoneNumber" value={formData.BusinessPhoneNumber} onChange={handleChange} required style={input} />
+
+          <label style={label}>Requests / Notes</label>
+          <textarea name="Notes" value={formData.Notes} onChange={handleChange} rows={3} style={textarea} />
+
+          <label style={{ ...label, display: "flex", gap: 8, alignItems: "flex-start" }}>
+            <input
+              type="checkbox"
+              name="Consent"
+              checked={formData.Consent}
+              onChange={handleChange}
+              required
+            />
+            <span style={muted}>
+              I acknowledge my clients may receive confirmations, reminders, and follow-ups from CatBackAI with opt-out instructions (Reply STOP).
+            </span>
+          </label>
+
+          {status.error && <div style={errorBox}>{status.error}</div>}
+          <button type="submit" style={{ ...btn, opacity: submitting ? 0.7 : 1 }} disabled={submitting}>
+            {submitting ? "Submitting…" : "Submit"}
+          </button>
+          {savedDraftAt && <p style={{ ...muted, marginTop: 8 }}>Draft saved: {savedDraftAt}</p>}
+          <button onClick={() => setShowForm(false)} type="button" style={{ ...btn, background: "#ccc", color: "#000", marginTop: 10 }}>
+            Cancel
+          </button>
+        </form>
+      )}
+    </div>
+  </div>
+)}
 
       {/* FOOTER */}
       <footer
