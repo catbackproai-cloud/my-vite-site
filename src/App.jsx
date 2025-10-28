@@ -314,47 +314,54 @@ function App() {
         })}</script>
       </Helmet>
 
-{/* NAVBAR */}
-<header>
-  <div className="logo">
-    <img src={logo} alt="CatBackAI Logo" />
-    <span style={{ fontWeight: 900, fontSize: 22, color: "#000" }}>CatBackAI</span>
-  </div>
+      {/* NAVBAR */}
+      <header
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          padding: "20px 60px",
+          background: "#fff",
+          boxShadow: "0 2px 6px rgba(0,0,0,0.05)",
+          position: "sticky",
+          top: 0,
+          zIndex: 100,
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <img src={logo} alt="CatBackAI Logo" style={{ width: 42, height: 42 }} />
+          <span style={{ fontWeight: 900, fontSize: 22, color: "#000" }}>
+            CatBackAI
+          </span>
+        </div>
 
-  {/* 🔥 Main Navigation */}
-  <nav className="main-nav">
-    <a href="#who-we-are">Who We Are</a>
-    <a href="#why-catbackai">Why CatBackAI</a>
-    <a href="#features">Features</a>
-    <a href="#reviews">Reviews</a>
-    <a href="#pricing">Pricing</a>
-    <a href="#faq">FAQ</a>
-    <a href="#contact">Contact</a>
-    <button
-      onClick={() => navigate("/dashboard")}
-      style={{
-        background: "transparent",
-        border: "none",
-        color: "#000",
-        fontWeight: 600,
-        fontSize: 16,
-        cursor: "pointer",
-        textDecoration: "underline",
-      }}
-    >
-      Log In
-    </button>
-  </nav>
+        <nav style={{ display: "flex", gap: "40px", flex: 1, justifyContent: "center" }}>
+          <a href="#who-we-are">Who We Are</a>
+          <a href="#why-catbackai">Why CatBackAI</a>
+          <a href="#features">Features</a>
+          <a href="#reviews">Reviews</a>
+          <a href="#pricing">Pricing</a>
+          <a href="#faq">FAQ</a>
+          <a href="#contact">Contact</a>
+        </nav>
 
-  {/* 🔥 Hamburger Toggle Button (mobile only) */}
-  <button
-    id="menu-toggle"
-    onClick={() => document.body.classList.toggle("menu-open")}
-    aria-label="Toggle menu"
-  >
-    ☰
-  </button>
-</header>
+        <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
+          <button
+  onClick={() => navigate("/dashboard")}
+  style={{
+    background: "transparent",
+    border: "none",
+    color: "#000",
+    fontWeight: 600,
+    fontSize: 16,
+    cursor: "pointer",
+    textDecoration: "underline",
+  }}
+>
+  Log In
+</button>
+        </div>
+      </header>
 
       {/* HERO SECTION */}
       <section
