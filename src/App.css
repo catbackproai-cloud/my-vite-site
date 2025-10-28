@@ -374,37 +374,6 @@ footer {
   }
 }
 .form-modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.45);
-  backdrop-filter: blur(4px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 2000;
-  animation: fadeIn 0.3s ease forwards;
-}
-
-.form-modal {
-  background: #fff;
-  border-radius: 14px;
-  padding: 32px;
-  width: 90%;
-  max-width: 480px;
-  box-shadow: 0 12px 40px rgba(0,0,0,0.2);
-  animation: slideUp 0.35s ease forwards;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes slideUp {
-  from { transform: translateY(40px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
-}
-.form-modal-overlay {
   position: fixed !important;
   inset: 0;
   width: 100vw;
@@ -436,4 +405,14 @@ footer {
   font-size: 22px;
   color: #333;
   cursor: pointer;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(40px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
 }
