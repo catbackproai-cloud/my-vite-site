@@ -365,54 +365,54 @@ const [showForm, setShowForm] = useState(false);
         </div>
       </header>
 
-      {/* HERO SECTION */}
-      <section
-        className="container"
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          alignItems: "start",
-          padding: "80px 60px",
-          gap: "50px",
-        }}
-      ></section>
-        {/* Left column */}
-        <div>
-          <div className="badge" style={{ marginBottom: 12 }}>
-            Built for service businesses
-          </div>
-          <h1
-            style={{
-              fontSize: 38,
-              fontWeight: 900,
-              marginBottom: 16,
-              color: "#000",
-            }}
-          >
-            Bring in more sales and maintain your customers
-          </h1>
-          <p style={{ fontSize: 18, color: "#333", marginBottom: 28 }}>
-            CatBackAI helps you automate bookings, reduce no-shows, and grow
-            lasting client relationships with smart follow-ups.
-          </p>
-          <div style={{ display: "flex", gap: "18px", flexWrap: "wrap" }}>
-            <button
-  className="btnHero"
-  onClick={() => setShowForm(true)}
-  style={{ border: "none", cursor: "pointer" }}
+{/* HERO SECTION */}
+<section
+  className="container"
+  style={{
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    alignItems: "start",
+    padding: "80px 60px",
+    gap: "50px",
+  }}
 >
-  Get Started
-</button>
-          </div>
-          <ul
-            style={{ marginTop: 22, color: "#333", fontSize: 15, lineHeight: 1.8 }}
-          >
-            <li>24/7 self-serve booking</li>
-            <li>Automatic confirmations, reminders, and follow-ups</li>
-            <li>Simple setup, no code required</li>
-          </ul>
-        </div>
-
+  {/* Left column */}
+  <div>
+    <div className="badge" style={{ marginBottom: 12 }}>
+      Built for service businesses
+    </div>
+    <h1
+      style={{
+        fontSize: 38,
+        fontWeight: 900,
+        marginBottom: 16,
+        color: "#000",
+      }}
+    >
+      Bring in more sales and maintain your customers
+    </h1>
+    <p style={{ fontSize: 18, color: "#333", marginBottom: 28 }}>
+      CatBackAI helps you automate bookings, reduce no-shows, and grow
+      lasting client relationships with smart follow-ups.
+    </p>
+    <div style={{ display: "flex", gap: "18px", flexWrap: "wrap" }}>
+      <button
+        className="btnHero"
+        onClick={() => setShowForm(true)} 
+        style={{ border: "none", cursor: "pointer" }}
+      >
+        Get Started
+      </button>
+    </div>
+    <ul
+      style={{ marginTop: 22, color: "#333", fontSize: 15, lineHeight: 1.8 }}
+    >
+      <li>24/7 self-serve booking</li>
+      <li>Automatic confirmations, reminders, and follow-ups</li>
+      <li>Simple setup, no code required</li>
+    </ul>
+  </div>
+</section>
 
       {/* WHO WE ARE */}
       <section id="who-we-are" className="container" style={{ padding: "60px 60px 20px" }}>
@@ -930,31 +930,6 @@ const [showForm, setShowForm] = useState(false);
           </form>
         )}
       </div>
-      {status.done ? (
-        <div style={card}>
-          <h3 style={title}>✅ Signup Received</h3>
-          <p style={muted}><strong>Your Business ID:</strong> {status.businessId}</p>
-          <p style={muted}>
-            Your business is now <strong>pending approval</strong>.
-            You’ll receive your unique booking link once approved.
-          </p>
-          <button
-            onClick={copyToClipboard}
-            style={{
-              ...btn,
-              marginTop: "10px",
-              background: copied ? "#4caf50" : "#de8d2b",
-              color: copied ? "#fff" : "#000",
-            }}
-          >
-            {copied ? "Copied!" : "Copy Business ID"}
-          </button>
-        </div>
-      ) : (
-        <form onSubmit={handleSubmit} style={card} id="signup-form">
-          {/* your full form fields go here */}
-        </form>
-      )}
     </div>
   </div>
 )}
