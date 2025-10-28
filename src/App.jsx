@@ -315,118 +315,144 @@ function App() {
         })}</script>
       </Helmet>
 
-{/* UNIVERSAL HEADER (auto switches layout) */}
-<header className={env.isMobile ? "mobile-header" : "desktop-header"}>
-  <div className="logo">
-    <img src={logo} alt="CatBackAI Logo" />
-    <span className="brand-name">CatBackAI</span>
-  </div>
+{/* HEADER */}
+      <header>
+        <div className="logo">
+          <img src={logo} alt="CatBackAI Logo" />
+          <span className="brand-name">CatBackAI</span>
+        </div>
 
-  {!env.isMobile && (
-    <nav className="main-nav">
-      <a href="#who-we-are">Who We Are</a>
-      <a href="#why-catbackai">Why CatBackAI</a>
-      <a href="#features">Features</a>
-      <a href="#reviews">Reviews</a>
-      <a href="#pricing">Pricing</a>
-      <a href="#faq">FAQ</a>
-      <a href="#contact">Contact</a>
-    </nav>
-  )}
+        {!isMobile && (
+          <nav className="main-nav">
+            <a href="#who-we-are">Who We Are</a>
+            <a href="#why-catbackai">Why CatBackAI</a>
+            <a href="#features">Features</a>
+            <a href="#reviews">Reviews</a>
+            <a href="#pricing">Pricing</a>
+            <a href="#faq">FAQ</a>
+            <a href="#contact">Contact</a>
+          </nav>
+        )}
 
-  {env.isMobile && (
-    <button
-      id="menu-toggle"
-      onClick={() => document.body.classList.toggle("menu-open")}
-      aria-label="Toggle menu"
-    >
-      ☰
-    </button>
-  )}
+        {isMobile && (
+          <button
+            id="menu-toggle"
+            onClick={() => document.body.classList.toggle("menu-open")}
+          >
+            ☰
+          </button>
+        )}
 
-  <div className="nav-right">
-    <button className="login-btn" onClick={() => navigate("/dashboard")}>
-      Log In
-    </button>
-  </div>
+        <div className="nav-right">
+          <button className="login-btn" onClick={() => navigate("/dashboard")}>
+            Log In
+          </button>
+        </div>
 
-  {/* slideout only for mobile */}
-  {env.isMobile && (
-    <div className="mobile-menu">
-      <a href="#who-we-are" onClick={() => document.body.classList.remove("menu-open")}>Who We Are</a>
-      <a href="#why-catbackai" onClick={() => document.body.classList.remove("menu-open")}>Why CatBackAI</a>
-      <a href="#features" onClick={() => document.body.classList.remove("menu-open")}>Features</a>
-      <a href="#reviews" onClick={() => document.body.classList.remove("menu-open")}>Reviews</a>
-      <a href="#pricing" onClick={() => document.body.classList.remove("menu-open")}>Pricing</a>
-      <a href="#faq" onClick={() => document.body.classList.remove("menu-open")}>FAQ</a>
-      <a href="#contact" onClick={() => document.body.classList.remove("menu-open")}>Contact</a>
-      <button
-        onClick={() => {
-          document.body.classList.remove("menu-open");
-          navigate("/dashboard");
-        }}
-        className="mobile-login"
-      >
-        Log In
-      </button>
-    </div>
-  )}
-</header>
+        {isMobile && (
+          <div className="mobile-menu">
+            {[
+              "Who We Are",
+              "Why CatBackAI",
+              "Features",
+              "Reviews",
+              "Pricing",
+              "FAQ",
+              "Contact",
+            ].map((label) => (
+              <a
+                key={label}
+                href={`#${label.toLowerCase().replace(/\s+/g, "-")}`}
+                onClick={() => document.body.classList.remove("menu-open")}
+              >
+                {label}
+              </a>
+            ))}
+            <button
+              onClick={() => {
+                document.body.classList.remove("menu-open");
+                navigate("/dashboard");
+              }}
+              className="mobile-login"
+            >
+              Log In
+            </button>
+          </div>
+        )}
+      </header>
 
-{/* HERO SECTION */}
-<section
-  className={env.isMobile ? "hero-section-mobile" : "hero-section-desktop"}
->
-  {/* Left column */}
-  <div className="hero-left">
-    <div className="badge">Built for service businesses</div>
-    <h1>Bring in more sales and maintain your customers</h1>
-    <p>
-      CatBackAI helps you automate bookings, reduce no-shows, and grow
-      lasting client relationships with smart follow-ups.
-    </p>
-    <a className="btnHero" href="#signup-form">
-      Get Started
-    </a>
-    <ul>
-      <li>24/7 self-serve booking</li>
-      <li>Automatic confirmations, reminders, and follow-ups</li>
-      <li>Simple setup, no code required</li>
-    </ul>
-  </div>
+      {/* HERO SECTION */}
+      <section className={isMobile ? "hero-section-mobile" : "hero-section-desktop"}>
+        <div className="hero-left">
+          <div className="tag">Built for service businesses</div>
+          <h1>Bring in more sales and maintain your customers</h1>
+          <p>
+            CatBackAI helps you automate bookings, reduce no-shows, and grow
+            lasting client relationships with smart follow-ups.
+          </p>
+          <a className="cta-btn" href="#signup-form">Get Started</a>
+          <ul>
+            <li>24/7 self-serve booking</li>
+            <li>Automatic confirmations, reminders, and follow-ups</li>
+            <li>Simple setup, no code required</li>
+          </ul>
+        </div>
 
-  {/* Right column: SIGNUP FORM */}
-  <div className="hero-right">
-    {status.done ? (
-      <div style={card}>
-        <h3 style={title}>✅ Signup Received</h3>
-        <p style={muted}>
-          <strong>Your Business ID:</strong> {status.businessId}
-        </p>
-        <p style={muted}>
-          Your business is now <strong>pending approval</strong>. Once approved,
-          you’ll automatically receive your unique booking link by email or SMS.
-        </p>
-        <button
-          onClick={copyToClipboard}
-          style={{
-            ...btn,
-            marginTop: "10px",
-            background: copied ? "#4caf50" : "#de8d2b",
-            color: copied ? "#fff" : "#000",
-          }}
-        >
-          {copied ? "Copied!" : "Copy Business ID"}
-        </button>
-      </div>
-    ) : (
-      <form onSubmit={handleSubmit} style={card} id="signup-form">
-        <h3 style={title}>Business Onboarding</h3>
-        {/* form fields identical */}
-      </form>
-    )}
-  </div>
-</section>
+        <div className="hero-right">
+          {!status.done ? (
+            <form id="signup-form" className="business-onboarding" onSubmit={handleSubmit}>
+              <h3>Business Onboarding</h3>
+              <p style={{ fontSize: "0.9rem", marginBottom: "10px" }}>0% complete</p>
+
+              <label>Business Type</label>
+              <select required>
+                <option value="">Select</option>
+                <option value="Auto Detailing">Auto Detailing</option>
+                <option value="Barber">Barber</option>
+                <option value="Fitness">Fitness</option>
+                <option value="Nail Tech">Nail Tech</option>
+                <option value="Other">Other</option>
+              </select>
+
+              <label>Owner Full Name</label>
+              <input type="text" placeholder="Your name" required />
+
+              <label>Business Name</label>
+              <input type="text" placeholder="Your business" required />
+
+              <label>Business Email</label>
+              <input type="email" placeholder="example@email.com" required />
+
+              <label>Business Phone Number</label>
+              <input type="tel" placeholder="(123) 456-7890" required />
+
+              <label>Requests / Notes</label>
+              <textarea placeholder="Optional"></textarea>
+
+              <button type="submit">Submit</button>
+            </form>
+          ) : (
+            <div className="business-onboarding">
+              <h3>✅ Signup Received</h3>
+              <p>Your Business ID:</p>
+              <p style={{ fontWeight: "700" }}>{status.businessId}</p>
+              <p>
+                Your business is pending approval. Once approved, you’ll receive your booking link by email.
+              </p>
+              <button
+                type="button"
+                onClick={copyToClipboard}
+                style={{
+                  background: copied ? "#4caf50" : "#de8d2b",
+                  color: copied ? "#fff" : "#000",
+                }}
+              >
+                {copied ? "Copied!" : "Copy Business ID"}
+              </button>
+            </div>
+          )}
+        </div>
+      </section>
 
       {/* WHO WE ARE */}
       <section id="who-we-are" className="container" style={{ padding: "60px 60px 20px" }}>

@@ -427,16 +427,16 @@ footer {
   color: #777;
   font-size: 0.9rem;
 }
-/* overwrite conflicting inline grid at runtime */
+/* ---------- Dynamic Layout Handling ---------- */
 .hero-section-desktop {
   display: grid !important;
   grid-template-columns: 1fr 1fr !important;
-  align-items: start !important;
+  align-items: flex-start !important;
   padding: 80px 60px !important;
   gap: 50px !important;
+  background: #fff6ee !important;
 }
 
-/* mobile override layout */
 .hero-section-mobile {
   display: flex !important;
   flex-direction: column !important;
@@ -444,13 +444,19 @@ footer {
   text-align: center !important;
   padding: 40px 24px !important;
   gap: 30px !important;
+  background: #fff6ee !important;
+}
+
+.hero-section-mobile .hero-right,
+.hero-section-mobile .hero-left {
+  width: 100% !important;
+  max-width: 600px !important;
 }
 
 .hero-section-mobile .hero-right {
   order: 2;
-  width: 100%;
 }
+
 .hero-section-mobile .hero-left {
   order: 1;
-  width: 100%;
 }
