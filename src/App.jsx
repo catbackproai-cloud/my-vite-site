@@ -293,7 +293,51 @@ const [showForm, setShowForm] = useState(false);
 
           /* New: floating chat bubble */
           .chatBubble { position: fixed; right: 20px; bottom: 20px; z-index: 999; }
+/* ---------- Signup Modal Overlay ---------- */
+.form-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(4px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 5000;
+  animation: fadeIn 0.3s ease forwards;
+}
 
+.form-modal {
+  background: #fff;
+  border-radius: 18px;
+  padding: 36px;
+  width: 90%;
+  max-width: 520px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+  animation: slideUp 0.35s ease forwards;
+  position: relative;
+}
+
+.close-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: transparent;
+  border: none;
+  font-size: 22px;
+  font-weight: bold;
+  cursor: pointer;
+  color: #333;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(40px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
         `}</style>
         {/* ✅ SEO/OG basics */}
         <title>CatBackAI — Bookings, Reminders & Follow‑ups</title>
