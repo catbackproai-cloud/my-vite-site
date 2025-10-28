@@ -39,7 +39,7 @@ a {
 }
 
 /* ----------------------------------------------------------- */
-/* UNIVERSAL HEADER / NAVBAR                                   */
+/* HEADER / NAVBAR (DESKTOP FIRST)                             */
 /* ----------------------------------------------------------- */
 
 header {
@@ -53,15 +53,13 @@ header {
   position: sticky;
   top: 0;
   z-index: 1000;
-  -webkit-backdrop-filter: none;
   -webkit-transform: translateZ(0); /* Safari render fix */
 }
 
 .logo {
   display: flex;
   align-items: center;
-  gap: 8px;
-  min-width: 0;
+  gap: 10px;
 }
 
 .logo img {
@@ -78,24 +76,18 @@ header {
   white-space: nowrap;
 }
 
-/* --- Desktop Navigation --- */
 .main-nav {
   flex: 1;
   display: flex;
   justify-content: center;
   align-items: center;
   gap: 36px;
-  flex-wrap: nowrap;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
 }
 
 .main-nav a {
   font-weight: 600;
   color: #de8d2b;
   font-size: 16px;
-  text-decoration: none;
-  flex-shrink: 0;
   transition: color 0.2s ease;
 }
 
@@ -107,7 +99,6 @@ header {
   display: flex;
   align-items: center;
   gap: 18px;
-  flex-shrink: 0;
 }
 
 .login-btn {
@@ -121,10 +112,10 @@ header {
 }
 
 /* ----------------------------------------------------------- */
-/* MOBILE NAV (Hamburger + Slideout)                           */
+/* MOBILE NAVIGATION                                            */
 /* ----------------------------------------------------------- */
 
-.mobile-toggle {
+#menu-toggle {
   display: none;
 }
 
@@ -133,25 +124,19 @@ header {
 }
 
 @media (max-width: 850px) {
-  /* Simplify header layout */
-  header {
-    padding: 14px 20px !important;
-    justify-content: space-between !important;
-  }
-
-  /* Hide desktop nav */
+  /* Collapse desktop nav */
   .main-nav {
     display: none !important;
   }
 
-  /* Show mobile toggle */
-  .mobile-toggle {
+  /* Show hamburger */
+  #menu-toggle {
     display: block !important;
     background: none;
     border: none;
+    cursor: pointer;
     font-size: 30px;
     color: #de8d2b;
-    cursor: pointer;
     margin-left: auto;
     z-index: 1001;
   }
@@ -169,7 +154,7 @@ header {
     background: #fff;
     box-shadow: -4px 0 18px rgba(0, 0, 0, 0.18);
     padding: 80px 24px 24px;
-    gap: 22px;
+    gap: 24px;
     align-items: center;
     transition: right 0.32s ease;
     z-index: 999;
@@ -183,9 +168,10 @@ header {
     color: #de8d2b;
     font-weight: 700;
     font-size: 18px;
+    text-decoration: none;
   }
 
-  /* Dim overlay when open */
+  /* Dim overlay */
   body.menu-open::before {
     content: "";
     position: fixed;
@@ -201,7 +187,19 @@ header {
     display: none !important;
   }
 
-  /* Animate links */
+  /* Mobile login button inside slideout */
+  .mobile-login {
+    background: #de8d2b;
+    color: #000;
+    border: none;
+    padding: 10px 22px;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 16px;
+    cursor: pointer;
+  }
+
+  /* Animate menu links */
   .mobile-menu a {
     opacity: 0;
     transform: translateY(20px);
@@ -236,7 +234,6 @@ header {
 
 .hero-left {
   flex: 1;
-  min-width: 0;
 }
 
 .hero-left .tag {
@@ -259,7 +256,6 @@ header {
 .hero-left p {
   font-size: 1.1rem;
   color: #444;
-  text-wrap: balance;
 }
 
 .hero-left ul {
@@ -280,7 +276,6 @@ header {
   font-weight: 600;
   display: inline-block;
   transition: background-color 0.2s ease, transform 0.2s ease;
-  will-change: transform;
 }
 
 .cta-btn:hover {
@@ -291,7 +286,6 @@ header {
 .hero-right {
   flex: 1;
   max-width: 400px;
-  min-width: 0;
 }
 
 .business-onboarding {
@@ -401,35 +395,6 @@ header {
     padding: 20px !important;
     box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1);
   }
-
-  .container[style*="grid"] {
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: center !important;
-    gap: 30px !important;
-    padding: 40px 20px !important;
-  }
-
-  .container[style*="grid"] > div {
-    width: 100% !important;
-    max-width: 600px !important;
-  }
-
-  form,
-  .business-onboarding {
-    width: 100% !important;
-    border-radius: 12px;
-    padding: 20px !important;
-    background: #fff;
-  }
-
-  .btnHero {
-    width: 100%;
-    max-width: 320px;
-    margin: 16px auto 0;
-    display: block;
-    text-align: center;
-  }
 }
 
 @media (max-width: 480px) {
@@ -446,7 +411,7 @@ header {
     padding: 16px !important;
   }
 
-  .btnHero {
+  .cta-btn {
     font-size: 18px !important;
     padding: 14px 28px !important;
   }
