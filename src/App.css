@@ -291,3 +291,48 @@ footer {
   color: #777;
   font-size: 0.9rem;
 }
+/* --- Mobile Hero Stack (for your existing grid) --- */
+@media (max-width: 820px) {
+  .container[style*="grid"] {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 30px !important;
+    padding: 40px 20px !important;
+  }
+
+  .container[style*="grid"] > div {
+    width: 100% !important;
+    max-width: 600px !important;
+  }
+
+  /* Make the form card fit better */
+  form, .business-onboarding {
+    width: 100% !important;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+    border-radius: 12px;
+    padding: 20px !important;
+    background: #fff;
+  }
+
+  /* Center the text and button */
+  .container[style*="grid"] h1,
+  .container[style*="grid"] p,
+  .container[style*="grid"] ul {
+    text-align: center !important;
+  }
+
+  .container[style*="grid"] ul {
+    margin: 0 auto;
+    max-width: 300px;
+    text-align: left;
+  }
+
+  .btnHero {
+    width: 100%;
+    max-width: 320px;
+    margin: 16px auto 0;
+    display: block;
+    text-align: center;
+  }
+}
