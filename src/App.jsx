@@ -315,39 +315,23 @@ function App() {
         })}</script>
       </Helmet>
 
-      {/* NAVBAR (dynamic version) */}
-<header
-  id="site-header"
-  style={{
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: "20px 60px",
-    background: "#fff",
-    boxShadow: "0 2px 6px rgba(0,0,0,0.05)",
-    position: "sticky",
-    top: 0,
-    zIndex: 100,
-  }}
->
-  {/* Left logo + brand */}
-  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-    <img src={logo} alt="CatBackAI Logo" style={{ width: 42, height: 42 }} />
-    <span style={{ fontWeight: 900, fontSize: 22, color: "#000" }}>
-      CatBackAI
-    </span>
+{/* DYNAMIC HEADER */}
+<header id="site-header">
+  <div className="logo">
+    <img src={logo} alt="CatBackAI Logo" />
+    <span className="brand-name">CatBackAI</span>
   </div>
 
-  {/* Mobile hamburger toggle */}
+  {/* Hamburger for mobile */}
   <button
-    className="mobile-toggle"
+    id="menu-toggle"
     onClick={() => document.body.classList.toggle("menu-open")}
     aria-label="Toggle menu"
   >
     ☰
   </button>
 
-  {/* Desktop navigation */}
+  {/* Desktop Navigation */}
   <nav className="main-nav">
     <a href="#who-we-are">Who We Are</a>
     <a href="#why-catbackai">Why CatBackAI</a>
@@ -358,67 +342,35 @@ function App() {
     <a href="#contact">Contact</a>
   </nav>
 
-  {/* Slide-out mobile menu (auto activated via body.menu-open) */}
+  {/* Slide-out mobile menu */}
   <div className="mobile-menu">
-    <a href="#who-we-are" onClick={() => document.body.classList.remove("menu-open")}>
-      Who We Are
-    </a>
-    <a href="#why-catbackai" onClick={() => document.body.classList.remove("menu-open")}>
-      Why CatBackAI
-    </a>
-    <a href="#features" onClick={() => document.body.classList.remove("menu-open")}>
-      Features
-    </a>
-    <a href="#reviews" onClick={() => document.body.classList.remove("menu-open")}>
-      Reviews
-    </a>
-    <a href="#pricing" onClick={() => document.body.classList.remove("menu-open")}>
-      Pricing
-    </a>
-    <a href="#faq" onClick={() => document.body.classList.remove("menu-open")}>
-      FAQ
-    </a>
-    <a href="#contact" onClick={() => document.body.classList.remove("menu-open")}>
-      Contact
-    </a>
+    <a href="#who-we-are" onClick={() => document.body.classList.remove("menu-open")}>Who We Are</a>
+    <a href="#why-catbackai" onClick={() => document.body.classList.remove("menu-open")}>Why CatBackAI</a>
+    <a href="#features" onClick={() => document.body.classList.remove("menu-open")}>Features</a>
+    <a href="#reviews" onClick={() => document.body.classList.remove("menu-open")}>Reviews</a>
+    <a href="#pricing" onClick={() => document.body.classList.remove("menu-open")}>Pricing</a>
+    <a href="#faq" onClick={() => document.body.classList.remove("menu-open")}>FAQ</a>
+    <a href="#contact" onClick={() => document.body.classList.remove("menu-open")}>Contact</a>
+
     <button
       onClick={() => {
         document.body.classList.remove("menu-open");
         navigate("/dashboard");
       }}
-      style={{
-        marginTop: "10px",
-        background: "#de8d2b",
-        color: "#000",
-        border: "none",
-        padding: "10px 22px",
-        borderRadius: "8px",
-        fontWeight: "700",
-        fontSize: "16px",
-      }}
+      className="mobile-login"
     >
       Log In
     </button>
   </div>
 
-  {/* Desktop "Log In" button */}
-  <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
-    <button
-      onClick={() => navigate("/dashboard")}
-      style={{
-        background: "transparent",
-        border: "none",
-        color: "#000",
-        fontWeight: 600,
-        fontSize: 16,
-        cursor: "pointer",
-        textDecoration: "underline",
-      }}
-    >
+  {/* Desktop login button */}
+  <div className="nav-right">
+    <button className="login-btn" onClick={() => navigate("/dashboard")}>
       Log In
     </button>
   </div>
 </header>
+
 
       {/* HERO SECTION */}
       <section
