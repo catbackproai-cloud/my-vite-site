@@ -363,204 +363,163 @@ function App() {
         </div>
       </header>
 
-      {/* HERO SECTION */}
-      <section
-        className="container"
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          alignItems: "start",
-          padding: "80px 60px",
-          gap: "50px",
-        }}
-      >
-        {/* Left column */}
+{/* HERO SECTION */}
+<section className="hero-section">
+  {/* Left side */}
+  <div className="hero-left">
+    <span className="tag">Built for service businesses</span>
+    <h1>Bring in more sales and maintain your customers</h1>
+    <p>
+      CatBackAI helps you automate bookings, reduce no-shows, and grow lasting
+      client relationships with smart follow-ups.
+    </p>
+
+    <a className="cta-btn" href="#signup-form">
+      Get Started
+    </a>
+
+    <ul>
+      <li>24/7 self-serve booking</li>
+      <li>Automatic confirmations, reminders, and follow-ups</li>
+      <li>Simple setup, no code required</li>
+    </ul>
+  </div>
+
+  {/* Right side: signup form */}
+  <div className="hero-right">
+    <div className="business-onboarding">
+      {status.done ? (
         <div>
-          <div className="badge" style={{ marginBottom: 12 }}>
-            Built for service businesses
-          </div>
-          <h1
+          <h3>✅ Signup Received</h3>
+          <p>
+            <strong>Your Business ID:</strong> {status.businessId}
+          </p>
+          <p>
+            Your business is now <strong>pending approval</strong>. Once
+            approved, you’ll automatically receive your unique booking link by
+            email or SMS.
+          </p>
+          <p>Keep this ID safe — it identifies your account for setup and support.</p>
+          <button
+            onClick={copyToClipboard}
             style={{
-              fontSize: 38,
-              fontWeight: 900,
-              marginBottom: 16,
-              color: "#000",
+              ...btn,
+              marginTop: "10px",
+              background: copied ? "#4caf50" : "#de8d2b",
+              color: copied ? "#fff" : "#000",
             }}
           >
-            Bring in more sales and maintain your customers
-          </h1>
-          <p style={{ fontSize: 18, color: "#333", marginBottom: 28 }}>
-            CatBackAI helps you automate bookings, reduce no-shows, and grow
-            lasting client relationships with smart follow-ups.
-          </p>
-          <div style={{ display: "flex", gap: "18px", flexWrap: "wrap" }}>
-            <a className="btnHero" href="#signup-form">
-              Get Started
-            </a>
+            {copied ? "Copied!" : "Copy Business ID"}
+          </button>
+        </div>
+      ) : (
+        <form onSubmit={handleSubmit} id="signup-form">
+          <h3>Business Onboarding</h3>
+
+          <div className="progressOuter">
+            <div className="progressInner" style={{ width: `${completionPct}%` }} />
           </div>
-          <ul
-            style={{ marginTop: 22, color: "#333", fontSize: 15, lineHeight: 1.8 }}
+          <p>{completionPct}% complete</p>
+
+          <label>Business Type</label>
+          <select
+            name="BusinessType"
+            value={formData.BusinessType}
+            onChange={handleChange}
+            required
           >
-            <li>24/7 self-serve booking</li>
-            <li>Automatic confirmations, reminders, and follow-ups</li>
-            <li>Simple setup, no code required</li>
-          </ul>
-        </div>
+            <option value="">Select</option>
+            <option>Auto Detailing</option>
+            <option>Barber</option>
+            <option>Nail Salon</option>
+            <option>Spa</option>
+            <option>Fitness</option>
+            <option>Other</option>
+          </select>
 
-        {/* Right column: SIGNUP FORM */}
-        <div>
-          {status.done ? (
-            <div style={card}>
-              <h3 style={title}>✅ Signup Received</h3>
-              <p style={muted}>
-                <strong>Your Business ID:</strong> {status.businessId}
-              </p>
-              <p style={muted}>
-                Your business is now <strong>pending approval</strong>. Once approved, you’ll
-                automatically receive your unique booking link by email or SMS.
-              </p>
-              <p style={muted}>
-                Keep this ID safe — it identifies your account for setup and support.
-              </p>
-              <button
-                onClick={copyToClipboard}
-                style={{
-                  ...btn,
-                  marginTop: "10px",
-                  background: copied ? "#4caf50" : "#de8d2b",
-                  color: copied ? "#fff" : "#000",
-                }}
-              >
-                {copied ? "Copied!" : "Copy Business ID"}
-              </button>
-            </div>
-          ) : (
-            <form onSubmit={handleSubmit} style={card} id="signup-form">
-              <h3 style={title}>Business Onboarding</h3>
-
-              {/* ✅ New: inline progress bar */}
-              <div
-                className="progressOuter"
-                aria-label="Form completion"
-                title={`Completion: ${completionPct}%`}
-              >
-                <div
-                  className="progressInner"
-                  style={{ width: `${completionPct}%` }}
-                />
-              </div>
-              <p style={{ ...muted, marginTop: 6 }}>{completionPct}% complete</p>
-
-              <label style={label}>Business Type</label>
-              <select
-                name="BusinessType"
-                value={formData.BusinessType}
-                onChange={handleChange}
-                required
-                style={input}
-              >
-                <option value="">Select</option>
-                <option>Auto Detailing</option>
-                <option>Barber</option>
-                <option>Nail Salon</option>
-                <option>Spa</option>
-                <option>Fitness</option>
-                <option>Other</option>
-              </select>
-
-              {/* ✅ Conditional field for 'Other' business type */}
-              {formData.BusinessType === "Other" && (
-                <>
-                  <label style={label}>Please specify your business type</label>
-                  <input
-                    name="OtherBusinessType"
-                    value={formData.OtherBusinessType || ""}
-                    onChange={handleChange}
-                    placeholder="e.g. Tattoo Artist, Landscaping, etc."
-                    style={input}
-                    required
-                  />
-                </>
-              )}
-
-              <label style={label}>Owner Full Name</label>
+          {formData.BusinessType === "Other" && (
+            <>
+              <label>Please specify your business type</label>
               <input
-                name="OwnerName"
-                value={formData.OwnerName}
+                name="OtherBusinessType"
+                value={formData.OtherBusinessType || ""}
                 onChange={handleChange}
+                placeholder="e.g. Tattoo Artist, Landscaping, etc."
                 required
-                style={input}
               />
-
-              <label style={label}>Business Name</label>
-              <input
-                name="BusinessName"
-                value={formData.BusinessName}
-                onChange={handleChange}
-                required
-                style={input}
-              />
-
-              <label style={label}>Business Email</label>
-              <input
-                type="email"
-                name="BusinessEmail"
-                value={formData.BusinessEmail}
-                onChange={handleChange}
-                required
-                style={input}
-              />
-
-              <label style={label}>Business Phone Number</label>
-              <input
-                type="tel"
-                name="BusinessPhoneNumber"
-                value={formData.BusinessPhoneNumber}
-                onChange={handleChange}
-                required
-                style={input}
-              />
-              
-              <label style={label}>Requests / Notes</label>
-              <textarea
-                name="Notes"
-                value={formData.Notes}
-                onChange={handleChange}
-                rows={3}
-                style={textarea}
-              />
-
-              <label
-                style={{ ...label, display: "flex", gap: 8, alignItems: "flex-start" }}
-              >
-                <input
-                  type="checkbox"
-                  name="Consent"
-                  checked={formData.Consent}
-                  onChange={handleChange}
-                  required
-                />
-                <span style={muted}>
-                  I acknowledge my clients may receive confirmations, reminders, and
-                  follow-ups from CatBackAI with opt-out instructions (Reply STOP).
-                </span>
-              </label>
-
-              {status.error && <div style={errorBox}>{status.error}</div>}
-              <button
-                type="submit"
-                style={{ ...btn, opacity: submitting ? 0.7 : 1 }}
-                disabled={submitting}
-              >
-                {submitting ? "Submitting…" : "Submit"}
-              </button>
-              {savedDraftAt && (
-                <p style={{ ...muted, marginTop: 8 }}>Draft saved: {savedDraftAt}</p>
-              )}
-            </form>
+            </>
           )}
-        </div>
-      </section>
+
+          <label>Owner Full Name</label>
+          <input
+            name="OwnerName"
+            value={formData.OwnerName}
+            onChange={handleChange}
+            required
+          />
+
+          <label>Business Name</label>
+          <input
+            name="BusinessName"
+            value={formData.BusinessName}
+            onChange={handleChange}
+            required
+          />
+
+          <label>Business Email</label>
+          <input
+            type="email"
+            name="BusinessEmail"
+            value={formData.BusinessEmail}
+            onChange={handleChange}
+            required
+          />
+
+          <label>Business Phone Number</label>
+          <input
+            type="tel"
+            name="BusinessPhoneNumber"
+            value={formData.BusinessPhoneNumber}
+            onChange={handleChange}
+            required
+          />
+
+          <label>Requests / Notes</label>
+          <textarea
+            name="Notes"
+            value={formData.Notes}
+            onChange={handleChange}
+            rows={3}
+          />
+
+          <label style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+            <input
+              type="checkbox"
+              name="Consent"
+              checked={formData.Consent}
+              onChange={handleChange}
+              required
+            />
+            <span>
+              I acknowledge my clients may receive confirmations, reminders, and
+              follow-ups from CatBackAI with opt-out instructions (Reply STOP).
+            </span>
+          </label>
+
+          {status.error && <div style={errorBox}>{status.error}</div>}
+          <button
+            type="submit"
+            style={{ ...btn, opacity: submitting ? 0.7 : 1 }}
+            disabled={submitting}
+          >
+            {submitting ? "Submitting…" : "Submit"}
+          </button>
+          {savedDraftAt && <p>Draft saved: {savedDraftAt}</p>}
+        </form>
+      )}
+    </div>
+  </div>
+</section>
 
       {/* WHO WE ARE */}
       <section id="who-we-are" className="container" style={{ padding: "60px 60px 20px" }}>
