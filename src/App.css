@@ -427,3 +427,30 @@ footer {
   color: #777;
   font-size: 0.9rem;
 }
+/* overwrite conflicting inline grid at runtime */
+.hero-section-desktop {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  align-items: start !important;
+  padding: 80px 60px !important;
+  gap: 50px !important;
+}
+
+/* mobile override layout */
+.hero-section-mobile {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  text-align: center !important;
+  padding: 40px 24px !important;
+  gap: 30px !important;
+}
+
+.hero-section-mobile .hero-right {
+  order: 2;
+  width: 100%;
+}
+.hero-section-mobile .hero-left {
+  order: 1;
+  width: 100%;
+}
