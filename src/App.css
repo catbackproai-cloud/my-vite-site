@@ -419,48 +419,66 @@ footer {
   color: #777;
   font-size: 0.9rem;
 }
-/* ---------- UNIVERSAL NAV OVERRIDES (works across all browsers) ---------- */
+/* ----------------------------------------------------------- */
+/* FINAL UNIVERSAL HEADER FIX — Safari, Chrome, Edge, Firefox  */
+/* ----------------------------------------------------------- */
 
 .site-header {
   width: 100%;
   background: #fff;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-  padding: 20px 60px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+  padding: 18px 32px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   position: sticky;
   top: 0;
   z-index: 1000;
+  -webkit-backdrop-filter: none;
+  -webkit-transform: translateZ(0); /* Safari render fix */
 }
 
 .logo {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
+  min-width: 0;
 }
+
 .logo img {
-  width: 42px;
-  height: 42px;
+  height: 38px;
+  width: auto;
+  display: block;
 }
+
 .brand-name {
   font-weight: 900;
   font-size: 22px;
   color: #000;
+  white-space: nowrap;
 }
 
+/* --- center nav perfectly on all browsers --- */
 .main-nav {
-  display: flex;
   flex: 1;
+  display: flex;
   justify-content: center;
-  gap: 40px;
+  align-items: center;
+  gap: 36px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
+
 .main-nav a {
   font-weight: 600;
   color: #de8d2b;
   font-size: 16px;
+  text-decoration: none;
+  flex-shrink: 0;
   transition: color 0.2s ease;
 }
+
 .main-nav a:hover {
   color: #c67412;
 }
@@ -468,7 +486,8 @@ footer {
 .nav-right {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 18px;
+  flex-shrink: 0;
 }
 
 .login-btn {
@@ -481,7 +500,7 @@ footer {
   text-decoration: underline;
 }
 
-/* ---------- Mobile Navbar ---------- */
+/* -------------------- Mobile -------------------- */
 #menu-toggle {
   display: none;
 }
@@ -494,6 +513,7 @@ footer {
     cursor: pointer;
     font-size: 30px;
     color: #de8d2b;
+    z-index: 1001;
   }
 
   .main-nav {
@@ -526,22 +546,18 @@ footer {
     content: "";
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.45);
+    background: rgba(0,0,0,0.45);
     backdrop-filter: blur(4px);
     -webkit-backdrop-filter: blur(4px);
     z-index: 998;
   }
 
-  .nav-right {
-    gap: 10px;
-  }
-
-  /* hide desktop nav layout */
+  /* hide desktop login */
   .login-btn {
     display: none;
   }
 
-  /* Animate menu links */
+  /* link animation */
   .main-nav a {
     opacity: 0;
     transform: translateY(20px);

@@ -321,6 +321,14 @@ function App() {
     <span className="brand-name">CatBackAI</span>
   </div>
 
+  <button
+    id="menu-toggle"
+    onClick={() => document.body.classList.toggle("menu-open")}
+    aria-label="Toggle menu"
+  >
+    ☰
+  </button>
+
   <nav className="main-nav">
     <a href="#who-we-are">Who We Are</a>
     <a href="#why-catbackai">Why CatBackAI</a>
@@ -337,13 +345,6 @@ function App() {
       className="login-btn"
     >
       Log In
-    </button>
-    <button
-      id="menu-toggle"
-      onClick={() => document.body.classList.toggle("menu-open")}
-      aria-label="Toggle menu"
-    >
-      ☰
     </button>
   </div>
 </header>
