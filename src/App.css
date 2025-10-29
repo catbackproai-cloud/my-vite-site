@@ -76,3 +76,111 @@
     text-align: center;
   }
 }
+/* =========================================================
+   DEVICE-AWARE MODAL + MOBILE TUNING (no App.jsx changes)
+   Uses dvh (dynamic viewport height) + width/height ranges
+   ========================================================= */
+
+/* Base: desktop/tablet, centered dialog */
+.form-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.55);
+  backdrop-filter: blur(4px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 5000;
+}
+
+.form-modal {
+  position: relative;
+  background: #fff;
+  border-radius: 18px;
+  padding: 32px;
+  width: clamp(420px, 44vw, 520px);
+  max-height: min(86dvh, 780px);              /* use dynamic vh */
+  overflow: auto;
+  box-shadow: 0 20px 60px rgba(0,0,0,.25);
+  animation: slideUp .35s ease forwards;
+}
+.close-btn { top: 8px; right: 10px; }
+
+/* ---------- Tiny phones (≤380px wide) ---------- */
+@media (width <= 380px) {
+  .form-modal {
+    width: 94vw;
+    max-height: 90dvh;
+    padding: 22px 16px;
+    border-radius: 14px;
+  }
+  .close-btn { font-size: 24px; }
+  #signup-form input, #signup-form select, #signup-form textarea { font-size: 15px; }
+  #signup-form button { padding: 14px; font-size: 16px; }
+}
+
+/* ---------- Most phones portrait (381–430px wide) ---------- */
+@media (381px <= width <= 430px) {
+  .form-modal {
+    width: 92vw;
+    max-height: 90dvh;
+    padding: 26px 18px;
+    border-radius: 16px;
+  }
+}
+
+/* ---------- Large phones / small tablets portrait (431–600px) ---------- */
+@media (431px <= width <= 600px) {
+  .form-modal {
+    width: min(520px, 88vw);
+    max-height: 88dvh;
+  }
+}
+
+/* ---------- Short screens (e.g., landscape phones) ---------- */
+@media (orientation: landscape) and (height <= 480px) {
+  /* Make it act like a bottom sheet to use space better */
+  .form-modal-overlay {
+    align-items: flex-end;            /* stick to bottom */
+  }
+  .form-modal {
+    width: 100vw;
+    max-width: none;
+    border-radius: 16px 16px 0 0;
+    padding: 20px;
+    max-height: 92dvh;
+  }
+}
+
+/* ---------- Really short heights (foldables / tiny windows) ---------- */
+@media (height <= 400px) {
+  .form-modal-overlay { align-items: flex-start; padding-top: 8px; }
+  .form-modal { width: 98vw; max-height: 96dvh; border-radius: 12px; }
+}
+
+/* ---------- iOS safe-area comfort ---------- */
+@supports (padding: max(0px)) {
+  .form-modal {
+    padding-bottom: max(20px, env(safe-area-inset-bottom));
+    padding-left: max(16px, env(safe-area-inset-left));
+    padding-right: max(16px, env(safe-area-inset-right));
+  }
+}
+
+/* ---------- Hero section: graceful mobile stack ---------- */
+@media (width <= 820px) {
+  .container[style*="grid"] {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 28px !important;
+    padding: 36px 20px !important;
+  }
+  .container[style*="grid"] > div { width: 100% !important; max-width: 620px !important; }
+  .container[style*="grid"] h1 { text-align: center; font-size: clamp(1.6rem, 5vw, 2.1rem) !important; }
+  .container[style*="grid"] p, .container[style*="grid"] ul { text-align: center; }
+  .btnHero { width: 100%; max-width: 340px; margin-inline: auto; }
+}
+
+/* Animations (already referenced by your JSX inline styles) */
+@keyframes slideUp { from { transform: translateY(40px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
