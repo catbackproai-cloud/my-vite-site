@@ -739,7 +739,7 @@ const [showForm, setShowForm] = useState(false);
               Interested in bringing CatBackAI to your industry? Let’s talk.
             </p>
             <button className="btnGhost" onClick={() => openChatbot("partnerships")}>
-              Partner with us
+              Send us an Email
             </button>
           </div>
         </div>
