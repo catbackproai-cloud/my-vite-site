@@ -1,375 +1,78 @@
 /* ----------------------------------------------------------- */
-/*                  GLOBAL RESET + BASE                        */
+/*            MOBILE IMPROVEMENTS — MODAL + LAYOUT             */
 /* ----------------------------------------------------------- */
 
-body {
-  margin: 0;
-  font-family: "Inter", sans-serif;
-  color: #222;
-  background-color: #fff;
-  overflow-x: hidden;
-}
-
-h1, h2, h3, h4, h5, h6 {
-  font-weight: 700;
-  margin: 0;
-}
-
-p {
-  margin: 0 0 1rem 0;
-}
-
-a {
-  text-decoration: none;
-  color: inherit;
-}
-
-/* ----------------------------------------------------------- */
-/*                  NAVBAR STYLES                              */
-/* ----------------------------------------------------------- */
-
-header {
-  width: 100%;
-  background: #fff;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
-  padding: 18px 32px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  position: sticky;
-  top: 0;
-  z-index: 1000;
-}
-
-.logo {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.logo img {
-  height: 32px;
-}
-
-.main-nav {
-  display: flex;
-  gap: 40px;
-  justify-content: center;
-  align-items: center;
-  transition: transform 0.3s ease, opacity 0.3s ease;
-}
-
-.main-nav a {
-  font-weight: 500;
-  color: #333;
-}
-
-#menu-toggle {
-  display: none;
-}
-
-/* ------------------ MOBILE NAVBAR ------------------ */
-@media (max-width: 820px) {
-  #menu-toggle {
-    display: block !important;
-    background: none;
-    border: none;
-    cursor: pointer;
-    font-size: 28px;
-    color: #de8d2b;
-    position: absolute;
-    top: 18px;
-    right: 20px;
-    z-index: 1001;
+@media (max-width: 768px) {
+  /* ✅ Make overlay fit perfectly and remove scroll jump */
+  .form-modal-overlay {
+    align-items: flex-start;
+    padding-top: 60px;
+    overflow-y: auto;
   }
 
-  .main-nav {
-    position: fixed;
-    top: 0;
-    right: 0;
-    width: 70%;
-    height: 100vh;
-    background: #fff;
-    flex-direction: column;
-    justify-content: center;
-    gap: 24px;
-    box-shadow: -2px 0 15px rgba(0, 0, 0, 0.15);
-    transform: translateX(100%);
-    opacity: 0;
-    pointer-events: none;
-    transition: transform 0.4s ease, opacity 0.4s ease;
-    z-index: 999;
+  /* ✅ Center modal, softer edges, better spacing */
+  .form-modal {
+    width: 94%;
+    max-width: 420px;
+    padding: 24px 20px;
+    border-radius: 16px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+    margin: auto;
+    transform: none !important;
   }
 
-  body.menu-open .main-nav {
-    transform: translateX(0);
-    opacity: 1;
-    pointer-events: all;
+  /* ✅ Make close button larger for touch devices */
+  .close-btn {
+    top: 10px;
+    right: 14px;
+    font-size: 26px;
+    color: #111;
   }
 
-  body.menu-open::before {
-    content: "";
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.45);
-    backdrop-filter: blur(4px);
-    z-index: 998;
+  /* ✅ Form readability improvements */
+  #signup-form label {
+    font-size: 14px;
   }
 
-  body.menu-open {
-    overflow: hidden;
-  }
-}
-
-/* ----------------------------------------------------------- */
-/*                  HERO / ONBOARDING SECTION                  */
-/* ----------------------------------------------------------- */
-
-.hero-section {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  padding: 60px 10%;
-  background: #fff6ee;
-  gap: 60px;
-}
-
-.hero-left {
-  flex: 1;
-}
-
-.hero-left .tag {
-  background: #ffe8cc;
-  color: #a85c00;
-  padding: 6px 14px;
-  border-radius: 20px;
-  font-size: 0.85rem;
-  font-weight: 600;
-  display: inline-block;
-  margin-bottom: 1rem;
-}
-
-.hero-left h1 {
-  font-size: 3rem;
-  margin-bottom: 1rem;
-  line-height: 1.2;
-}
-
-.hero-left p {
-  font-size: 1.1rem;
-  color: #444;
-}
-
-.hero-left ul {
-  margin: 1.2rem 0;
-  padding-left: 20px;
-  color: #333;
-}
-
-.hero-left li {
-  margin-bottom: 8px;
-}
-
-.cta-btn {
-  background-color: #de8d2b;
-  color: white;
-  padding: 12px 24px;
-  border-radius: 6px;
-  font-weight: 600;
-  display: inline-block;
-  transition: background-color 0.2s ease;
-}
-
-.cta-btn:hover {
-  background-color: #c5781d;
-}
-
-.hero-right {
-  flex: 1;
-  max-width: 400px;
-}
-
-.business-onboarding {
-  background: white;
-  border-radius: 12px;
-  padding: 28px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-}
-
-.business-onboarding input,
-.business-onboarding select,
-.business-onboarding textarea {
-  width: 100%;
-  padding: 10px 12px;
-  border-radius: 6px;
-  border: 1px solid #ddd;
-  font-size: 1rem;
-  margin-bottom: 12px;
-}
-
-.business-onboarding button {
-  width: 100%;
-  background-color: #de8d2b;
-  border: none;
-  color: white;
-  font-weight: 600;
-  padding: 12px;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
-}
-
-.business-onboarding button:hover {
-  background-color: #c5781d;
-}
-
-/* ----------------------------------------------------------- */
-/*                  MOBILE FIXES: FORM BELOW                   */
-/* ----------------------------------------------------------- */
-
-@media (max-width: 820px) {
-  .hero-section {
-    flex-direction: column !important;   /* 🔥 force stacking */
-    align-items: center !important;
-    text-align: center !important;
-    gap: 30px !important;
-    padding: 40px 24px !important;
+  #signup-form input,
+  #signup-form select,
+  #signup-form textarea {
+    font-size: 15px;
+    padding: 10px 12px;
   }
 
-  .hero-left,
-  .hero-right {
-    width: 100% !important;
-    max-width: 600px;
+  /* ✅ Buttons more finger-friendly */
+  #signup-form button {
+    font-size: 16px;
+    padding: 14px;
+    border-radius: 10px;
   }
 
-  .hero-right {
-    order: 2 !important; /* ✅ form moves BELOW */
-  }
-
-  .hero-left {
-    order: 1 !important; /* ✅ text stays ABOVE */
-  }
-
-  .hero-left h1 {
-    font-size: 2rem !important;
-  }
-
-  .hero-left p {
-    font-size: 1rem !important;
-  }
-
-  .hero-left ul {
-    margin: 1rem auto;
-    padding-left: 1.2rem;
-    text-align: left;
-    max-width: 300px;
-  }
-
-  .cta-btn {
-    display: inline-block;
-    width: 100%;
-    max-width: 300px;
-    margin: 1rem auto;
-  }
-
-  .business-onboarding {
-    width: 100%;
-    margin-top: 10px;
-    padding: 20px !important;
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1);
-    border-radius: 12px;
-  }
-}
-
-/* ----------------------------------------------------------- */
-/*                  FOOTER / MISC                              */
-/* ----------------------------------------------------------- */
-
-footer {
-  text-align: center;
-  padding: 40px 0;
-  color: #777;
-  font-size: 0.9rem;
-}
-/* --- Mobile Hero Stack (for your existing grid) --- */
-@media (max-width: 820px) {
+  /* ✅ Prevent hero section from squishing */
   .container[style*="grid"] {
     display: flex !important;
     flex-direction: column !important;
     align-items: center !important;
-    gap: 30px !important;
     padding: 40px 20px !important;
+    gap: 32px !important;
   }
 
-  .container[style*="grid"] > div {
-    width: 100% !important;
-    max-width: 600px !important;
+  .container[style*="grid"] h1 {
+    text-align: center;
+    font-size: 1.9rem !important;
+    line-height: 1.3;
   }
 
-  /* Make the form card fit better */
-  form, .business-onboarding {
-    width: 100% !important;
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
-    border-radius: 12px;
-    padding: 20px !important;
-    background: #fff;
-  }
-
-  /* Center the text and button */
-  .container[style*="grid"] h1,
   .container[style*="grid"] p,
   .container[style*="grid"] ul {
-    text-align: center !important;
-  }
-
-  .container[style*="grid"] ul {
-    margin: 0 auto;
-    max-width: 300px;
-    text-align: left;
+    text-align: center;
+    font-size: 1rem;
   }
 
   .btnHero {
     width: 100%;
     max-width: 320px;
-    margin: 16px auto 0;
-    display: block;
+    margin-top: 16px;
     text-align: center;
-  }
-}
-/* ---------- Animated mobile dropdown (extends your styles) ---------- */
-@media (max-width: 820px) {
-  .main-nav {
-    transform: translateX(100%);
-    opacity: 0;
-    pointer-events: none;
-    transition: transform 0.4s ease, opacity 0.4s ease;
-  }
-
-  body.menu-open .main-nav {
-    transform: translateX(0);
-    opacity: 1;
-    pointer-events: all;
-  }
-
-  /* Animate the slide-in nav links */
-  .main-nav a,
-  .main-nav button {
-    opacity: 0;
-    transform: translateY(20px);
-    animation: slideIn 0.4s ease forwards;
-  }
-
-  body.menu-open .main-nav a:nth-child(1) { animation-delay: 0.1s; }
-  body.menu-open .main-nav a:nth-child(2) { animation-delay: 0.15s; }
-  body.menu-open .main-nav a:nth-child(3) { animation-delay: 0.2s; }
-  body.menu-open .main-nav a:nth-child(4) { animation-delay: 0.25s; }
-  body.menu-open .main-nav a:nth-child(5) { animation-delay: 0.3s; }
-  body.menu-open .main-nav a:nth-child(6) { animation-delay: 0.35s; }
-  body.menu-open .main-nav a:nth-child(7) { animation-delay: 0.4s; }
-  body.menu-open .main-nav button { animation-delay: 0.45s; }
-
-  @keyframes slideIn {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
   }
 }
