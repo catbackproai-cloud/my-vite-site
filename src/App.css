@@ -1,87 +1,91 @@
-/* ----------------------------------------------------------- */
-/*            MOBILE IMPROVEMENTS — MODAL + LAYOUT             */
-/* ----------------------------------------------------------- */
+/* =========================================================
+   🌐 CatBackAI Responsive & Mobile Polishing Layer
+   ========================================================= */
 
-@media (max-width: 768px) {
-  /* ✅ Make overlay fit perfectly and remove scroll jump */
-  .form-modal-overlay {
-    align-items: flex-start;
-    padding-top: 60px;
-    overflow-y: auto;
+/* ---------- GLOBAL SAFE AREA / NO SCROLL HORIZONTAL ---------- */
+body {
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+@supports (padding: max(0px)) {
+  body {
+    padding-left: max(0px, env(safe-area-inset-left));
+    padding-right: max(0px, env(safe-area-inset-right));
+  }
+}
+
+/* =========================================================
+   HEADER / NAVBAR — stay clean on small screens
+   ========================================================= */
+@media (max-width: 820px) {
+  header {
+    justify-content: space-between !important;
+    align-items: center !important;
+    padding: 16px 20px !important;
   }
 
-  /* ✅ Center modal, softer edges, better spacing */
-  .form-modal {
-    width: 94%;
-    max-width: 420px;
-    padding: 24px 20px;
-    border-radius: 16px;
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
-    margin: auto;
-    transform: none !important;
+  header nav {
+    display: none !important; /* hide text nav on mobile */
   }
 
-  /* ✅ Make close button larger for touch devices */
-  .close-btn {
-    top: 10px;
-    right: 14px;
+  /* simple hamburger placeholder (non-functional yet) */
+  header::after {
+    content: "☰";
     font-size: 26px;
-    color: #111;
+    cursor: pointer;
+    color: #000;
+    margin-left: auto;
   }
+}
 
-  /* ✅ Form readability improvements */
-  #signup-form label {
-    font-size: 14px;
-  }
-
-  #signup-form input,
-  #signup-form select,
-  #signup-form textarea {
-    font-size: 15px;
-    padding: 10px 12px;
-  }
-
-  /* ✅ Buttons more finger-friendly */
-  #signup-form button {
-    font-size: 16px;
-    padding: 14px;
-    border-radius: 10px;
-  }
-
-  /* ✅ Prevent hero section from squishing */
-  .container[style*="grid"] {
+/* =========================================================
+   HERO SECTION — responsive grid override
+   ========================================================= */
+@media (max-width: 820px) {
+  section.container[style*="grid"] {
     display: flex !important;
     flex-direction: column !important;
     align-items: center !important;
-    padding: 40px 20px !important;
-    gap: 32px !important;
+    justify-content: center !important;
+    text-align: center !important;
+    padding: 40px 18px !important;
+    gap: 24px !important;
   }
 
-  .container[style*="grid"] h1 {
-    text-align: center;
-    font-size: 1.9rem !important;
-    line-height: 1.3;
+  section.container[style*="grid"] h1 {
+    text-align: center !important;
+    font-size: clamp(1.8rem, 5vw, 2.2rem) !important;
+    line-height: 1.3 !important;
+    margin-bottom: 12px !important;
+    color: #000 !important;
   }
 
-  .container[style*="grid"] p,
-  .container[style*="grid"] ul {
-    text-align: center;
-    font-size: 1rem;
+  section.container[style*="grid"] p {
+    font-size: 1rem !important;
+    line-height: 1.6 !important;
+    max-width: 420px;
+    text-align: center !important;
+    color: #333 !important;
   }
 
   .btnHero {
     width: 100%;
-    max-width: 320px;
+    max-width: 340px;
+    font-size: 18px;
+    padding: 16px 0;
+    border-radius: 12px;
     margin-top: 16px;
     text-align: center;
   }
 }
+
 /* =========================================================
-   DEVICE-AWARE MODAL + MOBILE TUNING (no App.jsx changes)
-   Uses dvh (dynamic viewport height) + width/height ranges
+   MODAL / SIGNUP FORM OVERLAY STYLES
    ========================================================= */
 
-/* Base: desktop/tablet, centered dialog */
+/* Base: desktop & tablet */
 .form-modal-overlay {
   position: fixed;
   inset: 0;
@@ -99,12 +103,22 @@
   border-radius: 18px;
   padding: 32px;
   width: clamp(420px, 44vw, 520px);
-  max-height: min(86dvh, 780px);              /* use dynamic vh */
+  max-height: min(86dvh, 780px);
   overflow: auto;
   box-shadow: 0 20px 60px rgba(0,0,0,.25);
   animation: slideUp .35s ease forwards;
 }
-.close-btn { top: 8px; right: 10px; }
+
+.close-btn {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: #000;
+  cursor: pointer;
+}
 
 /* ---------- Tiny phones (≤380px wide) ---------- */
 @media (width <= 380px) {
@@ -114,7 +128,7 @@
     padding: 22px 16px;
     border-radius: 14px;
   }
-  .close-btn { font-size: 24px; }
+  .close-btn { font-size: 26px; }
   #signup-form input, #signup-form select, #signup-form textarea { font-size: 15px; }
   #signup-form button { padding: 14px; font-size: 16px; }
 }
@@ -137,12 +151,9 @@
   }
 }
 
-/* ---------- Short screens (e.g., landscape phones) ---------- */
+/* ---------- Short screens (e.g. landscape phones) ---------- */
 @media (orientation: landscape) and (height <= 480px) {
-  /* Make it act like a bottom sheet to use space better */
-  .form-modal-overlay {
-    align-items: flex-end;            /* stick to bottom */
-  }
+  .form-modal-overlay { align-items: flex-end; }
   .form-modal {
     width: 100vw;
     max-width: none;
@@ -152,13 +163,13 @@
   }
 }
 
-/* ---------- Really short heights (foldables / tiny windows) ---------- */
+/* ---------- Foldables / very short viewports ---------- */
 @media (height <= 400px) {
   .form-modal-overlay { align-items: flex-start; padding-top: 8px; }
   .form-modal { width: 98vw; max-height: 96dvh; border-radius: 12px; }
 }
 
-/* ---------- iOS safe-area comfort ---------- */
+/* ---------- Safe area padding for iPhones ---------- */
 @supports (padding: max(0px)) {
   .form-modal {
     padding-bottom: max(20px, env(safe-area-inset-bottom));
@@ -167,20 +178,8 @@
   }
 }
 
-/* ---------- Hero section: graceful mobile stack ---------- */
-@media (width <= 820px) {
-  .container[style*="grid"] {
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: center !important;
-    gap: 28px !important;
-    padding: 36px 20px !important;
-  }
-  .container[style*="grid"] > div { width: 100% !important; max-width: 620px !important; }
-  .container[style*="grid"] h1 { text-align: center; font-size: clamp(1.6rem, 5vw, 2.1rem) !important; }
-  .container[style*="grid"] p, .container[style*="grid"] ul { text-align: center; }
-  .btnHero { width: 100%; max-width: 340px; margin-inline: auto; }
+/* ---------- Smooth open animation ---------- */
+@keyframes slideUp {
+  from { transform: translateY(40px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
 }
-
-/* Animations (already referenced by your JSX inline styles) */
-@keyframes slideUp { from { transform: translateY(40px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
