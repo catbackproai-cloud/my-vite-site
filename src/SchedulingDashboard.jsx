@@ -280,6 +280,40 @@ if (bizData.business.Unavailability) {
         return false;
       }
     }
+try {
+  const payload = {
+    BusinessId: business?.BusinessId || routeId || "",
+    LinkToLogo: business?.LogoLink || logoUrl || "",
+    ColorScheme: colorScheme || {},
+    Services: services || [],
+    Availability: availability || {},
+    Unavailability: unavailability || [],
+  };
+
+  console.log("📤 Sending payload to n8n:", payload);
+
+  const res = await fetch("https://jacobtf007.app.n8n.cloud/webhook/catbackai_updatebookingtheme", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || "Failed to save changes");
+
+  if (!opts.silent) {
+    setStatusMsg("✅ Saved! Your booking form settings are live.");
+  }
+} catch (err) {
+  console.error(err);
+  if (!opts.silent) {
+    setStatusMsg("⚠️ Could not save right now. Try again shortly.");
+  }
+} finally {
+  if (!opts.silent) {
+    setSaving(false);
+  }
+}
 
    const payload = {
   BusinessId: routeId,
