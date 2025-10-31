@@ -295,15 +295,14 @@ if (bizData.business.Unavailability) {
     if (opts.silent && lastSavedPayloadRef.current === payloadString) return true;
 
     try {
-      await fetch("https://jacobtf007.app.n8n.cloud/webhook/catbackai_updatebookingtheme", {
+const res = await fetch("https://jacobtf007.app.n8n.cloud/webhook/catbackai_updatebookingtheme", {
   method: "POST",
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify(payload),
 });
 
-      // ✅ handle n8n JSON response
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.message || "Network error");
+const data = await res.json().catch(() => ({}));
+if (!res.ok) throw new Error(data.message || "Network error");
 
       lastSavedPayloadRef.current = payloadString;
 
