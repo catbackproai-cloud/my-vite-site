@@ -256,13 +256,14 @@ if (bizData.business.Unavailability) {
     }
   }
 
-  /* ------------------------------- Save All ------------------------------ */
+    /* ------------------------------- Save All ------------------------------ */
   const saveDashboard = async (opts = { silent: false }) => {
     if (!opts.silent) {
       setSaving(true);
       setStatusMsg("Saving your booking form settings…");
     }
 
+    // ✅ basic validation
     for (const s of services) {
       if (!s.name?.trim()) {
         if (!opts.silent) {
@@ -280,19 +281,17 @@ if (bizData.business.Unavailability) {
       }
     }
 
+    // ✅ payload matches n8n Prepare Data node
     const payload = {
       businessId: routeId,
+      logoLink: logoLink || "",
       colorScheme,
-      logoLink,
-      services: services.map((s) => ({
-        ...s,
-        price: Number(s.price),
-        duration: s.duration ? Number(s.duration) : "",
-      })),
+      services,
       availability,
       unavailability,
     };
 
+    // avoid repeat autosave if no change
     const payloadString = JSON.stringify(payload);
     if (opts.silent && lastSavedPayloadRef.current === payloadString) return true;
 
@@ -305,12 +304,20 @@ if (bizData.business.Unavailability) {
           body: payloadString,
         }
       );
-      if (!res.ok) throw new Error(await res.text());
+
+      // ✅ handle n8n JSON response
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || "Network error");
+
       lastSavedPayloadRef.current = payloadString;
-      if (!opts.silent) setStatusMsg("Saved! Your booking page will use these settings.");
+
+      if (!opts.silent)
+        setStatusMsg("✅ Saved! Your booking form settings are live.");
       return true;
-    } catch {
-      if (!opts.silent) setStatusMsg("Could not save right now. Try again.");
+    } catch (err) {
+      console.error("Save failed:", err);
+      if (!opts.silent)
+        setStatusMsg("❌ Could not save right now. Try again shortly.");
       return false;
     } finally {
       if (!opts.silent) setSaving(false);
