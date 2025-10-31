@@ -57,6 +57,7 @@ export default function BookingForm() {
         const bizRes = await fetch(
           `https://jacobtf007.app.n8n.cloud/webhook/catbackai_getbusiness?businessId=${businessId}`
         );
+        if (!bizRes.ok) throw new Error("Failed to load business");
         const bizJson = await bizRes.json();
         if (!bizJson?.business) throw new Error("Business not found");
         const b = bizJson.business;
@@ -77,56 +78,31 @@ export default function BookingForm() {
         }
         setBusiness(b);
 
-        // schedule (services, availability, blackout)
-        const schedRes = await fetch(
-          "https://jacobtf007.app.n8n.cloud/webhook/catbackai_getschedule",
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ businessId }),
-          }
-        );
-        const sjson = await schedRes.json();
+// ✅ Directly parse merged schedule/theme from business record
+if (b.Services) {
+  try {
+    const parsed = JSON.parse(b.Services);
+    if (Array.isArray(parsed)) setServices(parsed);
+  } catch {}
+}
 
-        if (sjson?.result === "ok") {
-          // services
-          if (Array.isArray(sjson.services)) {
-            setServices(
-              sjson.services.map((s) => ({
-                name: s.name || s.ServiceName || "",
-                price: s.price ?? s.Price ?? "",
-                duration: String(s.duration ?? s.Duration ?? "").trim(),
-                description: s.description ?? s.Description ?? "",
-              }))
-            );
-          } else if (Array.isArray(sjson.schedule)) {
-            setServices(
-              sjson.schedule.map((s) => ({
-                name: s.ServiceName || "",
-                price: s.Price || "",
-                duration: String(s.Duration || "").trim(),
-                description: s.Description || "",
-              }))
-            );
-          } else if (typeof sjson.servicesCsv === "string") {
-            setServices(
-              sjson.servicesCsv
-                .split(",")
-                .map((n) => ({ name: n.trim(), price: "", duration: "", description: "" }))
-                .filter((x) => x.name)
-            );
-          }
+if (b.Availability) {
+  try {
+    const parsed = JSON.parse(b.Availability);
+    if (parsed && typeof parsed === "object") setAvailability(parsed);
+  } catch {}
+}
 
-          // availability
-          if (sjson.availability && typeof sjson.availability === "object") {
-            setAvailability(sjson.availability);
-          }
+if (b.Unavailability) {
+  try {
+    const parsed = JSON.parse(b.Unavailability);
+    if (Array.isArray(parsed)) {
+      const datesOnly = parsed.map((u) => u.date).filter(Boolean);
+      setUnavailableDates(datesOnly);
+    }
+  } catch {}
+}
 
-          // blackout
-          if (Array.isArray(sjson.unavailableDates)) {
-            setUnavailableDates(sjson.unavailableDates);
-          }
-        }
       } catch (e) {
         setError(e.message);
       } finally {

@@ -184,70 +184,60 @@ export default function SchedulingDashboard() {
         }
         if (bizData.business.LogoLink) setLogoLink(bizData.business.LogoLink);
       }
-
-      // 2) Schedule/services/availability
-      const schedRes = await fetch(
-        "https://jacobtf007.app.n8n.cloud/webhook/catbackai_getschedule",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ businessId: id }),
-        }
+// Parse services
+if (bizData.business.Services) {
+  try {
+    const parsedServices = JSON.parse(bizData.business.Services);
+    if (Array.isArray(parsedServices)) {
+      setServices(
+        parsedServices.map((s) => ({
+          name: s.name || s.ServiceName || "",
+          price: (s.price ?? s.Price ?? "").toString(),
+          duration: (s.duration ?? s.Duration ?? "60").toString(),
+          description: s.description ?? s.Description ?? "",
+        }))
       );
+    }
+  } catch {}
+}
 
-      if (!schedRes.ok) {
-        setStatusMsg((s) => s || "Couldn’t load schedule yet. You can still edit.");
+// Parse availability
+if (bizData.business.Availability) {
+  try {
+    const parsedAvail = JSON.parse(bizData.business.Availability);
+    if (typeof parsedAvail === "object") {
+      const next = { ...availability };
+      for (const day of DAY_ORDER) {
+        const raw = parsedAvail[day];
+        if (!raw) continue;
+        next[day] = {
+          enabled: !!raw.enabled && !!(raw.start && raw.end),
+          start: raw.start || "09:00",
+          end: raw.end || "17:00",
+        };
       }
+      setAvailability(next);
+    }
+  } catch {}
+}
 
-      const schedJson = await safeJson(schedRes);
+// Parse unavailability
+if (bizData.business.Unavailability) {
+  try {
+    const parsedUnavail = JSON.parse(bizData.business.Unavailability);
+    if (Array.isArray(parsedUnavail)) {
+      setUnavailability(
+        parsedUnavail.map((u) => ({
+          date: u.date || "",
+          start: u.start || "",
+          end: u.end || "",
+          allDay: !!u.allDay,
+        }))
+      );
+    }
+  } catch {}
+}
 
-      if (schedJson?.result === "ok") {
-        if (Array.isArray(schedJson.services)) {
-          setServices(
-            schedJson.services.map((s) => ({
-              name: s.name || s.ServiceName || "",
-              price: (s.price ?? s.Price ?? "").toString(),
-              duration: (s.duration ?? s.Duration ?? "60").toString(),
-              description: s.description ?? s.Description ?? "",
-            }))
-          );
-        }
-
-        if (schedJson.availability && typeof schedJson.availability === "object") {
-          const next = { ...availability };
-          for (const day of DAY_ORDER) {
-            const raw = schedJson.availability[day];
-            if (!raw) continue;
-
-            if (typeof raw?.start === "string" || typeof raw?.end === "string") {
-              next[day] = {
-                enabled: !!raw.enabled && !!(raw.start && raw.end),
-                start: raw.start || "09:00",
-                end: raw.end || "17:00",
-              };
-            } else if (Array.isArray(raw?.ranges) && raw.ranges.length > 0) {
-              const first = raw.ranges[0] || {};
-              next[day] = {
-                enabled: !!raw.enabled && !!(first.start && first.end),
-                start: first.start || "09:00",
-                end: first.end || "17:00",
-              };
-            }
-          }
-          setAvailability(next);
-        }
-
-        if (Array.isArray(schedJson.unavailability)) {
-          setUnavailability(
-            schedJson.unavailability.map((u) => ({
-              date: u.date || "",
-              start: u.start || "",
-              end: u.end || "",
-              allDay: !!u.allDay,
-            }))
-          );
-        }
-      }
     } catch {
       // Silent fallback — don’t show “Load failed”
       setStatusMsg("Some data couldn’t be fetched, but you can continue editing.");
