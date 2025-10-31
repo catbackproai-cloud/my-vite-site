@@ -281,15 +281,14 @@ if (bizData.business.Unavailability) {
       }
     }
 
-    // ✅ payload matches n8n Prepare Data node
-    const payload = {
-      businessId: routeId,
-      logoLink: logoLink || "",
-      colorScheme,
-      services,
-      availability,
-      unavailability,
-    };
+   const payload = {
+  BusinessId: routeId,
+  LinkToLogo: logoLink || "",
+  ColorScheme: colorScheme,
+  Services: services,
+  Availability: availability,
+  Unavailability: unavailability,
+};
 
     // avoid repeat autosave if no change
     const payloadString = JSON.stringify(payload);
