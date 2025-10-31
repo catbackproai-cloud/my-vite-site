@@ -263,6 +263,7 @@ const saveDashboard = async (opts = { silent: false }) => {
     setStatusMsg("Saving your booking form settings…");
   }
 
+  // basic validation
   for (const s of services) {
     if (!s.name?.trim()) {
       if (!opts.silent) {
@@ -298,24 +299,23 @@ const saveDashboard = async (opts = { silent: false }) => {
       body: JSON.stringify(payload),
     });
 
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message || "Failed to save changes");
+    if (!res.ok) throw new Error(`n8n error: ${res.status}`);
+    const data = await res.json().catch(() => ({}));
 
     if (!opts.silent) {
       setStatusMsg("✅ Saved! Your booking form settings are live.");
     }
+
+    console.log("✅ n8n response:", data);
   } catch (err) {
-    console.error(err);
+    console.error("❌ Save failed:", err);
     if (!opts.silent) {
       setStatusMsg("⚠️ Could not save right now. Try again shortly.");
     }
   } finally {
-    if (!opts.silent) {
-      setSaving(false);
-    }
+    if (!opts.silent) setSaving(false);
   }
 };
-
 
   // autosave
   useEffect(() => {
