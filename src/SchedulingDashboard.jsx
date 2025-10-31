@@ -295,14 +295,11 @@ if (bizData.business.Unavailability) {
     if (opts.silent && lastSavedPayloadRef.current === payloadString) return true;
 
     try {
-      const res = await fetch(
-        "https://jacobtf007.app.n8n.cloud/webhook/catbackai_updatebookingtheme",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: payloadString,
-        }
-      );
+      await fetch("https://jacobtf007.app.n8n.cloud/webhook/catbackai_updatebookingtheme", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify(payload),
+});
 
       // ✅ handle n8n JSON response
       const data = await res.json().catch(() => ({}));
