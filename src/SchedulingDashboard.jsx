@@ -295,6 +295,15 @@ if (bizData.business.Unavailability) {
     if (opts.silent && lastSavedPayloadRef.current === payloadString) return true;
 
     try {
+const payload = {
+  BusinessId: business.BusinessId, // ✅ required for row match
+  LinkToLogo: business.LogoLink || "",
+  ColorScheme: colorScheme || {},
+  Services: services || [],
+  Availability: availability || {},
+  Unavailability: unavailability || []
+};
+
 const res = await fetch("https://jacobtf007.app.n8n.cloud/webhook/catbackai_updatebookingtheme", {
   method: "POST",
   headers: { "Content-Type": "application/json" },
