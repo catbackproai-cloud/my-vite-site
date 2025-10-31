@@ -257,101 +257,65 @@ if (bizData.business.Unavailability) {
   }
 
     /* ------------------------------- Save All ------------------------------ */
-  const saveDashboard = async (opts = { silent: false }) => {
+const saveDashboard = async (opts = { silent: false }) => {
+  if (!opts.silent) {
+    setSaving(true);
+    setStatusMsg("Saving your booking form settings…");
+  }
+
+  for (const s of services) {
+    if (!s.name?.trim()) {
+      if (!opts.silent) {
+        setSaving(false);
+        setStatusMsg("Each service needs a name.");
+      }
+      return false;
+    }
+    if (s.price === "" || isNaN(Number(s.price))) {
+      if (!opts.silent) {
+        setSaving(false);
+        setStatusMsg("Price is required and must be a number.");
+      }
+      return false;
+    }
+  }
+
+  try {
+    const payload = {
+      BusinessId: business?.BusinessId || routeId || "",
+      LinkToLogo: logoLink || business?.LogoLink || "",
+      ColorScheme: colorScheme || {},
+      Services: services || [],
+      Availability: availability || {},
+      Unavailability: unavailability || [],
+    };
+
+    console.log("📤 Sending payload to n8n:", payload);
+
+    const res = await fetch("https://jacobtf007.app.n8n.cloud/webhook/catbackai_updatebookingtheme", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || "Failed to save changes");
+
     if (!opts.silent) {
-      setSaving(true);
-      setStatusMsg("Saving your booking form settings…");
+      setStatusMsg("✅ Saved! Your booking form settings are live.");
     }
-
-    // ✅ basic validation
-    for (const s of services) {
-      if (!s.name?.trim()) {
-        if (!opts.silent) {
-          setSaving(false);
-          setStatusMsg("Each service needs a name.");
-        }
-        return false;
-      }
-      if (s.price === "" || isNaN(Number(s.price))) {
-        if (!opts.silent) {
-          setSaving(false);
-          setStatusMsg("Price is required and must be a number.");
-        }
-        return false;
-      }
+  } catch (err) {
+    console.error(err);
+    if (!opts.silent) {
+      setStatusMsg("⚠️ Could not save right now. Try again shortly.");
     }
-try {
-  const payload = {
-    BusinessId: business?.BusinessId || routeId || "",
-    LinkToLogo: business?.LogoLink || logoUrl || "",
-    ColorScheme: colorScheme || {},
-    Services: services || [],
-    Availability: availability || {},
-    Unavailability: unavailability || [],
-  };
-
-  console.log("📤 Sending payload to n8n:", payload);
-
-  const res = await fetch("https://jacobtf007.app.n8n.cloud/webhook/catbackai_updatebookingtheme", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.message || "Failed to save changes");
-
-  if (!opts.silent) {
-    setStatusMsg("✅ Saved! Your booking form settings are live.");
+  } finally {
+    if (!opts.silent) {
+      setSaving(false);
+    }
   }
-} catch (err) {
-  console.error(err);
-  if (!opts.silent) {
-    setStatusMsg("⚠️ Could not save right now. Try again shortly.");
-  }
-} finally {
-  if (!opts.silent) {
-    setSaving(false);
-  }
-}
-
-   const payload = {
-  BusinessId: routeId,
-  LinkToLogo: logoLink || "",
-  ColorScheme: colorScheme,
-  Services: services,
-  Availability: availability,
-  Unavailability: unavailability,
 };
 
-    // avoid repeat autosave if no change
-    const payloadString = JSON.stringify(payload);
-    if (opts.silent && lastSavedPayloadRef.current === payloadString) return true;
-
-    try {
-const res = await fetch("https://jacobtf007.app.n8n.cloud/webhook/catbackai_updatebookingtheme", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify(payload),
-});
-
-const data = await res.json().catch(() => ({}));
-if (!res.ok) throw new Error(data.message || "Network error");
-
-      lastSavedPayloadRef.current = payloadString;
-
-      if (!opts.silent)
-        setStatusMsg("✅ Saved! Your booking form settings are live.");
-      return true;
-    } catch (err) {
-      console.error("Save failed:", err);
-      if (!opts.silent)
-        setStatusMsg("❌ Could not save right now. Try again shortly.");
-      return false;
-    } finally {
-      if (!opts.silent) setSaving(false);
-    }
-  };
 
   // autosave
   useEffect(() => {
