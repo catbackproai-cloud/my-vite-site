@@ -149,69 +149,60 @@ export default function SchedulingDashboard() {
     };
   }, [routeId, navigate]);
 
-  /* ------------------------------ Load Data ------------------------------ */
-  useEffect(() => {
-    if (routeId) fetchAllData(routeId);
-  }, [routeId]);
-/* ------------------------------ Restore Cache ------------------------------ */
+/* ------------------------------ Load + Restore ------------------------------ */
 useEffect(() => {
   if (!routeId) return;
 
+  // 1️⃣ Load cached data immediately
   const cached = localStorage.getItem(`catbackai_dashboard_${routeId}`);
   if (cached) {
     try {
       const parsed = JSON.parse(cached);
       setBusiness(parsed);
 
-      // Restore color scheme
       if (parsed.ColorScheme) {
-        try {
-          const parsedScheme = JSON.parse(parsed.ColorScheme);
-          if (parsedScheme && typeof parsedScheme === "object") {
-            setColorScheme((p) => ({ ...p, ...parsedScheme }));
-          }
-        } catch {}
+        const parsedScheme = JSON.parse(parsed.ColorScheme);
+        if (parsedScheme && typeof parsedScheme === "object") {
+          setColorScheme((p) => ({ ...p, ...parsedScheme }));
+        }
       }
 
-      // Restore logo
       if (parsed.LogoLink) setLogoLink(parsed.LogoLink);
 
-      // Restore services
       if (parsed.Services) {
-        try {
-          const parsedServices = JSON.parse(parsed.Services);
-          if (Array.isArray(parsedServices)) {
-            setServices(
-              parsedServices.map((s) => ({
-                name: s.name || s.ServiceName || "",
-                price: (s.price ?? s.Price ?? "").toString(),
-                duration: (s.duration ?? s.Duration ?? "60").toString(),
-                description: s.description ?? s.Description ?? "",
-              }))
-            );
-          }
-        } catch {}
+        const parsedServices = JSON.parse(parsed.Services);
+        if (Array.isArray(parsedServices)) {
+          setServices(
+            parsedServices.map((s) => ({
+              name: s.name || s.ServiceName || "",
+              price: (s.price ?? s.Price ?? "").toString(),
+              duration: (s.duration ?? s.Duration ?? "60").toString(),
+              description: s.description ?? s.Description ?? "",
+            }))
+          );
+        }
       }
 
-      // Restore availability
       if (parsed.Availability) {
-        try {
-          const parsedAvail = JSON.parse(parsed.Availability);
-          if (typeof parsedAvail === "object") {
-            setAvailability((prev) => ({ ...prev, ...parsedAvail }));
-          }
-        } catch {}
+        const parsedAvail = JSON.parse(parsed.Availability);
+        if (typeof parsedAvail === "object") {
+          setAvailability((prev) => ({ ...prev, ...parsedAvail }));
+        }
       }
 
-      // Restore unavailability
       if (parsed.Unavailability) {
-        try {
-          const parsedUnavail = JSON.parse(parsed.Unavailability);
-          if (Array.isArray(parsedUnavail)) setUnavailability(parsedUnavail);
-        } catch {}
+        const parsedUnavail = JSON.parse(parsed.Unavailability);
+        if (Array.isArray(parsedUnavail)) {
+          setUnavailability(parsedUnavail);
+        }
       }
-    } catch {}
+    } catch (err) {
+      console.error("Error restoring cached data:", err);
+    }
   }
+
+  // 2️⃣ Fetch fresh data afterward
+  fetchAllData(routeId);
 }, [routeId]);
 
   async function fetchAllData(id) {
