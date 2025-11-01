@@ -167,7 +167,7 @@ useEffect(() => {
         }
       }
 
-      if (parsed.LogoLink) setLogoLink(parsed.LogoLink);
+      if (parsed.LinkToLogo) setLogoLink(parsed.LinkToLogo);
 
       if (parsed.Services) {
         const parsedServices = JSON.parse(parsed.Services);
@@ -234,7 +234,7 @@ useEffect(() => {
             /* ignore */
           }
         }
-        if (bizData.business.LogoLink) setLogoLink(bizData.business.LogoLink);
+        if (bizData.business.LinkToLogo) setLogoLink(bizData.business.LinkToLogo);
                 // ✅ Save snapshot for persistence
         localStorage.setItem(`catbackai_dashboard_${id}`, JSON.stringify(bizData.business));
       }
