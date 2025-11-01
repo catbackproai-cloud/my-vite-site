@@ -153,8 +153,69 @@ export default function SchedulingDashboard() {
   useEffect(() => {
     if (routeId) fetchAllData(routeId);
   }, [routeId]);
+/* ------------------------------ Restore Cache ------------------------------ */
+useEffect(() => {
+  if (!routeId) return;
+
+  const cached = localStorage.getItem(`catbackai_dashboard_${routeId}`);
+  if (cached) {
+    try {
+      const parsed = JSON.parse(cached);
+      setBusiness(parsed);
+
+      // Restore color scheme
+      if (parsed.ColorScheme) {
+        try {
+          const parsedScheme = JSON.parse(parsed.ColorScheme);
+          if (parsedScheme && typeof parsedScheme === "object") {
+            setColorScheme((p) => ({ ...p, ...parsedScheme }));
+          }
+        } catch {}
+      }
+
+      // Restore logo
+      if (parsed.LogoLink) setLogoLink(parsed.LogoLink);
+
+      // Restore services
+      if (parsed.Services) {
+        try {
+          const parsedServices = JSON.parse(parsed.Services);
+          if (Array.isArray(parsedServices)) {
+            setServices(
+              parsedServices.map((s) => ({
+                name: s.name || s.ServiceName || "",
+                price: (s.price ?? s.Price ?? "").toString(),
+                duration: (s.duration ?? s.Duration ?? "60").toString(),
+                description: s.description ?? s.Description ?? "",
+              }))
+            );
+          }
+        } catch {}
+      }
+
+      // Restore availability
+      if (parsed.Availability) {
+        try {
+          const parsedAvail = JSON.parse(parsed.Availability);
+          if (typeof parsedAvail === "object") {
+            setAvailability((prev) => ({ ...prev, ...parsedAvail }));
+          }
+        } catch {}
+      }
+
+      // Restore unavailability
+      if (parsed.Unavailability) {
+        try {
+          const parsedUnavail = JSON.parse(parsed.Unavailability);
+          if (Array.isArray(parsedUnavail)) setUnavailability(parsedUnavail);
+        } catch {}
+      }
+    } catch {}
+  }
+}, [routeId]);
 
   async function fetchAllData(id) {
+    localStorage.removeItem(`catbackai_dashboard_${id}`);
     setLoading(true);
     setStatusMsg("");
     try {
@@ -183,6 +244,8 @@ export default function SchedulingDashboard() {
           }
         }
         if (bizData.business.LogoLink) setLogoLink(bizData.business.LogoLink);
+                // ✅ Save snapshot for persistence
+        localStorage.setItem(`catbackai_dashboard_${id}`, JSON.stringify(bizData.business));
       }
 // Parse services
 if (bizData.business.Services) {
