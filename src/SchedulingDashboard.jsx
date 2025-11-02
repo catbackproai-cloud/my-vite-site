@@ -3,11 +3,20 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import logo from "./assets/Y-Logo.png";
 
-/* ==========================================================================
-   CatBackAI — SchedulingDashboard.jsx
-   (Tabs + Live Preview on Right, “Load failed” removed, Blackout removed)
-   ========================================================================== */
+/* =============================================================================
+   CatBackAI — SchedulingDashboard.jsx (Sheet-Synced, LinkToLogo everywhere)
+   - Tabs + Live Preview
+   - No localStorage cache on reload (always reflect Google Sheet)
+   - Auth guard via sessionStorage token
+   - Autosave to n8n every 30s (silent)
+   - Consistent LinkToLogo field name (both read + write)
+   - Booking preview on the right
+   - Uses n8n webhooks:
+       GET:  https://jacobtf007.app.n8n.cloud/webhook/catbackai_getbusiness?businessId={id}
+       POST: https://jacobtf007.app.n8n.cloud/webhook/catbackai_updatebookingtheme
+   ============================================================================= */
 
+// ---------- Constants ----------
 const DAY_ORDER = [
   "Monday",
   "Tuesday",
@@ -30,7 +39,7 @@ const JS_DAY_TO_NAME = [
   "Saturday",
 ];
 
-// time helpers
+// ---------- Time helpers ----------
 function toMinutes(hhmm = "") {
   if (!hhmm) return null;
   const [h, m] = hhmm.split(":").map((n) => parseInt(n || "0", 10));
@@ -52,7 +61,7 @@ function fmtYMD(date) {
 function buildMonthGrid(year, month) {
   const firstOfMonth = new Date(year, month, 1);
   const startDay = firstOfMonth.getDay(); // 0=Sun..6=Sat
-  const prevMonthDays = (startDay + 6) % 7; // lead cells
+  const prevMonthDays = (startDay + 6) % 7; // lead cells to start on Monday-like grid
   const startDate = new Date(year, month, 1 - prevMonthDays);
   const grid = [];
   for (let i = 0; i < 42; i++) {
@@ -74,13 +83,15 @@ export default function SchedulingDashboard() {
   // Tabs: "setup" | "calendar"
   const [tab, setTab] = useState("setup");
 
+  // Core entities
   const [business, setBusiness] = useState(null);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // a soft, non-blocking toast text
+  // Soft banner status text
   const [statusMsg, setStatusMsg] = useState("");
 
+  // Design
   const [colorScheme, setColorScheme] = useState({
     header: "#de8d2b",
     text: "#000000",
@@ -88,13 +99,14 @@ export default function SchedulingDashboard() {
     accent: "#de8d2b",
   });
 
+  // Logo
   const [logoLink, setLogoLink] = useState("");
-  const [logoOk, setLogoOk] = useState(true); // avoid “load failed” visuals
+  const [logoOk, setLogoOk] = useState(true);
 
-  // services
+  // Services
   const [services, setServices] = useState([]);
 
-  // availability (single range per day)
+  // Availability map per weekday
   const [availability, setAvailability] = useState(
     DAY_ORDER.reduce((acc, d) => {
       acc[d] = { enabled: false, start: "09:00", end: "17:00" };
@@ -102,19 +114,17 @@ export default function SchedulingDashboard() {
     }, {})
   );
 
-  // partial/all-day unavailability entries
+  // Specific-date unavailability entries
   const [unavailability, setUnavailability] = useState([]);
 
+  // Calendar previews
   const today = new Date();
-  const [monthCursor, setMonthCursor] = useState({
-    y: today.getFullYear(),
-    m: today.getMonth(),
-  });
+  const [monthCursor, setMonthCursor] = useState({ y: today.getFullYear(), m: today.getMonth() });
 
+  // Autosave tick
   const autosaveRef = useRef(null);
-  const lastSavedPayloadRef = useRef(null);
 
-  // for scroll-to-day from calendar
+  // Scroll refs for weekdays
   const dayRefs = useRef({});
   DAY_ORDER.forEach((d) => {
     if (!dayRefs.current[d]) dayRefs.current[d] = { current: null };
@@ -133,14 +143,14 @@ export default function SchedulingDashboard() {
       return;
     }
 
+    // 1 hour idle timeout
     if (lastActive && Date.now() - parseInt(lastActive, 10) > 3600000) {
       sessionStorage.clear();
       setTimeout(() => navigate("/dashboard", { replace: true }), 0);
       return;
     }
 
-    const updateActivity = () =>
-      sessionStorage.setItem("catback_lastActive", Date.now().toString());
+    const updateActivity = () => sessionStorage.setItem("catback_lastActive", Date.now().toString());
     window.addEventListener("mousemove", updateActivity);
     window.addEventListener("keydown", updateActivity);
     return () => {
@@ -149,155 +159,97 @@ export default function SchedulingDashboard() {
     };
   }, [routeId, navigate]);
 
-/* ------------------------------ Load + Restore ------------------------------ */
-useEffect(() => {
-  if (!routeId) return;
-
-  // 1️⃣ Load cached data immediately
-  // ⚠️ Remove old cache logic — always fetch fresh data
-localStorage.removeItem(`catbackai_dashboard_${routeId}`);
-fetchAllData(routeId);
-  if (cached) {
-    try {
-      const parsed = JSON.parse(cached);
-      setBusiness(parsed);
-
-      if (parsed.ColorScheme) {
-        const parsedScheme = JSON.parse(parsed.ColorScheme);
-        if (parsedScheme && typeof parsedScheme === "object") {
-          setColorScheme((p) => ({ ...p, ...parsedScheme }));
-        }
-      }
-
-      if (parsed.LinkToLogo) setLogoLink(parsed.LinkToLogo);
-
-      if (parsed.Services) {
-        const parsedServices = JSON.parse(parsed.Services);
-        if (Array.isArray(parsedServices)) {
-          setServices(
-            parsedServices.map((s) => ({
-              name: s.name || s.ServiceName || "",
-              price: (s.price ?? s.Price ?? "").toString(),
-              duration: (s.duration ?? s.Duration ?? "60").toString(),
-              description: s.description ?? s.Description ?? "",
-            }))
-          );
-        }
-      }
-
-      if (parsed.Availability) {
-        const parsedAvail = JSON.parse(parsed.Availability);
-        if (typeof parsedAvail === "object") {
-          setAvailability((prev) => ({ ...prev, ...parsedAvail }));
-        }
-      }
-
-      if (parsed.Unavailability) {
-        const parsedUnavail = JSON.parse(parsed.Unavailability);
-        if (Array.isArray(parsedUnavail)) {
-          setUnavailability(parsedUnavail);
-        }
-      }
-    } catch (err) {
-      console.error("Error restoring cached data:", err);
-    }
-  }
-
-  // 2️⃣ Fetch fresh data afterward
-  fetchAllData(routeId);
-}, [routeId]);
+  /* ------------------------------ Load (Sheet) ---------------------------- */
+  useEffect(() => {
+    if (!routeId) return;
+    fetchAllData(routeId);
+  }, [routeId]);
 
   async function fetchAllData(id) {
-    localStorage.removeItem(`catbackai_dashboard_${id}`);
     setLoading(true);
     setStatusMsg("");
     try {
-      // 1) Business + Color Scheme
       const bizRes = await fetch(
         `https://jacobtf007.app.n8n.cloud/webhook/catbackai_getbusiness?businessId=${id}`
       );
 
       if (!bizRes.ok) {
-        // Gentle notice, no scary big error
         setStatusMsg("Couldn’t load business profile yet. You can still edit.");
       }
 
       const bizData = await safeJson(bizRes);
-      if (bizData?.business) {
-        setBusiness(bizData.business);
 
-        if (bizData.business.ColorScheme) {
+      if (bizData?.business) {
+        const b = bizData.business;
+        setBusiness(b);
+
+        // Color scheme JSON in sheet
+        if (b.ColorScheme) {
           try {
-            const parsed = JSON.parse(bizData.business.ColorScheme);
+            const parsed = JSON.parse(b.ColorScheme);
             if (parsed && typeof parsed === "object") {
               setColorScheme((p) => ({ ...p, ...parsed }));
             }
-          } catch {
-            /* ignore */
-          }
+          } catch {}
         }
-        if (bizData.business.LinkToLogo) {
-  setLogoLink(bizData.business.LinkToLogo);
-}
-                // ✅ Save snapshot for persistence
-        localStorage.setItem(`catbackai_dashboard_${id}`, JSON.stringify(bizData.business));
+
+        // Logo — LinkToLogo everywhere
+        if (b.LinkToLogo) setLogoLink(b.LinkToLogo);
+
+        // Services JSON
+        if (b.Services) {
+          try {
+            const parsedServices = JSON.parse(b.Services);
+            if (Array.isArray(parsedServices)) {
+              setServices(
+                parsedServices.map((s) => ({
+                  name: s.name || s.ServiceName || "",
+                  price: (s.price ?? s.Price ?? "").toString(),
+                  duration: (s.duration ?? s.Duration ?? "60").toString(),
+                  description: s.description ?? s.Description ?? "",
+                }))
+              );
+            }
+          } catch {}
+        }
+
+        // Availability JSON per day
+        if (b.Availability) {
+          try {
+            const parsedAvail = JSON.parse(b.Availability);
+            if (typeof parsedAvail === "object") {
+              const next = {};
+              for (const day of DAY_ORDER) {
+                const raw = parsedAvail[day] || {};
+                next[day] = {
+                  enabled: !!raw.enabled && !!(raw.start && raw.end),
+                  start: raw.start || "09:00",
+                  end: raw.end || "17:00",
+                };
+              }
+              setAvailability(next);
+            }
+          } catch {}
+        }
+
+        // Unavailability JSON list
+        if (b.Unavailability) {
+          try {
+            const parsedUnavail = JSON.parse(b.Unavailability);
+            if (Array.isArray(parsedUnavail)) {
+              setUnavailability(
+                parsedUnavail.map((u) => ({
+                  date: u.date || "",
+                  start: u.start || "",
+                  end: u.end || "",
+                  allDay: !!u.allDay,
+                }))
+              );
+            }
+          } catch {}
+        }
       }
-// Parse services
-if (bizData.business.Services) {
-  try {
-    const parsedServices = JSON.parse(bizData.business.Services);
-    if (Array.isArray(parsedServices)) {
-      setServices(
-        parsedServices.map((s) => ({
-          name: s.name || s.ServiceName || "",
-          price: (s.price ?? s.Price ?? "").toString(),
-          duration: (s.duration ?? s.Duration ?? "60").toString(),
-          description: s.description ?? s.Description ?? "",
-        }))
-      );
-    }
-  } catch {}
-}
-
-// Parse availability
-if (bizData.business.Availability) {
-  try {
-    const parsedAvail = JSON.parse(bizData.business.Availability);
-    if (typeof parsedAvail === "object") {
-      const next = { ...availability };
-      for (const day of DAY_ORDER) {
-        const raw = parsedAvail[day];
-        if (!raw) continue;
-        next[day] = {
-          enabled: !!raw.enabled && !!(raw.start && raw.end),
-          start: raw.start || "09:00",
-          end: raw.end || "17:00",
-        };
-      }
-      setAvailability(next);
-    }
-  } catch {}
-}
-
-// Parse unavailability
-if (bizData.business.Unavailability) {
-  try {
-    const parsedUnavail = JSON.parse(bizData.business.Unavailability);
-    if (Array.isArray(parsedUnavail)) {
-      setUnavailability(
-        parsedUnavail.map((u) => ({
-          date: u.date || "",
-          start: u.start || "",
-          end: u.end || "",
-          allDay: !!u.allDay,
-        }))
-      );
-    }
-  } catch {}
-}
-
     } catch {
-      // Silent fallback — don’t show “Load failed”
       setStatusMsg("Some data couldn’t be fetched, but you can continue editing.");
     } finally {
       setLoading(false);
@@ -314,72 +266,70 @@ if (bizData.business.Unavailability) {
     }
   }
 
-    /* ------------------------------- Save All ------------------------------ */
-const saveDashboard = async (opts = { silent: false }) => {
-  if (!opts.silent) {
-    setSaving(true);
-    setStatusMsg("Saving your booking form settings…");
-  }
-
-  // basic validation
-  for (const s of services) {
-    if (!s.name?.trim()) {
-      if (!opts.silent) {
-        setSaving(false);
-        setStatusMsg("Each service needs a name.");
-      }
-      return false;
-    }
-    if (s.price === "" || isNaN(Number(s.price))) {
-      if (!opts.silent) {
-        setSaving(false);
-        setStatusMsg("Price is required and must be a number.");
-      }
-      return false;
-    }
-  }
-
-  try {
-    const payload = {
-      BusinessId: business?.BusinessId || routeId || "",
-      LinkToLogo: logoLink || business?.LogoLink || "",
-      ColorScheme: colorScheme || {},
-      Services: services || [],
-      Availability: availability || {},
-      Unavailability: unavailability || [],
-    };
-
-    console.log("📤 Sending payload to n8n:", payload);
-
-    const res = await fetch("https://jacobtf007.app.n8n.cloud/webhook/catbackai_updatebookingtheme", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-
-    if (!res.ok) throw new Error(`n8n error: ${res.status}`);
-    const data = await res.json().catch(() => ({}));
-
+  /* ------------------------------- Save All ------------------------------ */
+  const saveDashboard = async (opts = { silent: false, refetch: true }) => {
     if (!opts.silent) {
-      setStatusMsg("✅ Saved! Your booking form settings are live.");
+      setSaving(true);
+      setStatusMsg("Saving your booking form settings…");
     }
 
-    console.log("✅ n8n response:", data);
-  } catch (err) {
-    console.error("❌ Save failed:", err);
-    if (!opts.silent) {
-      setStatusMsg("⚠️ Could not save right now. Try again shortly.");
+    // basic validation
+    for (const s of services) {
+      if (!s.name?.trim()) {
+        if (!opts.silent) {
+          setSaving(false);
+          setStatusMsg("Each service needs a name.");
+        }
+        return false;
+      }
+      if (s.price === "" || isNaN(Number(s.price))) {
+        if (!opts.silent) {
+          setSaving(false);
+          setStatusMsg("Price is required and must be a number.");
+        }
+        return false;
+      }
     }
-  } finally {
-    if (!opts.silent) setSaving(false);
-  }
-};
 
-  // autosave
+    try {
+      const payload = {
+        BusinessId: business?.BusinessId || routeId || "",
+        LinkToLogo: logoLink || business?.LinkToLogo || "",
+        ColorScheme: colorScheme || {},
+        Services: services || [],
+        Availability: availability || {},
+        Unavailability: unavailability || [],
+      };
+
+      const res = await fetch(
+        "https://jacobtf007.app.n8n.cloud/webhook/catbackai_updatebookingtheme",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }
+      );
+
+      if (!res.ok) throw new Error(`n8n error: ${res.status}`);
+      await res.json().catch(() => ({}));
+
+      if (!opts.silent) setStatusMsg("✅ Saved! Your booking form settings are live.");
+
+      // After saving, reload from sheet so a refresh matches exactly what's stored
+      if (opts.refetch && routeId) await fetchAllData(routeId);
+    } catch (err) {
+      console.error("❌ Save failed:", err);
+      if (!opts.silent) setStatusMsg("⚠️ Could not save right now. Try again shortly.");
+    } finally {
+      if (!opts.silent) setSaving(false);
+    }
+  };
+
+  // Autosave to sheet every 30s (silent)
   useEffect(() => {
     if (autosaveRef.current) clearInterval(autosaveRef.current);
     autosaveRef.current = setInterval(() => {
-      saveDashboard({ silent: true });
+      saveDashboard({ silent: true, refetch: false });
     }, 30000);
     return () => {
       if (autosaveRef.current) clearInterval(autosaveRef.current);
@@ -431,8 +381,7 @@ const saveDashboard = async (opts = { silent: false }) => {
     setUnavailability((list) => [...list, clean]);
   };
 
-  const removeUnavailability = (i) =>
-    setUnavailability((list) => list.filter((_, idx) => idx !== i));
+  const removeUnavailability = (i) => setUnavailability((list) => list.filter((_, idx) => idx !== i));
 
   const bookingUrl = useMemo(() => `https://catbackai.com/book/${routeId}`, [routeId]);
 
@@ -726,13 +675,8 @@ const saveDashboard = async (opts = { silent: false }) => {
                       </div>
                     ))}
                   </div>
-                  <div
-                    style={{
-                      height: 1,
-                      background: "#f0f0f0",
-                      margin: "14px 0",
-                    }}
-                  />
+                  <div style={{ height: 1, background: "#f0f0f0", margin: "14px 0" }} />
+
                   <div
                     style={{
                       display: "grid",
@@ -852,29 +796,19 @@ const saveDashboard = async (opts = { silent: false }) => {
                             <input
                               placeholder="Description (optional)"
                               value={s.description}
-                              onChange={(e) =>
-                                updateService(i, "description", e.target.value)
-                              }
+                              onChange={(e) => updateService(i, "description", e.target.value)}
                               style={fieldStyle}
                             />
                           </div>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => removeService(i)}
-                          style={btnGhost}
-                        >
+                        <button type="button" onClick={() => removeService(i)} style={btnGhost}>
                           Remove
                         </button>
                       </div>
                     ))}
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={addService}
-                    style={btnPrimary(colorScheme.accent)}
-                  >
+                  <button type="button" onClick={addService} style={btnPrimary(colorScheme.accent)}>
                     + Add Service
                   </button>
                 </Card>
@@ -931,10 +865,7 @@ const saveDashboard = async (opts = { silent: false }) => {
 
                 {/* Unavailability */}
                 <Card title="Add Unavailability (specific times)" accent={colorScheme.accent}>
-                  <AddUnavailabilityForm
-                    onAdd={addUnavailability}
-                    accent={colorScheme.accent}
-                  />
+                  <AddUnavailabilityForm onAdd={addUnavailability} accent={colorScheme.accent} />
                   <div style={{ marginTop: 16 }}>
                     {unavailability.length > 0 ? (
                       unavailability.map((u, i) => (
@@ -952,22 +883,15 @@ const saveDashboard = async (opts = { silent: false }) => {
                           }}
                         >
                           <span style={{ fontSize: 14 }}>
-                            🗓️ <strong>{u.date}</strong>{" "}
-                            — {u.allDay ? "All Day" : `${u.start || "--"} → ${u.end || "--"}`}
+                            🗓️ <strong>{u.date}</strong> — {u.allDay ? "All Day" : `${u.start || "--"} → ${u.end || "--"}`}
                           </span>
-                          <button
-                            onClick={() => removeUnavailability(i)}
-                            style={btnGhostSmall}
-                            aria-label="remove unavailability"
-                          >
+                          <button onClick={() => removeUnavailability(i)} style={btnGhostSmall} aria-label="remove unavailability">
                             ×
                           </button>
                         </div>
                       ))
                     ) : (
-                      <p style={{ color: "#777", fontSize: 14, margin: 0 }}>
-                        No unavailability added yet.
-                      </p>
+                      <p style={{ color: "#777", fontSize: 14, margin: 0 }}>No unavailability added yet.</p>
                     )}
                   </div>
                 </Card>
@@ -1005,12 +929,7 @@ const saveDashboard = async (opts = { silent: false }) => {
           zIndex: 50,
         }}
       >
-        <button
-          type="button"
-          onClick={() => saveDashboard({ silent: false })}
-          disabled={saving}
-          style={btnSave}
-        >
+        <button type="button" onClick={() => saveDashboard({ silent: false, refetch: true })} disabled={saving} style={btnSave}>
           {saving ? "Saving…" : "Save All Changes"}
         </button>
       </div>
@@ -1026,13 +945,7 @@ const saveDashboard = async (opts = { silent: false }) => {
 /*                          Booking Form Preview Card                          */
 /* -------------------------------------------------------------------------- */
 
-function BookingFormPreview({
-  businessName,
-  logoLink,
-  colorScheme,
-  services,
-  availability,
-}) {
+function BookingFormPreview({ businessName, logoLink, colorScheme, services, availability }) {
   const serviceDuration = useMemo(() => {
     const first = services[0];
     const d = parseInt(first?.duration || "60", 10);
@@ -1048,18 +961,11 @@ function BookingFormPreview({
       const name = JS_DAY_TO_NAME[d.getDay()];
       const conf = availability[name];
       if (!conf?.enabled) continue;
-      const slots = buildSlots(conf.start, conf.end, serviceDuration).map((t) => ({
-        date: fmtYMD(d),
-        time: t,
-      }));
+      const slots = buildSlots(conf.start, conf.end, serviceDuration).map((t) => ({ date: fmtYMD(d), time: t }));
       if (slots.length)
         out.push({
           date: fmtYMD(d),
-          label: d.toLocaleDateString(undefined, {
-            weekday: "short",
-            month: "short",
-            day: "numeric",
-          }),
+          label: d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" }),
           slots,
         });
       if (out.length >= 7) break;
@@ -1067,18 +973,10 @@ function BookingFormPreview({
     return out;
   }, [availability, serviceDuration]);
 
-  const [form, setForm] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    service: "",
-    date: "",
-    time: "",
-  });
+  const [form, setForm] = useState({ name: "", email: "", phone: "", service: "", date: "", time: "" });
 
   useEffect(() => {
-    if (!form.service && services[0]?.name)
-      setForm((f) => ({ ...f, service: services[0].name }));
+    if (!form.service && services[0]?.name) setForm((f) => ({ ...f, service: services[0].name }));
   }, [services]);
 
   const fieldBase = {
@@ -1115,13 +1013,7 @@ function BookingFormPreview({
           <img
             src={logoLink}
             alt="logo"
-            style={{
-              height: 36,
-              width: 36,
-              objectFit: "cover",
-              borderRadius: 6,
-              border: "1px solid rgba(255,255,255,.5)",
-            }}
+            style={{ height: 36, width: 36, objectFit: "cover", borderRadius: 6, border: "1px solid rgba(255,255,255,.5)" }}
             onError={(e) => {
               // hide broken preview silently
               e.currentTarget.style.display = "none";
@@ -1132,40 +1024,13 @@ function BookingFormPreview({
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 12, padding: 16 }}>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))",
-            gap: 10,
-          }}
-        >
-          <input
-            placeholder="Name"
-            value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-            style={fieldBase}
-          />
-          <input
-            type="email"
-            placeholder="Email"
-            value={form.email}
-            onChange={(e) => setForm({ ...form, email: e.target.value })}
-            style={fieldBase}
-          />
-          <input
-            type="tel"
-            placeholder="Phone"
-            value={form.phone}
-            onChange={(e) => setForm({ ...form, phone: e.target.value })}
-            style={fieldBase}
-          />
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 10 }}>
+          <input placeholder="Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} style={fieldBase} />
+          <input type="email" placeholder="Email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} style={fieldBase} />
+          <input type="tel" placeholder="Phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} style={fieldBase} />
         </div>
 
-        <select
-          value={form.service}
-          onChange={(e) => setForm({ ...form, service: e.target.value })}
-          style={fieldBase}
-        >
+        <select value={form.service} onChange={(e) => setForm({ ...form, service: e.target.value })} style={fieldBase}>
           {!services.length && <option>(No services yet)</option>}
           {services.map((s, i) => (
             <option key={i} value={s.name}>
@@ -1176,11 +1041,7 @@ function BookingFormPreview({
         </select>
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-          <select
-            value={form.date}
-            onChange={(e) => setForm({ ...form, date: e.target.value, time: "" })}
-            style={fieldBase}
-          >
+          <select value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value, time: "" })} style={fieldBase}>
             <option value="">Select Date</option>
             {daysWithSlots.map((d) => (
               <option key={d.date} value={d.date}>
@@ -1189,12 +1050,7 @@ function BookingFormPreview({
             ))}
           </select>
 
-          <select
-            value={form.time}
-            onChange={(e) => setForm({ ...form, time: e.target.value })}
-            style={fieldBase}
-            disabled={!form.date}
-          >
+          <select value={form.time} onChange={(e) => setForm({ ...form, time: e.target.value })} style={fieldBase} disabled={!form.date}>
             <option value="">Select Time</option>
             {form.date &&
               daysWithSlots
@@ -1253,42 +1109,21 @@ function AddUnavailabilityForm({ onAdd, accent }) {
     <div style={{ display: "grid", gridTemplateColumns: "1fr 120px 120px auto auto", gap: 10, alignItems: "center" }}>
       <div>
         <label style={labelStyle}>Date</label>
-        <input
-          type="date"
-          value={form.date}
-          onChange={(e) => setForm({ ...form, date: e.target.value })}
-          style={fieldStyle}
-        />
+        <input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} style={fieldStyle} />
       </div>
 
       <div>
         <label style={labelStyle}>From</label>
-        <input
-          type="time"
-          value={form.start}
-          disabled={form.allDay}
-          onChange={(e) => setForm({ ...form, start: e.target.value })}
-          style={fieldStyle}
-        />
+        <input type="time" value={form.start} disabled={form.allDay} onChange={(e) => setForm({ ...form, start: e.target.value })} style={fieldStyle} />
       </div>
 
       <div>
         <label style={labelStyle}>To</label>
-        <input
-          type="time"
-          value={form.end}
-          disabled={form.allDay}
-          onChange={(e) => setForm({ ...form, end: e.target.value })}
-          style={fieldStyle}
-        />
+        <input type="time" value={form.end} disabled={form.allDay} onChange={(e) => setForm({ ...form, end: e.target.value })} style={fieldStyle} />
       </div>
 
       <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
-        <input
-          type="checkbox"
-          checked={form.allDay}
-          onChange={(e) => setForm({ ...form, allDay: e.target.checked })}
-        />
+        <input type="checkbox" checked={form.allDay} onChange={(e) => setForm({ ...form, allDay: e.target.checked })} />
         All Day
       </label>
 
@@ -1303,14 +1138,7 @@ function AddUnavailabilityForm({ onAdd, accent }) {
 /*                               Month Preview                                */
 /* -------------------------------------------------------------------------- */
 
-function MonthPreview({
-  colorScheme,
-  monthCursor,
-  setMonthCursor,
-  availability,
-  unavailabilityByDate,
-  onPickDay,
-}) {
+function MonthPreview({ colorScheme, monthCursor, setMonthCursor, availability, unavailabilityByDate, onPickDay }) {
   const { y, m } = monthCursor;
   const grid = useMemo(() => buildMonthGrid(y, m), [y, m]);
 
@@ -1326,14 +1154,7 @@ function MonthPreview({
   };
 
   return (
-    <div
-      style={{
-        border: "1px solid #eee",
-        borderRadius: 12,
-        background: "#fff",
-        overflow: "hidden",
-      }}
-    >
+    <div style={{ border: "1px solid #eee", borderRadius: 12, background: "#fff", overflow: "hidden" }}>
       <div
         style={{
           background: colorScheme.header,
@@ -1346,62 +1167,38 @@ function MonthPreview({
       >
         <button
           onClick={goPrev}
-          style={{
-            background: "rgba(255,255,255,.2)",
-            color: "#fff",
-            border: "none",
-            borderRadius: 8,
-            padding: "6px 10px",
-            cursor: "pointer",
-          }}
+          style={{ background: "rgba(255,255,255,.2)", color: "#fff", border: "none", borderRadius: 8, padding: "6px 10px", cursor: "pointer" }}
         >
           ‹
         </button>
         <div style={{ fontWeight: 700 }}>
-          {new Date(y, m, 1).toLocaleString(undefined, {
-            month: "long",
-            year: "numeric",
-          })}
+          {new Date(y, m, 1).toLocaleString(undefined, { month: "long", year: "numeric" })}
         </div>
         <button
           onClick={goNext}
-          style={{
-            background: "rgba(255,255,255,.2)",
-            color: "#fff",
-            border: "none",
-            borderRadius: 8,
-            padding: "6px 10px",
-            cursor: "pointer",
-          }}
+          style={{ background: "rgba(255,255,255,.2)", color: "#fff", border: "none", borderRadius: 8, padding: "6px 10px", cursor: "pointer" }}
         >
           ›
         </button>
       </div>
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(7, 1fr)",
-          padding: "8px 8px 0 8px",
-          color: "#666",
-          fontSize: 12,
-        }}
-      >
-        {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", padding: "8px 8px 0 8px", color: "#666", fontSize: 12 }}>
+        {[
+          "Sun",
+          "Mon",
+          "Tue",
+          "Wed",
+          "Thu",
+          "Fri",
+          "Sat",
+        ].map((d) => (
           <div key={d} style={{ textAlign: "center", padding: "6px 0" }}>
             {d}
           </div>
         ))}
       </div>
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(7, 1fr)",
-          gap: 6,
-          padding: 8,
-        }}
-      >
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 6, padding: 8 }}>
         {grid.map((dateObj, idx) => {
           const sameMonth = dateObj.getMonth() === m;
           const ymd = fmtYMD(dateObj);
@@ -1457,12 +1254,8 @@ function MonthPreview({
               }}
               title={`${ymd} — ${label}`}
             >
-              <span style={{ fontWeight: 700, opacity: sameMonth ? 1 : 0.6 }}>
-                {dateObj.getDate()}
-              </span>
-              <span style={{ fontSize: 10, color: "#777" }}>
-                {sameMonth ? label : ""}
-              </span>
+              <span style={{ fontWeight: 700, opacity: sameMonth ? 1 : 0.6 }}>{dateObj.getDate()}</span>
+              <span style={{ fontSize: 10, color: "#777" }}>{sameMonth ? label : ""}</span>
             </button>
           );
         })}
@@ -1503,22 +1296,11 @@ function WeeklyPreview({ colorScheme, availability, unavailabilityByDate }) {
           return (
             <div key={ymd} style={{ display: "contents" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <div style={{ fontWeight: 700 }}>
-                  {d.toLocaleDateString(undefined, { weekday: "short" })}
-                </div>
+                <div style={{ fontWeight: 700 }}>{d.toLocaleDateString(undefined, { weekday: "short" })}</div>
                 <div style={{ color: "#777", fontSize: 12 }}>{ymd}</div>
               </div>
 
-              <div
-                style={{
-                  position: "relative",
-                  height: 26,
-                  borderRadius: 999,
-                  background: "#f3f3f3",
-                  overflow: "hidden",
-                }}
-                title="24-hour day timeline"
-              >
+              <div style={{ position: "relative", height: 26, borderRadius: 999, background: "#f3f3f3", overflow: "hidden" }} title="24-hour day timeline">
                 {/* availability bar */}
                 {avail.enabled && availStart != null && availEnd != null && (
                   <div
@@ -1540,19 +1322,7 @@ function WeeklyPreview({ colorScheme, availability, unavailabilityByDate }) {
                 {dayUnavailability.map((u, i) => {
                   if (u.allDay) {
                     return (
-                      <div
-                        key={i}
-                        style={{
-                          position: "absolute",
-                          left: 0,
-                          right: 0,
-                          top: 2,
-                          bottom: 2,
-                          background: "#d9d9d9",
-                          opacity: 0.9,
-                        }}
-                        title="Unavailable (All Day)"
-                      />
+                      <div key={i} style={{ position: "absolute", left: 0, right: 0, top: 2, bottom: 2, background: "#d9d9d9", opacity: 0.9 }} title="Unavailable (All Day)" />
                     );
                   }
                   const s = toMinutes(u.start);
@@ -1563,15 +1333,7 @@ function WeeklyPreview({ colorScheme, availability, unavailabilityByDate }) {
                   return (
                     <div
                       key={i}
-                      style={{
-                        position: "absolute",
-                        left: toPercent(s),
-                        width: toPercent(Math.max(0, e - s)),
-                        top: 2,
-                        bottom: 2,
-                        background: "#e5e5e5", // partial gray
-                        opacity: 1,
-                      }}
+                      style={{ position: "absolute", left: toPercent(s), width: toPercent(Math.max(0, e - s)), top: 2, bottom: 2, background: "#e5e5e5", opacity: 1 }}
                       title={`Unavailable ${u.start} - ${u.end}`}
                     />
                   );
@@ -1579,17 +1341,7 @@ function WeeklyPreview({ colorScheme, availability, unavailabilityByDate }) {
 
                 {/* hour ticks */}
                 {[0, 6, 12, 18, 24].map((h) => (
-                  <div
-                    key={h}
-                    style={{
-                      position: "absolute",
-                      left: toPercent(h * 60),
-                      top: 0,
-                      bottom: 0,
-                      width: 1,
-                      background: "rgba(0,0,0,.06)",
-                    }}
-                  />
+                  <div key={h} style={{ position: "absolute", left: toPercent(h * 60), top: 0, bottom: 0, width: 1, background: "rgba(0,0,0,.06)" }} />
                 ))}
               </div>
             </div>
@@ -1597,9 +1349,7 @@ function WeeklyPreview({ colorScheme, availability, unavailabilityByDate }) {
         })}
       </div>
 
-      <div style={{ marginTop: 10, color: "#777", fontSize: 12 }}>
-        Orange = available; Gray = unavailable/blocked
-      </div>
+      <div style={{ marginTop: 10, color: "#777", fontSize: 12 }}>Orange = available; Gray = unavailable/blocked</div>
     </div>
   );
 }
@@ -1621,9 +1371,7 @@ function Card({ title, accent = "#de8d2b", children }) {
       }}
     >
       {title && (
-        <h2 style={{ color: accent, margin: "4px 0 12px", fontSize: 20, fontWeight: 700 }}>
-          {title}
-        </h2>
+        <h2 style={{ color: accent, margin: "4px 0 12px", fontSize: 20, fontWeight: 700 }}>{title}</h2>
       )}
       {children}
     </section>
