@@ -173,64 +173,60 @@ export default function SchedulingDashboard() {
         `https://jacobtf007.app.n8n.cloud/webhook/catbackai_getbusiness?businessId=${id}`
       );
 
-      if (!bizRes.ok) {
-        setStatusMsg("Couldn’t load business profile yet. You can still edit.");
-      }
-
       const bizData = await safeJson(bizRes);
 
-      if (bizData?.business) {
-        const b = bizData.business;
-        setBusiness(b);
+if (bizData?.business) {
+  const b = bizData.business;
+  setBusiness(b);
 
-        // Color scheme JSON in sheet
-        if (b.ColorScheme) {
-          try {
-            const parsed = JSON.parse(b.ColorScheme);
-            if (parsed && typeof parsed === "object") {
-              setColorScheme((p) => ({ ...p, ...parsed }));
-            }
-          } catch {}
-        }
+        // ✅ Color scheme
+  try {
+    const parsed = JSON.parse(b.ColorScheme || "{}");
+    setColorScheme({
+      header: parsed.header || "#de8d2b",
+      text: parsed.text || "#000000",
+      background: parsed.background || "#ffffff",
+      accent: parsed.accent || "#de8d2b",
+    });
+  } catch {
+    setColorScheme({
+      header: "#de8d2b",
+      text: "#000000",
+      background: "#ffffff",
+      accent: "#de8d2b",
+    });
+  }
+// ✅ Logo link
+  setLinkToLogo(b.LinkToLogo || "");
 
-        // Logo — LinkToLogo everywhere
-        if (b.LinkToLogo) setLinkToLogo(b.LinkToLogo);
-
-        // Services JSON
-        if (b.Services) {
-          try {
-            const parsedServices = JSON.parse(b.Services);
-            if (Array.isArray(parsedServices)) {
-              setServices(
-                parsedServices.map((s) => ({
-                  name: s.name || s.ServiceName || "",
-                  price: (s.price ?? s.Price ?? "").toString(),
-                  duration: (s.duration ?? s.Duration ?? "60").toString(),
-                  description: s.description ?? s.Description ?? "",
-                }))
-              );
-            }
-          } catch {}
-        }
-
-        // Availability JSON per day
-        if (b.Availability) {
-          try {
-            const parsedAvail = JSON.parse(b.Availability);
-            if (typeof parsedAvail === "object") {
-              const next = {};
-              for (const day of DAY_ORDER) {
-                const raw = parsedAvail[day] || {};
-                next[day] = {
-                  enabled: !!raw.enabled && !!(raw.start && raw.end),
-                  start: raw.start || "09:00",
-                  end: raw.end || "17:00",
-                };
-              }
-              setAvailability(next);
-            }
-          } catch {}
-        }
+        // ✅ Services
+  try {
+    const s = JSON.parse(b.Services || "[]");
+    setServices(Array.isArray(s) ? s : []);
+  } catch {
+    setServices([]);
+  }
+        // ✅ Availability
+  try {
+    const a = JSON.parse(b.Availability || "{}");
+    const next = {};
+    for (const day of DAY_ORDER) {
+      const d = a[day] || {};
+      next[day] = {
+        enabled: !!d.enabled,
+        start: d.start || "09:00",
+        end: d.end || "17:00",
+      };
+    }
+    setAvailability(next);
+  } catch {
+    setAvailability(
+      DAY_ORDER.reduce((acc, d) => {
+        acc[d] = { enabled: false, start: "09:00", end: "17:00" };
+        return acc;
+      }, {})
+    );
+  }
 
         // Unavailability JSON list
         if (b.Unavailability) {
@@ -293,22 +289,30 @@ export default function SchedulingDashboard() {
 
     try {
       const payload = {
-        BusinessId: business?.BusinessId || routeId || "",
-        LinkToLogo: LinkToLogo || business?.LinkToLogo || "",
-        ColorScheme: colorScheme || {},
-        Services: services || [],
-        Availability: availability || {},
-        Unavailability: unavailability || [],
-      };
+  BusinessId: business?.BusinessId || routeId || "",
+  BusinessName: business?.BusinessName || "",
+  LinkToLogo: LinkToLogo || "",
+  ColorScheme: colorScheme,
+  Services: services,
+  Availability: availability,
+  Unavailability: unavailability,
+};
 
       const res = await fetch(
-        "https://jacobtf007.app.n8n.cloud/webhook/catbackai_updatebookingtheme",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        }
-      );
+  "https://jacobtf007.app.n8n.cloud/webhook/catbackai_updatebookingtheme",
+  {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      ...payload,
+      // stringify complex fields for Google Sheets
+      ColorScheme: JSON.stringify(payload.ColorScheme || {}),
+      Services: JSON.stringify(payload.Services || []),
+      Availability: JSON.stringify(payload.Availability || {}),
+      Unavailability: JSON.stringify(payload.Unavailability || []),
+    }),
+  }
+);
 
       if (!res.ok) throw new Error(`n8n error: ${res.status}`);
       await res.json().catch(() => ({}));
