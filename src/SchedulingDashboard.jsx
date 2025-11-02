@@ -154,7 +154,9 @@ useEffect(() => {
   if (!routeId) return;
 
   // 1️⃣ Load cached data immediately
-  const cached = localStorage.getItem(`catbackai_dashboard_${routeId}`);
+  // ⚠️ Remove old cache logic — always fetch fresh data
+localStorage.removeItem(`catbackai_dashboard_${routeId}`);
+fetchAllData(routeId);
   if (cached) {
     try {
       const parsed = JSON.parse(cached);
@@ -234,7 +236,9 @@ useEffect(() => {
             /* ignore */
           }
         }
-        if (bizData.business.LinkToLogo) setLogoLink(bizData.business.LinkToLogo);
+        if (bizData.business.LinkToLogo) {
+  setLogoLink(bizData.business.LinkToLogo);
+}
                 // ✅ Save snapshot for persistence
         localStorage.setItem(`catbackai_dashboard_${id}`, JSON.stringify(bizData.business));
       }
