@@ -100,7 +100,7 @@ export default function SchedulingDashboard() {
   });
 
   // Logo
-  const [logoLink, setLogoLink] = useState("");
+  const [LinkToLogo, setLinkToLogo] = useState("");
   const [logoOk, setLogoOk] = useState(true);
 
   // Services
@@ -194,7 +194,7 @@ export default function SchedulingDashboard() {
         }
 
         // Logo — LinkToLogo everywhere
-        if (b.LinkToLogo) setLogoLink(b.LinkToLogo);
+        if (b.LinkToLogo) setLinkToLogo(b.LinkToLogo);
 
         // Services JSON
         if (b.Services) {
@@ -294,7 +294,7 @@ export default function SchedulingDashboard() {
     try {
       const payload = {
         BusinessId: business?.BusinessId || routeId || "",
-        LinkToLogo: logoLink || business?.LinkToLogo || "",
+        LinkToLogo: LinkToLogo || business?.LinkToLogo || "",
         ColorScheme: colorScheme || {},
         Services: services || [],
         Availability: availability || {},
@@ -334,7 +334,7 @@ export default function SchedulingDashboard() {
     return () => {
       if (autosaveRef.current) clearInterval(autosaveRef.current);
     };
-  }, [routeId, colorScheme, logoLink, services, availability, unavailability]);
+  }, [routeId, colorScheme, LinkToLogo, services, availability, unavailability]);
 
   /* ------------------------------ Handlers -------------------------------- */
   const hexOk = (c) => /^#[0-9A-Fa-f]{6}$/.test(c);
@@ -595,9 +595,9 @@ export default function SchedulingDashboard() {
             {business && (
               <Card>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  {logoLink && logoOk ? (
+                  {LinkToLogo && logoOk ? (
                     <img
-                      src={logoLink}
+                      src={LinkToLogo}
                       alt="Logo"
                       onError={() => setLogoOk(false)}
                       style={{
@@ -690,9 +690,9 @@ export default function SchedulingDashboard() {
                         Logo URL
                       </label>
                       <input
-                        value={logoLink}
+                        value={LinkToLogo}
                         onChange={(e) => {
-                          setLogoLink(e.target.value);
+                          setLinkToLogo(e.target.value);
                           setLogoOk(true);
                         }}
                         placeholder="https://example.com/logo.png"
@@ -703,9 +703,9 @@ export default function SchedulingDashboard() {
                       </p>
                     </div>
                     <div>
-                      {logoLink && logoOk ? (
+                      {LinkToLogo && logoOk ? (
                         <img
-                          src={logoLink}
+                          src={LinkToLogo}
                           alt="preview"
                           onError={() => setLogoOk(false)}
                           style={{
@@ -902,7 +902,7 @@ export default function SchedulingDashboard() {
                 <Card title="Live Booking Form Preview" accent={colorScheme.accent}>
                   <BookingFormPreview
                     businessName={business?.BusinessName || "Business Name"}
-                    logoLink={logoOk ? logoLink : ""}
+                    LinkToLogo={logoOk ? LinkToLogo : ""}
                     colorScheme={colorScheme}
                     services={services}
                     availability={availability}
@@ -945,7 +945,7 @@ export default function SchedulingDashboard() {
 /*                          Booking Form Preview Card                          */
 /* -------------------------------------------------------------------------- */
 
-function BookingFormPreview({ businessName, logoLink, colorScheme, services, availability }) {
+function BookingFormPreview({ businessName, LinkToLogo, colorScheme, services, availability }) {
   const serviceDuration = useMemo(() => {
     const first = services[0];
     const d = parseInt(first?.duration || "60", 10);
@@ -1009,9 +1009,9 @@ function BookingFormPreview({ businessName, logoLink, colorScheme, services, ava
           gap: 12,
         }}
       >
-        {logoLink && (
+        {LinkToLogo && (
           <img
-            src={logoLink}
+            src={LinkToLogo}
             alt="logo"
             style={{ height: 36, width: 36, objectFit: "cover", borderRadius: 6, border: "1px solid rgba(255,255,255,.5)" }}
             onError={(e) => {
