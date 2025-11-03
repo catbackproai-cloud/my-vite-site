@@ -170,8 +170,9 @@ export default function SchedulingDashboard() {
     setStatusMsg("");
     try {
       const bizRes = await fetch(
-        `https://jacobtf007.app.n8n.cloud/webhook/catbackai_getbusiness?businessId=${id}`
-      );
+  `https://jacobtf007.app.n8n.cloud/webhook/catbackai_updatebookingtheme?businessId=${id}`,
+  { method: "GET" }
+);
 
       const bizData = await safeJson(bizRes);
 
@@ -303,14 +304,7 @@ if (bizData?.business) {
   {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      ...payload,
-      // stringify complex fields for Google Sheets
-      ColorScheme: JSON.stringify(payload.ColorScheme || {}),
-      Services: JSON.stringify(payload.Services || []),
-      Availability: JSON.stringify(payload.Availability || {}),
-      Unavailability: JSON.stringify(payload.Unavailability || []),
-    }),
+    body: JSON.stringify(payload),
   }
 );
 
