@@ -651,7 +651,7 @@ const [showForm, setShowForm] = useState(false);
             <h3 style={{ ...title, fontSize: 22, marginBottom: 8 }}>$49/mo</h3>
             <ul style={{ color: "#333", lineHeight: 1.9, paddingLeft: 18 }}>
               <li>Online bookings</li>
-              <li>SMS/email reminders</li>
+              <li>SMS & email reminders</li>
               <li>Basic follow-ups</li>
             </ul>
             <a className="btnPrimary" href="#signup-form" style={{ marginTop: 12, display: "inline-block" }}>
