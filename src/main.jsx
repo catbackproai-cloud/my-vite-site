@@ -1,45 +1,34 @@
 import React from "react";
-import ReactDOM from "react-dom/client";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { HelmetProvider } from "react-helmet-async";
-import App from "./App";
-import BookingForm from "./BookingForm";
-import DashboardPortal from "./DashboardPortal";
-import SchedulingDashboard from "./SchedulingDashboard";
+import { createRoot } from "react-dom/client";
+import App from "./App.jsx";
+import "./index.css"; // optional, keep if you have Tailwind or global styles
 
-const root = ReactDOM.createRoot(document.getElementById("root"));
+// Quick sanity check for required env var
+if (!import.meta.env.VITE_N8N_TRADE_FEEDBACK_WEBHOOK) {
+  console.warn(
+    "[Trading Coach] Missing VITE_N8N_TRADE_FEEDBACK_WEBHOOK. Set it in your .env and restart dev server."
+  );
+}
 
-root.render(
-  <React.StrictMode>
-    <HelmetProvider>
-      <BrowserRouter>
-        <Routes>
-          {/* Public signup form */}
-          <Route path="/" element={<App />} />
+function Root() {
+  // Lightweight day awareness (pure client):
+  const today = new Date();
+  const label = today.toLocaleDateString(undefined, {
+    weekday: "long",
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
 
-          {/* Client booking page */}
-          <Route path="/book/:businessId" element={<BookingForm />} />
+  return (
+    <React.StrictMode>
+      {/* Optional banner; remove if you don't want it */}
+      <div className="w-full text-center text-xs opacity-70 py-2 select-none">
+        {label}
+      </div>
+      <App />
+    </React.StrictMode>
+  );
+}
 
-          {/* Business login page */}
-          <Route path="/dashboard" element={<DashboardPortal />} />
-
-          {/* Private dashboard after login */}
-          <Route path="/dashboard/:businessId" element={<SchedulingDashboard />} />
-
-          {/* 404 fallback */}
-          <Route
-            path="*"
-            element={
-              <div style={{ textAlign: "center", marginTop: 50 }}>
-                <h2>404 — Page Not Found</h2>
-                <a href="/" style={{ color: "#de8d2b" }}>
-                  Go back home
-                </a>
-              </div>
-            }
-          />
-        </Routes>
-      </BrowserRouter>
-    </HelmetProvider>
-  </React.StrictMode>
-);
+createRoot(document.getElementById("root")).render(<Root />);
