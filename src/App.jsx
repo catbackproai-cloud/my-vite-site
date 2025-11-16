@@ -1,24 +1,39 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 /**
- * Trading Coach (MVP) — Minimal Input + Centered Layout
- * Screenshot upload (big box, centered) ABOVE
- * Strategy / thought process textarea BELOW
+ * Trading Coach (MVP) — Minimal Input + Centered Layout + Per-Day Save
+ * - Big centered screenshot drop area (drag/drop or click)
+ * - Thought process textarea below
+ * - Saves & loads per day via localStorage using key: tradeFeedback:YYYY-MM-DD
  *
  * Env: VITE_N8N_TRADE_FEEDBACK_WEBHOOK=https://<your-n8n-domain>/webhook/trade_feedback
+ * Prop: selectedDay (YYYY-MM-DD) — passed from main.jsx date navigator
  */
 
 const WEBHOOK_URL = import.meta.env.VITE_N8N_TRADE_FEEDBACK_WEBHOOK;
 
-export default function App() {
+export default function App({ selectedDay = new Date().toISOString().slice(0, 10) }) {
   const [form, setForm] = useState({ strategyNotes: "", file: null });
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
+  const [dragActive, setDragActive] = useState(false);
   const fileInputRef = useRef(null);
 
-  const isValid = useMemo(() => !!form.strategyNotes && !!form.file, [form]);
+  // Load saved result for the selected day
+  useEffect(() => {
+    try {
+      const key = `tradeFeedback:${selectedDay}`;
+      const saved = localStorage.getItem(key);
+      setResult(saved ? JSON.parse(saved) : null);
+      // Do NOT auto-fill file; always reset file on day change
+      setForm((prev) => ({ ...prev, file: null }));
+    } catch {
+      setResult(null);
+    }
+  }, [selectedDay]);
 
+  const isValid = useMemo(() => !!form.strategyNotes && !!form.file, [form]);
   const onChange = (k, v) => setForm((prev) => ({ ...prev, [k]: v }));
 
   async function handleSubmit(e) {
@@ -30,14 +45,22 @@ export default function App() {
       if (!WEBHOOK_URL) throw new Error("Missing VITE_N8N_TRADE_FEEDBACK_WEBHOOK");
 
       const fd = new FormData();
+      fd.append("day", selectedDay); // <-- include the day
       fd.append("strategyNotes", form.strategyNotes);
       if (form.file) fd.append("screenshot", form.file);
 
       const res = await fetch(WEBHOOK_URL, { method: "POST", body: fd });
       if (!res.ok) throw new Error(`Server responded ${res.status}`);
       const data = await res.json();
+
       setResult(data);
-      try { localStorage.setItem("lastTradeFeedback", JSON.stringify(data)); } catch {}
+
+      // Save per-day and also keep a global "last" for convenience
+      try {
+        const key = `tradeFeedback:${selectedDay}`;
+        localStorage.setItem(key, JSON.stringify(data));
+        localStorage.setItem("lastTradeFeedback", JSON.stringify(data));
+      } catch {}
     } catch (err) {
       setError(err.message || "Submit failed");
     } finally {
@@ -46,7 +69,10 @@ export default function App() {
   }
 
   // --- Drag & drop handlers for the big upload box ---
-  function preventDefaults(e) { e.preventDefault(); e.stopPropagation(); }
+  function preventDefaults(e) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
   function handleDrop(e) {
     preventDefaults(e);
     const file = e.dataTransfer?.files?.[0];
@@ -74,6 +100,15 @@ export default function App() {
       textAlign: "center",
       marginBottom: 16,
     },
+    dayBadge: {
+      display: "inline-block",
+      fontSize: 12,
+      opacity: 0.75,
+      border: "1px solid #243043",
+      borderRadius: 10,
+      padding: "4px 10px",
+      marginTop: 6,
+    },
     title: {
       fontSize: 26,
       fontWeight: 800,
@@ -85,7 +120,7 @@ export default function App() {
       background: "#0d121a",
       border: "2px dashed #243043",
       borderRadius: 16,
-      height: 280,                 // big box height
+      height: 280, // big box height
       display: "grid",
       placeItems: "center",
       textAlign: "center",
@@ -138,14 +173,15 @@ export default function App() {
     },
   };
 
-  const [dragActive, setDragActive] = useState(false);
-
   return (
     <div style={styles.page}>
       <div style={styles.card}>
         <div style={styles.header}>
           <h1 style={styles.title}>Trade Coach (Personal)</h1>
-          <div style={styles.subtitle}>Upload chart (screenshot) → then write your thought process → AI feedback</div>
+          <div style={styles.subtitle}>
+            Upload chart (screenshot) → then write your thought process → AI feedback
+          </div>
+          <div style={styles.dayBadge}>Day: {selectedDay} • saved per-day</div>
         </div>
 
         <form onSubmit={handleSubmit} style={styles.form}>
@@ -153,10 +189,19 @@ export default function App() {
           <div
             style={{ ...styles.drop, ...(dragActive ? styles.dropActive : {}) }}
             onClick={() => fileInputRef.current?.click()}
-            onDragEnter={(e) => { preventDefaults(e); setDragActive(true); }}
+            onDragEnter={(e) => {
+              preventDefaults(e);
+              setDragActive(true);
+            }}
             onDragOver={preventDefaults}
-            onDragLeave={(e) => { preventDefaults(e); setDragActive(false); }}
-            onDrop={(e) => { handleDrop(e); setDragActive(false); }}
+            onDragLeave={(e) => {
+              preventDefaults(e);
+              setDragActive(false);
+            }}
+            onDrop={(e) => {
+              handleDrop(e);
+              setDragActive(false);
+            }}
           >
             {!form.file ? (
               <div>
@@ -164,11 +209,7 @@ export default function App() {
                 <div style={styles.dropTextSub}>or click to browse (.png / .jpg)</div>
               </div>
             ) : (
-              <img
-                src={URL.createObjectURL(form.file)}
-                alt="preview"
-                style={styles.previewImg}
-              />
+              <img src={URL.createObjectURL(form.file)} alt="preview" style={styles.previewImg} />
             )}
             <input
               ref={fileInputRef}
@@ -191,10 +232,7 @@ export default function App() {
             />
           </div>
 
-          <button
-            disabled={!isValid || submitting}
-            style={styles.button}
-          >
+          <button disabled={!isValid || submitting} style={styles.button}>
             {submitting ? "Scoring…" : "Get Feedback"}
           </button>
         </form>
@@ -208,7 +246,10 @@ export default function App() {
 }
 
 function FeedbackCard({ data }) {
-  // { id, timestamp, screenshotUrl, grade, feedback: { wentWrong[], doBetter[], learn[], verdict }, inferred?: { market, direction, timeframe, session } }
+  // Expected response:
+  // { id, timestamp, screenshotUrl, grade,
+  //   feedback: { wentWrong[], doBetter[], learn[], verdict },
+  //   inferred?: { market, direction, timeframe, session } }
   const { id, timestamp, screenshotUrl, grade, feedback, inferred } = data || {};
 
   const lineTop = [inferred?.market, inferred?.direction, inferred?.timeframe]
@@ -223,7 +264,6 @@ function FeedbackCard({ data }) {
     marginTop: 20,
   };
 
-  const col = { display: "grid", gap: 12, gridTemplateColumns: "1fr" };
   const pillar = {
     background: "#0d121a",
     border: "1px solid #243043",
@@ -238,7 +278,13 @@ function FeedbackCard({ data }) {
           <img
             src={screenshotUrl}
             alt="trade"
-            style={{ width: "100%", maxWidth: 420, borderRadius: 12, border: "1px solid #243043", justifySelf: "center" }}
+            style={{
+              width: "100%",
+              maxWidth: 420,
+              borderRadius: 12,
+              border: "1px solid #243043",
+              justifySelf: "center",
+            }}
           />
         )}
 
@@ -251,17 +297,33 @@ function FeedbackCard({ data }) {
                 {timestamp ? new Date(timestamp).toLocaleString() : ""}
               </div>
             </div>
-            <div style={{ fontSize: 28, fontWeight: 900, lineHeight: 1, padding: "6px 12px", borderRadius: 12, border: "1px solid #243043" }}>
+            <div
+              style={{
+                fontSize: 28,
+                fontWeight: 900,
+                lineHeight: 1,
+                padding: "6px 12px",
+                borderRadius: 12,
+                border: "1px solid #243043",
+              }}
+            >
               {grade}
             </div>
           </div>
 
           {feedback?.verdict && <p style={{ marginTop: 12, opacity: 0.9 }}>{feedback.verdict}</p>}
 
-          <div style={{ ...col, gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", marginTop: 12 }}>
-            <Pillar title="Where it went wrong" items={feedback?.wentWrong} style={pillar} />
-            <Pillar title="What to do better next time" items={feedback?.doBetter} style={pillar} />
-            <Pillar title="What to learn" items={feedback?.learn} style={pillar} />
+          <div
+            style={{
+              display: "grid",
+              gap: 12,
+              gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+              marginTop: 12,
+            }}
+          >
+            <Pillar title="Where it went wrong" items={feedback?.wentWrong} />
+            <Pillar title="What to do better next time" items={feedback?.doBetter} />
+            <Pillar title="What to learn" items={feedback?.learn} />
           </div>
 
           <div style={{ marginTop: 12, fontSize: 12, opacity: 0.6 }}>ID: {id}</div>
@@ -271,14 +333,16 @@ function FeedbackCard({ data }) {
   );
 }
 
-function Pillar({ title, items, style }) {
+function Pillar({ title, items }) {
   if (!items || items.length === 0) return null;
   return (
-    <div style={style}>
+    <div style={{ background: "#0d121a", border: "1px solid #243043", borderRadius: 12, padding: 12 }}>
       <div style={{ fontWeight: 800, marginBottom: 6 }}>{title}</div>
       <ul style={{ paddingLeft: 18, margin: 0 }}>
         {items.map((it, i) => (
-          <li key={i} style={{ margin: "6px 0" }}>{it}</li>
+          <li key={i} style={{ margin: "6px 0" }}>
+            {it}
+          </li>
         ))}
       </ul>
     </div>
