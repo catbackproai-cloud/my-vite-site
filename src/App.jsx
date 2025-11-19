@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+const WEBHOOK_URL = "https://jacobtf007.app.n8n.cloud/webhook/trade_feedback";
 
 /**
  * Trading Coach (MVP) — Minimal Input + Centered Layout + Per-Day Save
@@ -15,7 +16,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 // ✅ Put the production URL here. If you later set the env var, it will override.
 const PROD_WEBHOOK = "https://jacobtf007.app.n8n.cloud/webhook/trade_feedback";
-const WEBHOOK_URL =
+
   (import.meta?.env && import.meta.env.VITE_N8N_TRADE_FEEDBACK_WEBHOOK) ||
   PROD_WEBHOOK;
 
@@ -59,26 +60,27 @@ export default function App({ selectedDay = new Date().toISOString().slice(0, 10
       if (form.file) fd.append("screenshot", form.file); // must be 'screenshot'
 
       console.log("[Trade Coach] POSTing to", WEBHOOK_URL);
-      const res = await fetch(WEBHOOK_URL, {
-        method: "POST",
-        body: fd,
-      });
+const res = await fetch(WEBHOOK_URL, {
+  method: "POST",
+  body: fd,
+});
 
-      // Read text first so we can show any non-JSON errors
-      const text = await res.text();
-      let data = null;
-      try {
-        data = text ? JSON.parse(text) : null;
-      } catch {
-        throw new Error(`Non-JSON response (${res.status}): ${text.slice(0, 200)}`);
-      }
+// read as text first for better Safari errors
+const text = await res.text();
+console.log("[Trade Coach] status", res.status, "body:", text?.slice(0, 200));
 
-      if (!res.ok) {
-        const msg = data?.message || data?.error || `Server responded ${res.status}`;
-        throw new Error(msg);
-      }
+let data = null;
+try {
+  data = text ? JSON.parse(text) : null;
+} catch {
+  throw new Error(`Non-JSON response (${res.status}): ${text?.slice(0, 200)}`);
+}
 
-      setResult(data);
+if (!res.ok) {
+  throw new Error(data?.message || data?.error || `Server responded ${res.status}`);
+}
+
+setResult(data);
 
       // Persist the day’s result
       try {
