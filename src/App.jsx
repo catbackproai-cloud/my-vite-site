@@ -6,16 +6,18 @@ import { useEffect, useMemo, useRef, useState } from "react";
  * - Thought process textarea below
  * - Saves & loads per day via localStorage using key: tradeFeedback:YYYY-MM-DD
  *
- * Env (set this in .env.local and your host env):
- *   VITE_N8N_TRADE_FEEDBACK_WEBHOOK=https://jacobtf007.app.n8n.cloud/webhook/trade_feedback
-
+ * Production webhook (hard-coded, with env fallback):
+ *   https://jacobtf007.app.n8n.cloud/webhook/trade_feedback
  *
- * Prop: selectedDay (YYYY-MM-DD) — passed from main.jsx date navigator
+ * If you also set .env:
+ *   VITE_N8N_TRADE_FEEDBACK_WEBHOOK=https://jacobtf007.app.n8n.cloud/webhook/trade_feedback
  */
 
-// ✅ Use only the env var (no trailing comment on this line!)
-const WEBHOOK_URL = "https://jacobtf007.app.n8n.cloud/webhook/trade_feedback";
-console.log("POSTing to", WEBHOOK_URL);
+// ✅ Put the production URL here. If you later set the env var, it will override.
+const PROD_WEBHOOK = "https://jacobtf007.app.n8n.cloud/webhook/trade_feedback";
+const WEBHOOK_URL =
+  (import.meta?.env && import.meta.env.VITE_N8N_TRADE_FEEDBACK_WEBHOOK) ||
+  PROD_WEBHOOK;
 
 export default function App({ selectedDay = new Date().toISOString().slice(0, 10) }) {
   const [form, setForm] = useState({ strategyNotes: "", file: null });
@@ -46,32 +48,32 @@ export default function App({ selectedDay = new Date().toISOString().slice(0, 10
     setError("");
     setSubmitting(true);
     setResult(null);
+
     try {
-      if (!WEBHOOK_URL) {
-        throw new Error(
-          "Missing VITE_N8N_TRADE_FEEDBACK_WEBHOOK. Add it to .env.local and your deploy env, then restart."
-        );
-      }
+      if (!WEBHOOK_URL) throw new Error("No webhook URL configured.");
 
+      // Build multipart/form-data
       const fd = new FormData();
-      fd.append("day", selectedDay);               // include the day
+      fd.append("day", selectedDay);
       fd.append("strategyNotes", form.strategyNotes);
-      if (form.file) fd.append("screenshot", form.file); // <-- matches n8n binary name: binary.screenshot
+      if (form.file) fd.append("screenshot", form.file); // must be 'screenshot'
 
-      const res = await fetch(WEBHOOK_URL, { method: "POST", body: fd });
+      console.log("[Trade Coach] POSTing to", WEBHOOK_URL);
+      const res = await fetch(WEBHOOK_URL, {
+        method: "POST",
+        body: fd,
+      });
 
-      // Try to parse JSON first; if it fails, capture text for debugging
-      let data;
+      // Read text first so we can show any non-JSON errors
       const text = await res.text();
+      let data = null;
       try {
         data = text ? JSON.parse(text) : null;
       } catch {
-        // Non-JSON (e.g., HTML/404 page)
         throw new Error(`Non-JSON response (${res.status}): ${text.slice(0, 200)}`);
       }
 
       if (!res.ok) {
-        // n8n often returns { message } or error info in JSON
         const msg = data?.message || data?.error || `Server responded ${res.status}`;
         throw new Error(msg);
       }
@@ -84,7 +86,7 @@ export default function App({ selectedDay = new Date().toISOString().slice(0, 10
         localStorage.setItem(key, JSON.stringify(data));
         localStorage.setItem("lastTradeFeedback", JSON.stringify(data));
       } catch {
-        // ignore storage errors
+        /* ignore storage errors */
       }
     } catch (err) {
       setError(err?.message || "Submit failed");
@@ -93,7 +95,7 @@ export default function App({ selectedDay = new Date().toISOString().slice(0, 10
     }
   }
 
-  // --- Drag & drop handlers for the big upload box ---
+  // Drag & drop
   function preventDefaults(e) {
     e.preventDefault();
     e.stopPropagation();
@@ -138,7 +140,7 @@ export default function App({ selectedDay = new Date().toISOString().slice(0, 10
       background: "#0d121a",
       border: "2px dashed #243043",
       borderRadius: 16,
-      height: 280, // big box height
+      height: 280,
       display: "grid",
       placeItems: "center",
       textAlign: "center",
@@ -221,7 +223,7 @@ export default function App({ selectedDay = new Date().toISOString().slice(0, 10
         </div>
 
         <form onSubmit={handleSubmit} style={styles.form}>
-          {/* BIG SCREENSHOT UPLOAD BOX (CENTERED) */}
+          {/* BIG SCREENSHOT UPLOAD BOX */}
           <div
             style={{ ...styles.drop, ...(dragActive ? styles.dropActive : {}) }}
             onClick={() => fileInputRef.current?.click()}
@@ -262,7 +264,7 @@ export default function App({ selectedDay = new Date().toISOString().slice(0, 10
             />
           </div>
 
-          {/* THOUGHT PROCESS TEXTBOX BELOW THE SCREENSHOT */}
+          {/* THOUGHT PROCESS TEXTBOX */}
           <div>
             <div style={styles.label}>Strategy / thought process — what setup were you taking?</div>
             <textarea
@@ -275,7 +277,7 @@ export default function App({ selectedDay = new Date().toISOString().slice(0, 10
           </div>
 
           <button disabled={!isValid || submitting} style={styles.button}>
-            {submitting ? "Scoring…" : "Get Feedback"}
+            {submitting ? "Uploading…" : "Get Feedback"}
           </button>
         </form>
 
@@ -284,7 +286,7 @@ export default function App({ selectedDay = new Date().toISOString().slice(0, 10
             Error: {error}
             {!WEBHOOK_URL && (
               <div style={styles.hint}>
-                Tip: define VITE_N8N_TRADE_FEEDBACK_WEBHOOK in .env.local (dev) and in your deploy env, then restart.
+                Tip: define VITE_N8N_TRADE_FEEDBACK_WEBHOOK in .env.local and in your deploy env.
               </div>
             )}
           </div>
@@ -297,8 +299,6 @@ export default function App({ selectedDay = new Date().toISOString().slice(0, 10
 }
 
 function FeedbackCard({ data }) {
-  // Expected shape:
-  // { id, timestamp, screenshotUrl, grade, feedback:{wentWrong[],doBetter[],learn[],verdict}, inferred?:{market,direction,timeframe,session} }
   const { id, timestamp, screenshotUrl, grade, feedback, inferred } = data || {};
   const lineTop = [inferred?.market, inferred?.direction, inferred?.timeframe].filter(Boolean).join(" · ");
 
@@ -324,42 +324,20 @@ function FeedbackCard({ data }) {
         <div>
           <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}>
             <div>
-              <div style={{ fontWeight: 800 }}>{lineTop || "Inferred details shown after scoring"}</div>
+              <div style={{ fontWeight: 800 }}>{lineTop || "Inferred details shown after uploading"}</div>
               <div style={{ fontSize: 12, opacity: 0.7 }}>
                 {(inferred?.session ? inferred.session + " · " : "")}
                 {timestamp ? new Date(timestamp).toLocaleString() : ""}
               </div>
             </div>
             <div style={{ fontSize: 28, fontWeight: 900, lineHeight: 1, padding: "6px 12px", borderRadius: 12, border: "1px solid #243043" }}>
-              {grade}
+              {grade ?? "—"}
             </div>
           </div>
 
           {feedback?.verdict && <p style={{ marginTop: 12, opacity: 0.9 }}>{feedback.verdict}</p>}
-
-          <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", marginTop: 12 }}>
-            <Pillar title="Where it went wrong" items={feedback?.wentWrong} />
-            <Pillar title="What to do better next time" items={feedback?.doBetter} />
-            <Pillar title="What to learn" items={feedback?.learn} />
-          </div>
-
-          <div style={{ marginTop: 12, fontSize: 12, opacity: 0.6 }}>ID: {id}</div>
         </div>
       </div>
-    </div>
-  );
-}
-
-function Pillar({ title, items }) {
-  if (!items || items.length === 0) return null;
-  return (
-    <div style={{ background: "#0d121a", border: "1px solid #243043", borderRadius: 12, padding: 12 }}>
-      <div style={{ fontWeight: 800, marginBottom: 6 }}>{title}</div>
-      <ul style={{ paddingLeft: 18, margin: 0 }}>
-        {items.map((it, i) => (
-          <li key={i} style={{ margin: "6px 0" }}>{it}</li>
-        ))}
-      </ul>
     </div>
   );
 }
