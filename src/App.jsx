@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
  * - Thought process textarea below
  * - Saves & loads per day via localStorage using key: tradeFeedback:YYYY-MM-DD
  *
- * Env: VITE_N8N_TRADE_FEEDBACK_WEBHOOK=https://<your-n8n-domain>/webhook/trade_feedback
+ * Env: VITE_N8N_TRADE_FEEDBACK_WEBHOOK=https://jacobtf007/webhook/trade_feedback
  * Prop: selectedDay (YYYY-MM-DD) — passed from main.jsx date navigator
  */
 
