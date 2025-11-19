@@ -3,12 +3,6 @@ import { createRoot } from "react-dom/client";
 import App from "./App.jsx";
 import "./index.css";
 
-if (!import.meta.env.VITE_N8N_TRADE_FEEDBACK_WEBHOOK) {
-  console.warn(
-    "[Trading Coach] Missing VITE_N8N_TRADE_FEEDBACK_WEBHOOK. Set it in your .env and restart dev server."
-  );
-}
-
 // Helpers
 function startOfDay(d) {
   const x = new Date(d);
