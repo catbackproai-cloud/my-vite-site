@@ -14,7 +14,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
  */
 
 // ✅ Use only the env var (no trailing comment on this line!)
-const WEBHOOK_URL = import.meta.env.VITE_N8N_TRADE_FEEDBACK_WEBHOOK//jacobtf007.app.n8n.cloud/webhook/trade_feedback
+const WEBHOOK_URL = "https://jacobtf007.app.n8n.cloud/webhook/trade_feedback";
+console.log("POSTing to", WEBHOOK_URL);
 
 export default function App({ selectedDay = new Date().toISOString().slice(0, 10) }) {
   const [form, setForm] = useState({ strategyNotes: "", file: null });
