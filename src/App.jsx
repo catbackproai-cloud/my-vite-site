@@ -6,13 +6,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
  * - Thought process textarea below
  * - Saves & loads per day via localStorage using key: tradeFeedback:YYYY-MM-DD
  *
- * Env (set this in .env and your host env):
+ * Env (set this in .env.local and your host env):
  *   VITE_N8N_TRADE_FEEDBACK_WEBHOOK=https://jacobtf007.app.n8n.cloud/webhook/trade_feedback
  *
  * Prop: selectedDay (YYYY-MM-DD) — passed from main.jsx date navigator
  */
 
-const WEBHOOK_URL = import.meta.env.VITE_N8N_TRADE_FEEDBACK_WEBHOOK//jacobtf007.app.n8n.cloud/webhook/trade_feedback
+// ✅ Use only the env var (no trailing comment on this line!)
+const WEBHOOK_URL = import.meta.env.VITE_N8N_TRADE_FEEDBACK_WEBHOOK;
 
 export default function App({ selectedDay = new Date().toISOString().slice(0, 10) }) {
   const [form, setForm] = useState({ strategyNotes: "", file: null });
@@ -44,26 +45,47 @@ export default function App({ selectedDay = new Date().toISOString().slice(0, 10
     setSubmitting(true);
     setResult(null);
     try {
-      if (!WEBHOOK_URL) throw new Error("Missing VITE_N8N_TRADE_FEEDBACK_WEBHOOK");
+      if (!WEBHOOK_URL) {
+        throw new Error(
+          "Missing VITE_N8N_TRADE_FEEDBACK_WEBHOOK. Add it to .env.local and your deploy env, then restart."
+        );
+      }
 
       const fd = new FormData();
-      fd.append("day", selectedDay); // include the day
+      fd.append("day", selectedDay);               // include the day
       fd.append("strategyNotes", form.strategyNotes);
-      if (form.file) fd.append("screenshot", form.file); // <-- must match n8n Webhook binary name
+      if (form.file) fd.append("screenshot", form.file); // <-- matches n8n binary name: binary.screenshot
 
       const res = await fetch(WEBHOOK_URL, { method: "POST", body: fd });
-      if (!res.ok) throw new Error(`Server responded ${res.status}`);
-      const data = await res.json();
+
+      // Try to parse JSON first; if it fails, capture text for debugging
+      let data;
+      const text = await res.text();
+      try {
+        data = text ? JSON.parse(text) : null;
+      } catch {
+        // Non-JSON (e.g., HTML/404 page)
+        throw new Error(`Non-JSON response (${res.status}): ${text.slice(0, 200)}`);
+      }
+
+      if (!res.ok) {
+        // n8n often returns { message } or error info in JSON
+        const msg = data?.message || data?.error || `Server responded ${res.status}`;
+        throw new Error(msg);
+      }
 
       setResult(data);
 
+      // Persist the day’s result
       try {
         const key = `tradeFeedback:${selectedDay}`;
         localStorage.setItem(key, JSON.stringify(data));
         localStorage.setItem("lastTradeFeedback", JSON.stringify(data));
-      } catch {}
+      } catch {
+        // ignore storage errors
+      }
     } catch (err) {
-      setError(err.message || "Submit failed");
+      setError(err?.message || "Submit failed");
     } finally {
       setSubmitting(false);
     }
@@ -180,7 +202,9 @@ export default function App({ selectedDay = new Date().toISOString().slice(0, 10
       borderRadius: 12,
       background: "#2b1620",
       color: "#ffd0d7",
+      whiteSpace: "pre-wrap",
     },
+    hint: { marginTop: 10, fontSize: 12, opacity: 0.7 },
   };
 
   return (
@@ -253,7 +277,16 @@ export default function App({ selectedDay = new Date().toISOString().slice(0, 10
           </button>
         </form>
 
-        {error && <div style={styles.error}>Error: {error}</div>}
+        {error && (
+          <div style={styles.error}>
+            Error: {error}
+            {!WEBHOOK_URL && (
+              <div style={styles.hint}>
+                Tip: define VITE_N8N_TRADE_FEEDBACK_WEBHOOK in .env.local (dev) and in your deploy env, then restart.
+              </div>
+            )}
+          </div>
+        )}
 
         {result && <FeedbackCard data={result} />}
       </div>
@@ -262,6 +295,7 @@ export default function App({ selectedDay = new Date().toISOString().slice(0, 10
 }
 
 function FeedbackCard({ data }) {
+  // Expected shape:
   // { id, timestamp, screenshotUrl, grade, feedback:{wentWrong[],doBetter[],learn[],verdict}, inferred?:{market,direction,timeframe,session} }
   const { id, timestamp, screenshotUrl, grade, feedback, inferred } = data || {};
   const lineTop = [inferred?.market, inferred?.direction, inferred?.timeframe].filter(Boolean).join(" · ");
@@ -272,12 +306,6 @@ function FeedbackCard({ data }) {
     boxShadow: "0 8px 30px rgba(0,0,0,.35)",
     padding: 16,
     marginTop: 20,
-  };
-  const pillar = {
-    background: "#0d121a",
-    border: "1px solid #243043",
-    borderRadius: 12,
-    padding: 12,
   };
 
   return (
