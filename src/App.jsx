@@ -15,7 +15,7 @@ const WEBHOOK_URL = "https://jacobtf007.app.n8n.cloud/webhook/trade_feedback";
  */
 
 // ✅ Put the production URL here. If you later set the env var, it will override.
-const PROD_WEBHOOK = "https://jacobtf007.app.n8n.cloud/webhook/trade_feedback";
+const PROD_WEBHOOK = "https://jacobtf007.app.n8n.cloud/webhook-test/trade_feedback";
 
   (import.meta?.env && import.meta.env.VITE_N8N_TRADE_FEEDBACK_WEBHOOK) ||
   PROD_WEBHOOK;
