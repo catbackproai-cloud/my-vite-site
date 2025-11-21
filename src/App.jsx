@@ -8,30 +8,86 @@ const WEBHOOK_URL =
   (import.meta?.env && import.meta.env.VITE_N8N_TRADE_FEEDBACK_WEBHOOK) ||
   PROD_WEBHOOK;
 
-export default function App({ selectedDay = new Date().toISOString().slice(0, 10) }) {
+/* ---------------- HELPERS ---------------- */
+
+// Convert image file -> base64 data url (persists across reload)
+function fileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    if (!file) return resolve(null);
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+// Make Drive links reliably render as <img src="">
+function normalizeDriveUrl(url) {
+  if (!url) return null;
+
+  // already a direct uc?id=
+  if (url.includes("drive.google.com/uc?id=")) return url;
+
+  // turn /file/d/FILEID/view into uc?id=FILEID
+  const m = url.match(/drive\.google\.com\/file\/d\/([^/]+)/);
+  if (m?.[1]) return `https://drive.google.com/uc?id=${m[1]}`;
+
+  return url;
+}
+
+export default function App({
+  selectedDay = new Date().toISOString().slice(0, 10),
+}) {
   const [form, setForm] = useState({ strategyNotes: "", file: null });
   const [submitting, setSubmitting] = useState(false);
-  const [aiThinking, setAiThinking] = useState(false);
   const [error, setError] = useState("");
   const [dragActive, setDragActive] = useState(false);
-
-  // ✅ NEW: messages array per day (chat log)
-  const [messages, setMessages] = useState([]);
-
   const fileInputRef = useRef(null);
 
-  // ✅ Load saved chat log for the selected day
+  // ✅ Chat history per-day
+  const [chats, setChats] = useState([]);
+
+  // ✅ Form preview URL (avoid regenerating per-render)
+  const [previewUrl, setPreviewUrl] = useState(null);
+
+  // Create / cleanup blob URL for the form preview
+  useEffect(() => {
+    if (!form.file) {
+      setPreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(form.file);
+    setPreviewUrl(url);
+    return () => {
+      try {
+        URL.revokeObjectURL(url);
+      } catch {}
+    };
+  }, [form.file]);
+
+  // Load saved chats for the selected day
   useEffect(() => {
     try {
-      const key = `tradeFeedback:${selectedDay}`;
+      const key = `tradeChats:${selectedDay}`;
       const saved = localStorage.getItem(key);
-      setMessages(saved ? JSON.parse(saved) : []);
-      setForm((prev) => ({ ...prev, file: null, strategyNotes: "" }));
+      setChats(saved ? JSON.parse(saved) : []);
+      setForm((prev) => ({ ...prev, file: null }));
       setError("");
     } catch {
-      setMessages([]);
+      setChats([]);
     }
   }, [selectedDay]);
+
+  // Persist chats whenever they change
+  useEffect(() => {
+    try {
+      const key = `tradeChats:${selectedDay}`;
+      localStorage.setItem(key, JSON.stringify(chats));
+      localStorage.setItem("lastTradeChats", JSON.stringify(chats));
+    } catch {
+      /* ignore storage errors */
+    }
+  }, [chats, selectedDay]);
 
   const isValid = useMemo(() => !!form.strategyNotes && !!form.file, [form]);
   const onChange = (k, v) => setForm((prev) => ({ ...prev, [k]: v }));
@@ -40,68 +96,120 @@ export default function App({ selectedDay = new Date().toISOString().slice(0, 10
     e.preventDefault();
     setError("");
     setSubmitting(true);
-    setAiThinking(true);
 
     try {
       if (!WEBHOOK_URL) throw new Error("No webhook URL configured.");
 
+      // ✅ Persistent fallback image (survives reload)
+      const localDataUrl = await fileToDataUrl(form.file);
+
+      // Local preview URL for instant UX (dies on refresh)
+      const localPreviewUrl = form.file
+        ? URL.createObjectURL(form.file)
+        : null;
+
+      // Create a temp chat entry (pending)
+      const tempId = `tmp-${Date.now()}`;
+      const tempChat = {
+        id: tempId,
+        timestamp: new Date().toISOString(),
+        userNotes: form.strategyNotes,
+
+        // show local preview immediately, replaced later with Drive URL
+        screenshotUrl: null,
+        localPreviewUrl,
+        localDataUrl, // ✅ NEW: persistent fallback
+        pending: true,
+        analysis: null,
+      };
+
+      setChats((prev) => [...prev, tempChat]);
+
+      // Build multipart/form-data
       const fd = new FormData();
       fd.append("day", selectedDay);
       fd.append("strategyNotes", form.strategyNotes);
-      if (form.file) fd.append("screenshot", form.file);
+      if (form.file) fd.append("screenshot", form.file); // must be 'screenshot'
 
+      console.log("[Trade Coach] POSTing to", WEBHOOK_URL);
       const res = await fetch(WEBHOOK_URL, {
         method: "POST",
         body: fd,
       });
 
       const text = await res.text();
+      console.log(
+        "[Trade Coach] status",
+        res.status,
+        "body:",
+        text?.slice(0, 200)
+      );
 
       let data = null;
       try {
         data = text ? JSON.parse(text) : null;
       } catch {
-        throw new Error(`Non-JSON response (${res.status}): ${text?.slice(0, 200)}`);
+        throw new Error(
+          `Non-JSON response (${res.status}): ${text?.slice(0, 200)}`
+        );
       }
 
       if (!res.ok) {
-        throw new Error(data?.message || data?.error || `Server responded ${res.status}`);
+        throw new Error(
+          data?.message || data?.error || `Server responded ${res.status}`
+        );
       }
 
-      // ✅ Build USER message (IMPORTANT: store screenshotUrl from n8n!)
-      const userMsg = {
-        role: "user",
-        text: form.strategyNotes,
-        screenshotUrl: data?.screenshotUrl || null,
-        timestamp: new Date().toISOString(),
-      };
+      // ✅ Update the pending chat with real Drive screenshot + analysis
+      setChats((prev) =>
+        prev.map((c) => {
+          if (c.id !== tempId) return c;
 
-      // ✅ Build AI message
-      const aiMsg = {
-        role: "assistant",
-        analysis: data?.analysis ?? data ?? {},
-        timestamp: data?.timestamp || new Date().toISOString(),
-      };
+          // Revoke local object URL once replaced (prevent memory leak)
+          if (c.localPreviewUrl) {
+            try {
+              URL.revokeObjectURL(c.localPreviewUrl);
+            } catch {}
+          }
 
-      const nextMessages = [...messages, userMsg, aiMsg];
+          return {
+            ...c,
+            pending: false,
+            screenshotUrl: normalizeDriveUrl(data?.screenshotUrl) || null, // ✅ normalize
+            analysis: data?.analysis || data || null,
+            serverTimestamp: data?.timestamp || null,
+            // keep localDataUrl forever as fallback
+          };
+        })
+      );
 
-      setMessages(nextMessages);
-
-      // ✅ Persist whole chat log per day
-      try {
-        const key = `tradeFeedback:${selectedDay}`;
-        localStorage.setItem(key, JSON.stringify(nextMessages));
-        localStorage.setItem("lastTradeFeedback", JSON.stringify(nextMessages));
-      } catch {}
-
-      // ✅ Reset input AFTER saving
+      // Reset form (but DO NOT wipe chats)
       setForm({ strategyNotes: "", file: null });
-      if (fileInputRef.current) fileInputRef.current.value = "";
     } catch (err) {
       setError(err?.message || "Submit failed");
+      // If submission failed, mark last pending bubble as not pending + error note
+      setChats((prev) => {
+        const copy = [...prev];
+        const last = copy[copy.length - 1];
+        if (last?.pending) {
+          copy[copy.length - 1] = {
+            ...last,
+            pending: false,
+            analysis: {
+              grade: "N/A",
+              oneLineVerdict: "Upload failed. Try again.",
+              whatWentRight: [],
+              whatWentWrong: [],
+              improvements: [],
+              lessonLearned: "",
+              confidence: 0,
+            },
+          };
+        }
+        return copy;
+      });
     } finally {
       setSubmitting(false);
-      setAiThinking(false);
     }
   }
 
@@ -218,6 +326,7 @@ export default function App({ selectedDay = new Date().toISOString().slice(0, 10
       color: "#ffd0d7",
       whiteSpace: "pre-wrap",
     },
+    hint: { marginTop: 10, fontSize: 12, opacity: 0.7 },
 
     // Chat styling
     chatWrap: {
@@ -227,7 +336,7 @@ export default function App({ selectedDay = new Date().toISOString().slice(0, 10
       borderRadius: 14,
       padding: 14,
       display: "grid",
-      gap: 10,
+      gap: 12,
     },
     bubbleRow: {
       display: "flex",
@@ -280,9 +389,12 @@ export default function App({ selectedDay = new Date().toISOString().slice(0, 10
         <div style={styles.header}>
           <h1 style={styles.title}>Trade Coach (Personal)</h1>
           <div style={styles.subtitle}>
-            Upload chart (screenshot) → then write your thought process → AI feedback
+            Upload chart (screenshot) → then write your thought process → AI
+            feedback
           </div>
-          <div style={styles.dayBadge}>Day: {selectedDay} • saved per-day</div>
+          <div style={styles.dayBadge}>
+            Day: {selectedDay} • saved per-day
+          </div>
         </div>
 
         <form onSubmit={handleSubmit} style={styles.form}>
@@ -290,20 +402,31 @@ export default function App({ selectedDay = new Date().toISOString().slice(0, 10
           <div
             style={{ ...styles.drop, ...(dragActive ? styles.dropActive : {}) }}
             onClick={() => fileInputRef.current?.click()}
-            onDragEnter={(e) => { preventDefaults(e); setDragActive(true); }}
+            onDragEnter={(e) => {
+              preventDefaults(e);
+              setDragActive(true);
+            }}
             onDragOver={preventDefaults}
-            onDragLeave={(e) => { preventDefaults(e); setDragActive(false); }}
-            onDrop={(e) => { handleDrop(e); setDragActive(false); }}
+            onDragLeave={(e) => {
+              preventDefaults(e);
+              setDragActive(false);
+            }}
+            onDrop={(e) => {
+              handleDrop(e);
+              setDragActive(false);
+            }}
           >
             {!form.file ? (
               <div>
                 <div style={styles.dropTextMain}>Drop chart screenshot here</div>
-                <div style={styles.dropTextSub}>or click to browse (.png / .jpg)</div>
+                <div style={styles.dropTextSub}>
+                  or click to browse (.png / .jpg)
+                </div>
               </div>
             ) : (
               <>
                 <img
-                  src={URL.createObjectURL(form.file)}
+                  src={previewUrl || ""}
                   alt="preview"
                   style={styles.previewImg}
                 />
@@ -311,7 +434,10 @@ export default function App({ selectedDay = new Date().toISOString().slice(0, 10
                   type="button"
                   aria-label="Remove screenshot"
                   title="Remove"
-                  onClick={(e) => { e.stopPropagation(); onChange("file", null); }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onChange("file", null);
+                  }}
                   style={styles.closeBtn}
                 >
                   ×
@@ -329,7 +455,9 @@ export default function App({ selectedDay = new Date().toISOString().slice(0, 10
 
           {/* THOUGHT PROCESS TEXTBOX */}
           <div>
-            <div style={styles.label}>Strategy / thought process — what setup were you taking?</div>
+            <div style={styles.label}>
+              Strategy / thought process — what setup were you taking?
+            </div>
             <textarea
               value={form.strategyNotes}
               onChange={(e) => onChange("strategyNotes", e.target.value)}
@@ -344,24 +472,24 @@ export default function App({ selectedDay = new Date().toISOString().slice(0, 10
           </button>
         </form>
 
-        {error && <div style={styles.error}>Error: {error}</div>}
-
-        {/* ✅ Chat history */}
-        {messages.length > 0 && (
-          <div style={styles.chatWrap}>
-            {messages.map((msg, idx) => (
-              <ChatBubble key={idx} msg={msg} styles={styles} />
-            ))}
-
-            {/* ✅ AI thinking bubble */}
-            {aiThinking && (
-              <div style={styles.bubbleRow}>
-                <div style={styles.bubbleAI}>
-                  <div style={{ fontWeight: 800, marginBottom: 6 }}>Trade Coach AI</div>
-                  analyzing trade...
-                </div>
+        {error && (
+          <div style={styles.error}>
+            Error: {error}
+            {!WEBHOOK_URL && (
+              <div style={styles.hint}>
+                Tip: define VITE_N8N_TRADE_FEEDBACK_WEBHOOK in .env.local and in
+                your deploy env.
               </div>
             )}
+          </div>
+        )}
+
+        {/* ✅ ChatGPT-style history below form */}
+        {chats.length > 0 && (
+          <div style={styles.chatWrap}>
+            {chats.map((chat) => (
+              <ChatTurn key={chat.id} chat={chat} styles={styles} />
+            ))}
           </div>
         )}
       </div>
@@ -369,19 +497,35 @@ export default function App({ selectedDay = new Date().toISOString().slice(0, 10
   );
 }
 
-/* ---------------- CHAT BUBBLES ---------------- */
+/* ---------------- CHAT TURN ---------------- */
 
-function ChatBubble({ msg, styles }) {
-  if (msg.role === "user") {
-    return (
+function ChatTurn({ chat, styles }) {
+  const analysis = chat.analysis ?? {};
+  const {
+    grade,
+    oneLineVerdict,
+    whatWentRight = [],
+    whatWentWrong = [],
+    improvements = [],
+    lessonLearned,
+    confidence,
+  } = analysis;
+
+  const userImgSrc =
+    normalizeDriveUrl(chat.screenshotUrl) || // ✅ first choice
+    chat.localDataUrl || // ✅ survives reload forever
+    chat.localPreviewUrl; // last resort for same-session
+
+  return (
+    <>
+      {/* USER MESSAGE */}
       <div style={styles.bubbleRow}>
         <div style={styles.bubbleUser}>
           <div style={{ fontWeight: 800, marginBottom: 6 }}>You</div>
 
-          {/* ✅ IMPORTANT: render from saved screenshotUrl */}
-          {msg.screenshotUrl && (
+          {userImgSrc && (
             <img
-              src={msg.screenshotUrl}
+              src={userImgSrc}
               alt="uploaded trade"
               style={{
                 width: "100%",
@@ -393,85 +537,86 @@ function ChatBubble({ msg, styles }) {
             />
           )}
 
-          <div>{msg.text}</div>
+          <div>{chat.userNotes}</div>
 
-          {msg.timestamp && (
-            <div style={styles.smallMeta}>
-              {new Date(msg.timestamp).toLocaleString()}
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  // assistant
-  const a = msg.analysis || {};
-  const {
-    grade,
-    oneLineVerdict,
-    whatWentRight = [],
-    whatWentWrong = [],
-    improvements = [],
-    lessonLearned,
-    confidence,
-  } = a;
-
-  return (
-    <div style={styles.bubbleRow}>
-      <div style={styles.bubbleAI}>
-        <div style={styles.bubbleHeader}>
-          <span>Trade Coach AI</span>
-          {grade && <span style={styles.gradePill}>{grade}</span>}
-          {typeof confidence === "number" && (
-            <span style={{ fontSize: 12, opacity: 0.7 }}>
-              ({Math.round(confidence * 100)}% confident)
-            </span>
-          )}
-        </div>
-
-        {oneLineVerdict && <div style={{ opacity: 0.95 }}>{oneLineVerdict}</div>}
-
-        {whatWentRight.length > 0 && (
-          <>
-            <div style={styles.sectionTitle}>What went right</div>
-            <ul style={styles.ul}>
-              {whatWentRight.map((x, i) => <li key={i}>{x}</li>)}
-            </ul>
-          </>
-        )}
-
-        {whatWentWrong.length > 0 && (
-          <>
-            <div style={styles.sectionTitle}>What went wrong</div>
-            <ul style={styles.ul}>
-              {whatWentWrong.map((x, i) => <li key={i}>{x}</li>)}
-            </ul>
-          </>
-        )}
-
-        {improvements.length > 0 && (
-          <>
-            <div style={styles.sectionTitle}>Improvements</div>
-            <ul style={styles.ul}>
-              {improvements.map((x, i) => <li key={i}>{x}</li>)}
-            </ul>
-          </>
-        )}
-
-        {lessonLearned && (
-          <>
-            <div style={styles.sectionTitle}>Lesson learned</div>
-            <div style={{ opacity: 0.95 }}>{lessonLearned}</div>
-          </>
-        )}
-
-        {msg.timestamp && (
           <div style={styles.smallMeta}>
-            {new Date(msg.timestamp).toLocaleString()}
+            {new Date(chat.timestamp).toLocaleString()}
           </div>
-        )}
+        </div>
       </div>
-    </div>
+
+      {/* AI MESSAGE */}
+      <div style={styles.bubbleRow}>
+        <div style={styles.bubbleAI}>
+          <div style={styles.bubbleHeader}>
+            <span>Trade Coach AI</span>
+            {grade && <span style={styles.gradePill}>{grade}</span>}
+            {typeof confidence === "number" && (
+              <span style={{ fontSize: 12, opacity: 0.7 }}>
+                ({Math.round(confidence * 100)}% confident)
+              </span>
+            )}
+          </div>
+
+          {chat.pending ? (
+            <div style={{ opacity: 0.9 }}>Analyzing trade…</div>
+          ) : (
+            <>
+              {oneLineVerdict && (
+                <div style={{ opacity: 0.95 }}>{oneLineVerdict}</div>
+              )}
+
+              {whatWentRight.length > 0 && (
+                <>
+                  <div style={styles.sectionTitle}>What went right</div>
+                  <ul style={styles.ul}>
+                    {whatWentRight.map((x, i) => (
+                      <li key={i}>{x}</li>
+                    ))}
+                  </ul>
+                </>
+              )}
+
+              {whatWentWrong.length > 0 && (
+                <>
+                  <div style={styles.sectionTitle}>What went wrong</div>
+                  <ul style={styles.ul}>
+                    {whatWentWrong.map((x, i) => (
+                      <li key={i}>{x}</li>
+                    ))}
+                  </ul>
+                </>
+              )}
+
+              {improvements.length > 0 && (
+                <>
+                  <div style={styles.sectionTitle}>Improvements</div>
+                  <ul style={styles.ul}>
+                    {improvements.map((x, i) => (
+                      <li key={i}>{x}</li>
+                    ))}
+                  </ul>
+                </>
+              )}
+
+              {lessonLearned && (
+                <>
+                  <div style={styles.sectionTitle}>Lesson learned</div>
+                  <div style={{ opacity: 0.95 }}>{lessonLearned}</div>
+                </>
+              )}
+
+              {(chat.serverTimestamp || chat.timestamp) && (
+                <div style={styles.smallMeta}>
+                  {new Date(
+                    chat.serverTimestamp || chat.timestamp
+                  ).toLocaleString()}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    </>
   );
 }
