@@ -15,6 +15,10 @@ export default function App({ selectedDay = new Date().toISOString().slice(0, 10
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
   const [dragActive, setDragActive] = useState(false);
+
+  // ✅ NEW: local preview URL so user bubble shows instantly
+  const [userPreviewUrl, setUserPreviewUrl] = useState(null);
+
   const fileInputRef = useRef(null);
 
   // Load saved result for the selected day
@@ -23,12 +27,22 @@ export default function App({ selectedDay = new Date().toISOString().slice(0, 10
       const key = `tradeFeedback:${selectedDay}`;
       const saved = localStorage.getItem(key);
       setResult(saved ? JSON.parse(saved) : null);
-      // Do NOT auto-fill file; always reset file on day change
+
+      // reset file + preview on day change
       setForm((prev) => ({ ...prev, file: null }));
+      setUserPreviewUrl(null);
     } catch {
       setResult(null);
+      setUserPreviewUrl(null);
     }
   }, [selectedDay]);
+
+  // cleanup preview blob url
+  useEffect(() => {
+    return () => {
+      if (userPreviewUrl) URL.revokeObjectURL(userPreviewUrl);
+    };
+  }, [userPreviewUrl]);
 
   const isValid = useMemo(() => !!form.strategyNotes && !!form.file, [form]);
   const onChange = (k, v) => setForm((prev) => ({ ...prev, [k]: v }));
@@ -39,6 +53,14 @@ export default function App({ selectedDay = new Date().toISOString().slice(0, 10
     setSubmitting(true);
     setAiThinking(true);
     setResult(null);
+
+    // ✅ set local preview immediately
+    if (form.file) {
+      const nextUrl = URL.createObjectURL(form.file);
+      // revoke previous if any
+      if (userPreviewUrl) URL.revokeObjectURL(userPreviewUrl);
+      setUserPreviewUrl(nextUrl);
+    }
 
     try {
       if (!WEBHOOK_URL) throw new Error("No webhook URL configured.");
@@ -254,6 +276,11 @@ export default function App({ selectedDay = new Date().toISOString().slice(0, 10
     sectionTitle: { fontWeight: 800, marginTop: 8, marginBottom: 4 },
     ul: { margin: 0, paddingLeft: 18, opacity: 0.95 },
     smallMeta: { fontSize: 11, opacity: 0.6, marginTop: 6 },
+    thinking: {
+      fontStyle: "italic",
+      opacity: 0.8,
+      marginTop: 6,
+    },
   };
 
   return (
@@ -293,7 +320,12 @@ export default function App({ selectedDay = new Date().toISOString().slice(0, 10
                   type="button"
                   aria-label="Remove screenshot"
                   title="Remove"
-                  onClick={(e) => { e.stopPropagation(); onChange("file", null); }}
+                  onClick={(e) => { 
+                    e.stopPropagation(); 
+                    onChange("file", null);
+                    if (userPreviewUrl) URL.revokeObjectURL(userPreviewUrl);
+                    setUserPreviewUrl(null);
+                  }}
                   style={styles.closeBtn}
                 >
                   ×
@@ -338,14 +370,12 @@ export default function App({ selectedDay = new Date().toISOString().slice(0, 10
         )}
 
         {/* ✅ ChatGPT-style feedback below form */}
-        {aiThinking && (
-          <AIThinkingBubble styles={styles} />
-        )}
-
-        {result && !aiThinking && (
+        {(aiThinking || result) && (
           <ChatFeedback
             data={result}
             userNotes={form.strategyNotes}
+            userPreviewUrl={userPreviewUrl}
+            aiThinking={aiThinking}
             styles={styles}
           />
         )}
@@ -356,8 +386,7 @@ export default function App({ selectedDay = new Date().toISOString().slice(0, 10
 
 /* ---------------- CHAT FEEDBACK UI ---------------- */
 
-function ChatFeedback({ data, userNotes, styles }) {
-  // Your webhook now returns { analysis: {...} }
+function ChatFeedback({ data, userNotes, userPreviewUrl, aiThinking, styles }) {
   const analysis = data?.analysis ?? data ?? {};
   const screenshotUrl = data?.screenshotUrl;
   const timestamp = data?.timestamp;
@@ -379,9 +408,10 @@ function ChatFeedback({ data, userNotes, styles }) {
         <div style={styles.bubbleUser}>
           <div style={{ fontWeight: 800, marginBottom: 6 }}>You</div>
 
-          {screenshotUrl && (
+          {/* ✅ Prefer local preview so it always shows */}
+          {(userPreviewUrl || screenshotUrl) && (
             <img
-              src={screenshotUrl}
+              src={userPreviewUrl || screenshotUrl}
               alt="uploaded trade"
               style={{
                 width: "100%",
@@ -410,9 +440,15 @@ function ChatFeedback({ data, userNotes, styles }) {
             )}
           </div>
 
-          {oneLineVerdict && <div style={{ opacity: 0.95 }}>{oneLineVerdict}</div>}
+          {aiThinking && !data && (
+            <div style={styles.thinking}>Analyzing trade…</div>
+          )}
 
-          {whatWentRight.length > 0 && (
+          {!aiThinking && oneLineVerdict && (
+            <div style={{ opacity: 0.95 }}>{oneLineVerdict}</div>
+          )}
+
+          {!aiThinking && whatWentRight.length > 0 && (
             <>
               <div style={styles.sectionTitle}>What went right</div>
               <ul style={styles.ul}>
@@ -421,7 +457,7 @@ function ChatFeedback({ data, userNotes, styles }) {
             </>
           )}
 
-          {whatWentWrong.length > 0 && (
+          {!aiThinking && whatWentWrong.length > 0 && (
             <>
               <div style={styles.sectionTitle}>What went wrong</div>
               <ul style={styles.ul}>
@@ -430,7 +466,7 @@ function ChatFeedback({ data, userNotes, styles }) {
             </>
           )}
 
-          {improvements.length > 0 && (
+          {!aiThinking && improvements.length > 0 && (
             <>
               <div style={styles.sectionTitle}>Improvements</div>
               <ul style={styles.ul}>
@@ -439,14 +475,14 @@ function ChatFeedback({ data, userNotes, styles }) {
             </>
           )}
 
-          {lessonLearned && (
+          {!aiThinking && lessonLearned && (
             <>
               <div style={styles.sectionTitle}>Lesson learned</div>
               <div style={{ opacity: 0.95 }}>{lessonLearned}</div>
             </>
           )}
 
-          {timestamp && (
+          {!aiThinking && timestamp && (
             <div style={styles.smallMeta}>
               {new Date(timestamp).toLocaleString()}
             </div>
@@ -455,38 +491,4 @@ function ChatFeedback({ data, userNotes, styles }) {
       </div>
     </div>
   );
-}
-
-/* ---------------- THINKING BUBBLE ---------------- */
-
-function AIThinkingBubble({ styles }) {
-  const dots = useDotsAnimation();
-
-  return (
-    <div style={styles.chatWrap}>
-      <div style={styles.bubbleRow}>
-        <div style={styles.bubbleAI}>
-          <div style={{ fontWeight: 800, marginBottom: 6 }}>
-            Trade Coach AI
-          </div>
-          <div style={{ opacity: 0.85 }}>
-            Analyzing trade{dots}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function useDotsAnimation() {
-  const [dots, setDots] = useState("");
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setDots((prev) => (prev === "..." ? "" : prev + "."));
-    }, 450);
-    return () => clearInterval(interval);
-  }, []);
-
-  return dots;
 }
