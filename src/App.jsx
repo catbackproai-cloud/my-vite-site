@@ -12,28 +12,32 @@ export default function App({ selectedDay = new Date().toISOString().slice(0, 10
   const [form, setForm] = useState({ strategyNotes: "", file: null });
   const [submitting, setSubmitting] = useState(false);
   const [aiThinking, setAiThinking] = useState(false);
-  const [result, setResult] = useState(null);
   const [error, setError] = useState("");
   const [dragActive, setDragActive] = useState(false);
 
-  // ✅ NEW: local preview URL so user bubble shows instantly
+  // ✅ NEW: chat log per-day
+  const [messages, setMessages] = useState([]);
+
+  // ✅ NEW: local preview URL for the current upload
   const [userPreviewUrl, setUserPreviewUrl] = useState(null);
 
   const fileInputRef = useRef(null);
 
-  // Load saved result for the selected day
+  // Load saved chat for the selected day
   useEffect(() => {
     try {
-      const key = `tradeFeedback:${selectedDay}`;
+      const key = `tradeChat:${selectedDay}`;
       const saved = localStorage.getItem(key);
-      setResult(saved ? JSON.parse(saved) : null);
+      setMessages(saved ? JSON.parse(saved) : []);
 
-      // reset file + preview on day change
+      // reset input on day change
       setForm((prev) => ({ ...prev, file: null }));
       setUserPreviewUrl(null);
+      setError("");
+      setAiThinking(false);
+      setSubmitting(false);
     } catch {
-      setResult(null);
-      setUserPreviewUrl(null);
+      setMessages([]);
     }
   }, [selectedDay]);
 
@@ -47,20 +51,44 @@ export default function App({ selectedDay = new Date().toISOString().slice(0, 10
   const isValid = useMemo(() => !!form.strategyNotes && !!form.file, [form]);
   const onChange = (k, v) => setForm((prev) => ({ ...prev, [k]: v }));
 
+  function persistMessages(nextMsgs) {
+    try {
+      const key = `tradeChat:${selectedDay}`;
+      localStorage.setItem(key, JSON.stringify(nextMsgs));
+      localStorage.setItem("lastTradeChat", JSON.stringify(nextMsgs));
+    } catch {
+      /* ignore storage errors */
+    }
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
     setError("");
     setSubmitting(true);
     setAiThinking(true);
-    setResult(null);
 
     // ✅ set local preview immediately
+    let previewUrl = null;
     if (form.file) {
-      const nextUrl = URL.createObjectURL(form.file);
-      // revoke previous if any
+      previewUrl = URL.createObjectURL(form.file);
       if (userPreviewUrl) URL.revokeObjectURL(userPreviewUrl);
-      setUserPreviewUrl(nextUrl);
+      setUserPreviewUrl(previewUrl);
     }
+
+    // ✅ append USER message first (so it shows instantly)
+    const userMsg = {
+      id: `u-${Date.now()}`,
+      role: "user",
+      notes: form.strategyNotes,
+      previewUrl,
+      timestamp: new Date().toISOString(),
+    };
+
+    setMessages((prev) => {
+      const next = [...prev, userMsg];
+      persistMessages(next);
+      return next;
+    });
 
     try {
       if (!WEBHOOK_URL) throw new Error("No webhook URL configured.");
@@ -68,16 +96,10 @@ export default function App({ selectedDay = new Date().toISOString().slice(0, 10
       const fd = new FormData();
       fd.append("day", selectedDay);
       fd.append("strategyNotes", form.strategyNotes);
-      if (form.file) fd.append("screenshot", form.file); // must be 'screenshot'
+      if (form.file) fd.append("screenshot", form.file);
 
-      console.log("[Trade Coach] POSTing to", WEBHOOK_URL);
-      const res = await fetch(WEBHOOK_URL, {
-        method: "POST",
-        body: fd,
-      });
-
+      const res = await fetch(WEBHOOK_URL, { method: "POST", body: fd });
       const text = await res.text();
-      console.log("[Trade Coach] status", res.status, "body:", text?.slice(0, 200));
 
       let data = null;
       try {
@@ -90,16 +112,25 @@ export default function App({ selectedDay = new Date().toISOString().slice(0, 10
         throw new Error(data?.message || data?.error || `Server responded ${res.status}`);
       }
 
-      setResult(data);
+      // ✅ append AI message after response
+      const aiMsg = {
+        id: `a-${Date.now()}`,
+        role: "ai",
+        analysis: data?.analysis ?? data ?? {},
+        screenshotUrl: data?.screenshotUrl,
+        timestamp: data?.timestamp || new Date().toISOString(),
+      };
 
-      // Persist the day’s result
-      try {
-        const key = `tradeFeedback:${selectedDay}`;
-        localStorage.setItem(key, JSON.stringify(data));
+      setMessages((prev) => {
+        const next = [...prev, aiMsg];
+        persistMessages(next);
         localStorage.setItem("lastTradeFeedback", JSON.stringify(data));
-      } catch {
-        /* ignore storage errors */
-      }
+        return next;
+      });
+
+      // optional: clear input after submit
+      setForm({ strategyNotes: "", file: null });
+      setUserPreviewUrl(null);
     } catch (err) {
       setError(err?.message || "Submit failed");
     } finally {
@@ -221,7 +252,6 @@ export default function App({ selectedDay = new Date().toISOString().slice(0, 10
       color: "#ffd0d7",
       whiteSpace: "pre-wrap",
     },
-    hint: { marginTop: 10, fontSize: 12, opacity: 0.7 },
 
     // Chat styling
     chatWrap: {
@@ -276,11 +306,7 @@ export default function App({ selectedDay = new Date().toISOString().slice(0, 10
     sectionTitle: { fontWeight: 800, marginTop: 8, marginBottom: 4 },
     ul: { margin: 0, paddingLeft: 18, opacity: 0.95 },
     smallMeta: { fontSize: 11, opacity: 0.6, marginTop: 6 },
-    thinking: {
-      fontStyle: "italic",
-      opacity: 0.8,
-      marginTop: 6,
-    },
+    thinking: { fontStyle: "italic", opacity: 0.8, marginTop: 6 },
   };
 
   return (
@@ -320,8 +346,8 @@ export default function App({ selectedDay = new Date().toISOString().slice(0, 10
                   type="button"
                   aria-label="Remove screenshot"
                   title="Remove"
-                  onClick={(e) => { 
-                    e.stopPropagation(); 
+                  onClick={(e) => {
+                    e.stopPropagation();
                     onChange("file", null);
                     if (userPreviewUrl) URL.revokeObjectURL(userPreviewUrl);
                     setUserPreviewUrl(null);
@@ -358,39 +384,72 @@ export default function App({ selectedDay = new Date().toISOString().slice(0, 10
           </button>
         </form>
 
-        {error && (
-          <div style={styles.error}>
-            Error: {error}
-            {!WEBHOOK_URL && (
-              <div style={styles.hint}>
-                Tip: define VITE_N8N_TRADE_FEEDBACK_WEBHOOK in .env.local and in your deploy env.
-              </div>
-            )}
-          </div>
-        )}
+        {error && <div style={styles.error}>Error: {error}</div>}
 
-        {/* ✅ ChatGPT-style feedback below form */}
-        {(aiThinking || result) && (
-          <ChatFeedback
-            data={result}
-            userNotes={form.strategyNotes}
-            userPreviewUrl={userPreviewUrl}
-            aiThinking={aiThinking}
-            styles={styles}
-          />
+        {/* ✅ Render full chat log */}
+        {(messages.length > 0 || aiThinking) && (
+          <ChatLog messages={messages} aiThinking={aiThinking} styles={styles} />
         )}
       </div>
     </div>
   );
 }
 
-/* ---------------- CHAT FEEDBACK UI ---------------- */
+/* ---------------- CHAT LOG UI ---------------- */
 
-function ChatFeedback({ data, userNotes, userPreviewUrl, aiThinking, styles }) {
-  const analysis = data?.analysis ?? data ?? {};
-  const screenshotUrl = data?.screenshotUrl;
-  const timestamp = data?.timestamp;
+function ChatLog({ messages, aiThinking, styles }) {
+  return (
+    <div style={styles.chatWrap}>
+      {messages.map((m) =>
+        m.role === "user" ? (
+          <div key={m.id} style={styles.bubbleRow}>
+            <div style={styles.bubbleUser}>
+              <div style={{ fontWeight: 800, marginBottom: 6 }}>You</div>
 
+              {m.previewUrl && (
+                <img
+                  src={m.previewUrl}
+                  alt="uploaded trade"
+                  style={{
+                    width: "100%",
+                    maxWidth: 320,
+                    borderRadius: 10,
+                    border: "1px solid #243043",
+                    marginBottom: 8,
+                  }}
+                />
+              )}
+
+              <div>{m.notes}</div>
+              {m.timestamp && (
+                <div style={styles.smallMeta}>
+                  {new Date(m.timestamp).toLocaleString()}
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          <AiBubble key={m.id} m={m} styles={styles} />
+        )
+      )}
+
+      {/* live thinking bubble at the end */}
+      {aiThinking && (
+        <div style={styles.bubbleRow}>
+          <div style={styles.bubbleAI}>
+            <div style={styles.bubbleHeader}>
+              <span>Trade Coach AI</span>
+            </div>
+            <div style={styles.thinking}>Analyzing trade…</div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AiBubble({ m, styles }) {
+  const a = m.analysis || {};
   const {
     grade,
     oneLineVerdict,
@@ -399,96 +458,64 @@ function ChatFeedback({ data, userNotes, userPreviewUrl, aiThinking, styles }) {
     improvements = [],
     lessonLearned,
     confidence,
-  } = analysis;
+  } = a;
 
   return (
-    <div style={styles.chatWrap}>
-      {/* USER MESSAGE */}
-      <div style={styles.bubbleRow}>
-        <div style={styles.bubbleUser}>
-          <div style={{ fontWeight: 800, marginBottom: 6 }}>You</div>
-
-          {/* ✅ Prefer local preview so it always shows */}
-          {(userPreviewUrl || screenshotUrl) && (
-            <img
-              src={userPreviewUrl || screenshotUrl}
-              alt="uploaded trade"
-              style={{
-                width: "100%",
-                maxWidth: 320,
-                borderRadius: 10,
-                border: "1px solid #243043",
-                marginBottom: 8,
-              }}
-            />
+    <div style={styles.bubbleRow}>
+      <div style={styles.bubbleAI}>
+        <div style={styles.bubbleHeader}>
+          <span>Trade Coach AI</span>
+          {grade && <span style={styles.gradePill}>{grade}</span>}
+          {typeof confidence === "number" && (
+            <span style={{ fontSize: 12, opacity: 0.7 }}>
+              ({Math.round(confidence * 100)}% confident)
+            </span>
           )}
-
-          <div>{userNotes}</div>
         </div>
-      </div>
 
-      {/* AI MESSAGE */}
-      <div style={styles.bubbleRow}>
-        <div style={styles.bubbleAI}>
-          <div style={styles.bubbleHeader}>
-            <span>Trade Coach AI</span>
-            {grade && <span style={styles.gradePill}>{grade}</span>}
-            {typeof confidence === "number" && (
-              <span style={{ fontSize: 12, opacity: 0.7 }}>
-                ({Math.round(confidence * 100)}% confident)
-              </span>
-            )}
+        {oneLineVerdict && <div style={{ opacity: 0.95 }}>{oneLineVerdict}</div>}
+
+        {whatWentRight.length > 0 && (
+          <>
+            <div style={styles.sectionTitle}>What went right</div>
+            <ul style={styles.ul}>
+              {whatWentRight.map((x, i) => <li key={i}>{x}</li>)}
+            </ul>
+          </>
+        )}
+
+        {whatWentWrong.length > 0 && (
+          <>
+            <div style={styles.sectionTitle}>What went wrong</div>
+            <ul style={styles.ul}>
+              {whatWentWrong.map((x, i) => <li key={i}>{x}</li>)}
+            </ul>
+          </>
+        )}
+
+        {improvements.length > 0 && (
+          <>
+            <div style={styles.sectionTitle}>Improvements</div>
+            <ul style={styles.ul}>
+              {improvements.map((x, i) => <li key={i}>{x}</li>)}
+            </ul>
+          </>
+        )}
+
+        {lessonLearned && (
+          <>
+            <div style={styles.sectionTitle}>Lesson learned</div>
+            <div style={{ opacity: 0.95 }}>{lessonLearned}</div>
+          </>
+        )}
+
+        {m.timestamp && (
+          <div style={styles.smallMeta}>
+            {new Date(m.timestamp).toLocaleString()}
           </div>
-
-          {aiThinking && !data && (
-            <div style={styles.thinking}>Analyzing trade…</div>
-          )}
-
-          {!aiThinking && oneLineVerdict && (
-            <div style={{ opacity: 0.95 }}>{oneLineVerdict}</div>
-          )}
-
-          {!aiThinking && whatWentRight.length > 0 && (
-            <>
-              <div style={styles.sectionTitle}>What went right</div>
-              <ul style={styles.ul}>
-                {whatWentRight.map((x, i) => <li key={i}>{x}</li>)}
-              </ul>
-            </>
-          )}
-
-          {!aiThinking && whatWentWrong.length > 0 && (
-            <>
-              <div style={styles.sectionTitle}>What went wrong</div>
-              <ul style={styles.ul}>
-                {whatWentWrong.map((x, i) => <li key={i}>{x}</li>)}
-              </ul>
-            </>
-          )}
-
-          {!aiThinking && improvements.length > 0 && (
-            <>
-              <div style={styles.sectionTitle}>Improvements</div>
-              <ul style={styles.ul}>
-                {improvements.map((x, i) => <li key={i}>{x}</li>)}
-              </ul>
-            </>
-          )}
-
-          {!aiThinking && lessonLearned && (
-            <>
-              <div style={styles.sectionTitle}>Lesson learned</div>
-              <div style={{ opacity: 0.95 }}>{lessonLearned}</div>
-            </>
-          )}
-
-          {!aiThinking && timestamp && (
-            <div style={styles.smallMeta}>
-              {new Date(timestamp).toLocaleString()}
-            </div>
-          )}
-        </div>
+        )}
       </div>
     </div>
   );
 }
+
