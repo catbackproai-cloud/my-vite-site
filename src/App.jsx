@@ -13,81 +13,69 @@ export default function App({ selectedDay = new Date().toISOString().slice(0, 10
   const [submitting, setSubmitting] = useState(false);
   const [aiThinking, setAiThinking] = useState(false);
   const [error, setError] = useState("");
+
+  // last response (still saved per-day)
+  const [result, setResult] = useState(null);
+
+  // ✅ chat logs per-day
+  const [chatLogs, setChatLogs] = useState([]);
+
+  // ✅ pending user bubble while AI thinks
+  const [pendingUser, setPendingUser] = useState(null);
+
   const [dragActive, setDragActive] = useState(false);
-
-  // ✅ NEW: chat log per-day
-  const [messages, setMessages] = useState([]);
-
-  // ✅ NEW: local preview URL for the current upload
-  const [userPreviewUrl, setUserPreviewUrl] = useState(null);
-
   const fileInputRef = useRef(null);
 
-  // Load saved chat for the selected day
+  /* ---------------- LOAD SAVED PER DAY ---------------- */
+
   useEffect(() => {
+    // load last result
     try {
-      const key = `tradeChat:${selectedDay}`;
+      const key = `tradeFeedback:${selectedDay}`;
       const saved = localStorage.getItem(key);
-      setMessages(saved ? JSON.parse(saved) : []);
-
-      // reset input on day change
-      setForm((prev) => ({ ...prev, file: null }));
-      setUserPreviewUrl(null);
-      setError("");
-      setAiThinking(false);
-      setSubmitting(false);
+      setResult(saved ? JSON.parse(saved) : null);
     } catch {
-      setMessages([]);
+      setResult(null);
     }
-  }, [selectedDay]);
 
-  // cleanup preview blob url
-  useEffect(() => {
-    return () => {
-      if (userPreviewUrl) URL.revokeObjectURL(userPreviewUrl);
-    };
-  }, [userPreviewUrl]);
+    // load chat log
+    try {
+      const chatKey = `tradeChat:${selectedDay}`;
+      const savedChat = localStorage.getItem(chatKey);
+      setChatLogs(savedChat ? JSON.parse(savedChat) : []);
+    } catch {
+      setChatLogs([]);
+    }
+
+    // always reset file when day changes
+    setForm((prev) => ({ ...prev, file: null }));
+    setPendingUser(null);
+    setAiThinking(false);
+    setError("");
+  }, [selectedDay]);
 
   const isValid = useMemo(() => !!form.strategyNotes && !!form.file, [form]);
   const onChange = (k, v) => setForm((prev) => ({ ...prev, [k]: v }));
 
-  function persistMessages(nextMsgs) {
-    try {
-      const key = `tradeChat:${selectedDay}`;
-      localStorage.setItem(key, JSON.stringify(nextMsgs));
-      localStorage.setItem("lastTradeChat", JSON.stringify(nextMsgs));
-    } catch {
-      /* ignore storage errors */
-    }
-  }
+  /* ---------------- SUBMIT ---------------- */
 
   async function handleSubmit(e) {
     e.preventDefault();
     setError("");
     setSubmitting(true);
     setAiThinking(true);
+    setResult(null);
 
-    // ✅ set local preview immediately
+    // create a local preview bubble while waiting
     let previewUrl = null;
     if (form.file) {
       previewUrl = URL.createObjectURL(form.file);
-      if (userPreviewUrl) URL.revokeObjectURL(userPreviewUrl);
-      setUserPreviewUrl(previewUrl);
     }
-
-    // ✅ append USER message first (so it shows instantly)
-    const userMsg = {
-      id: `u-${Date.now()}`,
+    setPendingUser({
       role: "user",
       notes: form.strategyNotes,
-      previewUrl,
-      timestamp: new Date().toISOString(),
-    };
-
-    setMessages((prev) => {
-      const next = [...prev, userMsg];
-      persistMessages(next);
-      return next;
+      screenshotUrl: previewUrl,
+      createdAt: new Date().toISOString(),
     });
 
     try {
@@ -98,9 +86,12 @@ export default function App({ selectedDay = new Date().toISOString().slice(0, 10
       fd.append("strategyNotes", form.strategyNotes);
       if (form.file) fd.append("screenshot", form.file);
 
-      const res = await fetch(WEBHOOK_URL, { method: "POST", body: fd });
-      const text = await res.text();
+      const res = await fetch(WEBHOOK_URL, {
+        method: "POST",
+        body: fd,
+      });
 
+      const text = await res.text();
       let data = null;
       try {
         data = text ? JSON.parse(text) : null;
@@ -112,34 +103,61 @@ export default function App({ selectedDay = new Date().toISOString().slice(0, 10
         throw new Error(data?.message || data?.error || `Server responded ${res.status}`);
       }
 
-      // ✅ append AI message after response
-      const aiMsg = {
-        id: `a-${Date.now()}`,
-        role: "ai",
-        analysis: data?.analysis ?? data ?? {},
-        screenshotUrl: data?.screenshotUrl,
-        timestamp: data?.timestamp || new Date().toISOString(),
+      setResult(data);
+
+      // ✅ build final chat pair using DRIVE screenshot URL from webhook
+      const analysis = data?.analysis ?? data ?? {};
+      const driveScreenshotUrl = data?.screenshotUrl || data?.screenshotURL || null;
+
+      const userMsg = {
+        role: "user",
+        notes: form.strategyNotes,
+        screenshotUrl: driveScreenshotUrl, // <-- persistent
+        createdAt: new Date().toISOString(),
       };
 
-      setMessages((prev) => {
-        const next = [...prev, aiMsg];
-        persistMessages(next);
-        localStorage.setItem("lastTradeFeedback", JSON.stringify(data));
-        return next;
-      });
+      const aiMsg = {
+        role: "ai",
+        analysis,
+        createdAt: new Date().toISOString(),
+      };
 
-      // optional: clear input after submit
-      setForm({ strategyNotes: "", file: null });
-      setUserPreviewUrl(null);
+      const updatedLogs = [...chatLogs, userMsg, aiMsg];
+      setChatLogs(updatedLogs);
+
+      // persist chat for that day
+      try {
+        const chatKey = `tradeChat:${selectedDay}`;
+        localStorage.setItem(chatKey, JSON.stringify(updatedLogs));
+      } catch {
+        /* ignore storage errors */
+      }
+
+      // persist last result for that day (your old behavior)
+      try {
+        const key = `tradeFeedback:${selectedDay}`;
+        localStorage.setItem(key, JSON.stringify(data));
+        localStorage.setItem("lastTradeFeedback", JSON.stringify(data));
+      } catch {
+        /* ignore storage errors */
+      }
+
+      // clear pending bubble + keep form text but remove file
+      setPendingUser(null);
+      setForm((prev) => ({ ...prev, file: null }));
     } catch (err) {
       setError(err?.message || "Submit failed");
+      setPendingUser(null);
     } finally {
       setSubmitting(false);
       setAiThinking(false);
+      // cleanup blob URL if used
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
     }
   }
 
-  // Drag & drop
+  /* ---------------- DRAG & DROP ---------------- */
+
   function preventDefaults(e) {
     e.preventDefault();
     e.stopPropagation();
@@ -149,6 +167,8 @@ export default function App({ selectedDay = new Date().toISOString().slice(0, 10
     const file = e.dataTransfer?.files?.[0];
     if (file && file.type.startsWith("image/")) onChange("file", file);
   }
+
+  /* ---------------- STYLES ---------------- */
 
   const styles = {
     page: {
@@ -306,7 +326,7 @@ export default function App({ selectedDay = new Date().toISOString().slice(0, 10
     sectionTitle: { fontWeight: 800, marginTop: 8, marginBottom: 4 },
     ul: { margin: 0, paddingLeft: 18, opacity: 0.95 },
     smallMeta: { fontSize: 11, opacity: 0.6, marginTop: 6 },
-    thinking: { fontStyle: "italic", opacity: 0.8, marginTop: 6 },
+    thinking: { opacity: 0.8, fontStyle: "italic" },
   };
 
   return (
@@ -346,12 +366,7 @@ export default function App({ selectedDay = new Date().toISOString().slice(0, 10
                   type="button"
                   aria-label="Remove screenshot"
                   title="Remove"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onChange("file", null);
-                    if (userPreviewUrl) URL.revokeObjectURL(userPreviewUrl);
-                    setUserPreviewUrl(null);
-                  }}
+                  onClick={(e) => { e.stopPropagation(); onChange("file", null); }}
                   style={styles.closeBtn}
                 >
                   ×
@@ -386,60 +401,99 @@ export default function App({ selectedDay = new Date().toISOString().slice(0, 10
 
         {error && <div style={styles.error}>Error: {error}</div>}
 
-        {/* ✅ Render full chat log */}
-        {(messages.length > 0 || aiThinking) && (
-          <ChatLog messages={messages} aiThinking={aiThinking} styles={styles} />
+        {/* ✅ ChatGPT-style feedback below form, WITH HISTORY + RELOAD SUPPORT */}
+        {(chatLogs.length > 0 || pendingUser || aiThinking) && (
+          <ChatThread
+            chatLogs={chatLogs}
+            pendingUser={pendingUser}
+            aiThinking={aiThinking}
+            styles={styles}
+          />
         )}
       </div>
     </div>
   );
 }
 
-/* ---------------- CHAT LOG UI ---------------- */
+/* ---------------- CHAT THREAD UI ---------------- */
 
-function ChatLog({ messages, aiThinking, styles }) {
+function ChatThread({ chatLogs, pendingUser, aiThinking, styles }) {
   return (
     <div style={styles.chatWrap}>
-      {messages.map((m) =>
-        m.role === "user" ? (
-          <div key={m.id} style={styles.bubbleRow}>
-            <div style={styles.bubbleUser}>
-              <div style={{ fontWeight: 800, marginBottom: 6 }}>You</div>
+      {chatLogs.map((msg, idx) => {
+        if (msg.role === "user") {
+          return (
+            <div key={idx} style={styles.bubbleRow}>
+              <div style={styles.bubbleUser}>
+                <div style={{ fontWeight: 800, marginBottom: 6 }}>You</div>
 
-              {m.previewUrl && (
-                <img
-                  src={m.previewUrl}
-                  alt="uploaded trade"
-                  style={{
-                    width: "100%",
-                    maxWidth: 320,
-                    borderRadius: 10,
-                    border: "1px solid #243043",
-                    marginBottom: 8,
-                  }}
-                />
-              )}
+                {msg.screenshotUrl && (
+                  <img
+                    src={msg.screenshotUrl}
+                    alt="uploaded trade"
+                    style={{
+                      width: "100%",
+                      maxWidth: 320,
+                      borderRadius: 10,
+                      border: "1px solid #243043",
+                      marginBottom: 8,
+                      display: "block",
+                    }}
+                  />
+                )}
 
-              <div>{m.notes}</div>
-              {m.timestamp && (
-                <div style={styles.smallMeta}>
-                  {new Date(m.timestamp).toLocaleString()}
-                </div>
-              )}
+                <div>{msg.notes}</div>
+
+                {msg.createdAt && (
+                  <div style={styles.smallMeta}>
+                    {new Date(msg.createdAt).toLocaleString()}
+                  </div>
+                )}
+              </div>
             </div>
+          );
+        }
+
+        // AI
+        return (
+          <div key={idx} style={styles.bubbleRow}>
+            <AIBubble analysis={msg.analysis} createdAt={msg.createdAt} styles={styles} />
           </div>
-        ) : (
-          <AiBubble key={m.id} m={m} styles={styles} />
-        )
+        );
+      })}
+
+      {/* PENDING USER MESSAGE */}
+      {pendingUser && (
+        <div style={styles.bubbleRow}>
+          <div style={styles.bubbleUser}>
+            <div style={{ fontWeight: 800, marginBottom: 6 }}>You</div>
+
+            {pendingUser.screenshotUrl && (
+              <img
+                src={pendingUser.screenshotUrl}
+                alt="uploading trade"
+                style={{
+                  width: "100%",
+                  maxWidth: 320,
+                  borderRadius: 10,
+                  border: "1px solid #243043",
+                  marginBottom: 8,
+                  display: "block",
+                }}
+              />
+            )}
+
+            <div>{pendingUser.notes}</div>
+            <div style={styles.smallMeta}>Uploading…</div>
+          </div>
+        </div>
       )}
 
-      {/* live thinking bubble at the end */}
+      {/* AI THINKING */}
       {aiThinking && (
         <div style={styles.bubbleRow}>
           <div style={styles.bubbleAI}>
-            <div style={styles.bubbleHeader}>
-              <span>Trade Coach AI</span>
-            </div>
+            <div style={styles.bubbleHeader}>Trade Coach AI</div>
             <div style={styles.thinking}>Analyzing trade…</div>
           </div>
         </div>
@@ -448,8 +502,7 @@ function ChatLog({ messages, aiThinking, styles }) {
   );
 }
 
-function AiBubble({ m, styles }) {
-  const a = m.analysis || {};
+function AIBubble({ analysis = {}, createdAt, styles }) {
   const {
     grade,
     oneLineVerdict,
@@ -458,64 +511,61 @@ function AiBubble({ m, styles }) {
     improvements = [],
     lessonLearned,
     confidence,
-  } = a;
+  } = analysis;
 
   return (
-    <div style={styles.bubbleRow}>
-      <div style={styles.bubbleAI}>
-        <div style={styles.bubbleHeader}>
-          <span>Trade Coach AI</span>
-          {grade && <span style={styles.gradePill}>{grade}</span>}
-          {typeof confidence === "number" && (
-            <span style={{ fontSize: 12, opacity: 0.7 }}>
-              ({Math.round(confidence * 100)}% confident)
-            </span>
-          )}
-        </div>
-
-        {oneLineVerdict && <div style={{ opacity: 0.95 }}>{oneLineVerdict}</div>}
-
-        {whatWentRight.length > 0 && (
-          <>
-            <div style={styles.sectionTitle}>What went right</div>
-            <ul style={styles.ul}>
-              {whatWentRight.map((x, i) => <li key={i}>{x}</li>)}
-            </ul>
-          </>
-        )}
-
-        {whatWentWrong.length > 0 && (
-          <>
-            <div style={styles.sectionTitle}>What went wrong</div>
-            <ul style={styles.ul}>
-              {whatWentWrong.map((x, i) => <li key={i}>{x}</li>)}
-            </ul>
-          </>
-        )}
-
-        {improvements.length > 0 && (
-          <>
-            <div style={styles.sectionTitle}>Improvements</div>
-            <ul style={styles.ul}>
-              {improvements.map((x, i) => <li key={i}>{x}</li>)}
-            </ul>
-          </>
-        )}
-
-        {lessonLearned && (
-          <>
-            <div style={styles.sectionTitle}>Lesson learned</div>
-            <div style={{ opacity: 0.95 }}>{lessonLearned}</div>
-          </>
-        )}
-
-        {m.timestamp && (
-          <div style={styles.smallMeta}>
-            {new Date(m.timestamp).toLocaleString()}
-          </div>
+    <div style={styles.bubbleAI}>
+      <div style={styles.bubbleHeader}>
+        <span>Trade Coach AI</span>
+        {grade && <span style={styles.gradePill}>{grade}</span>}
+        {typeof confidence === "number" && (
+          <span style={{ fontSize: 12, opacity: 0.7 }}>
+            ({Math.round(confidence * 100)}% confident)
+          </span>
         )}
       </div>
+
+      {oneLineVerdict && <div style={{ opacity: 0.95 }}>{oneLineVerdict}</div>}
+
+      {whatWentRight.length > 0 && (
+        <>
+          <div style={styles.sectionTitle}>What went right</div>
+          <ul style={styles.ul}>
+            {whatWentRight.map((x, i) => <li key={i}>{x}</li>)}
+          </ul>
+        </>
+      )}
+
+      {whatWentWrong.length > 0 && (
+        <>
+          <div style={styles.sectionTitle}>What went wrong</div>
+          <ul style={styles.ul}>
+            {whatWentWrong.map((x, i) => <li key={i}>{x}</li>)}
+          </ul>
+        </>
+      )}
+
+      {improvements.length > 0 && (
+        <>
+          <div style={styles.sectionTitle}>Improvements</div>
+          <ul style={styles.ul}>
+            {improvements.map((x, i) => <li key={i}>{x}</li>)}
+          </ul>
+        </>
+      )}
+
+      {lessonLearned && (
+        <>
+          <div style={styles.sectionTitle}>Lesson learned</div>
+          <div style={{ opacity: 0.95 }}>{lessonLearned}</div>
+        </>
+      )}
+
+      {createdAt && (
+        <div style={styles.smallMeta}>
+          {new Date(createdAt).toLocaleString()}
+        </div>
+      )}
     </div>
   );
 }
-
