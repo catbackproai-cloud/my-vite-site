@@ -1,31 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
-// Single source of truth for prod:
-const WEBHOOK_URL = "https://jacobtf007.app.n8n.cloud/webhook/trade_feedback";
-
-
-/**
- * Trading Coach (MVP) — Minimal Input + Centered Layout + Per-Day Save
- * - Big centered screenshot drop area (drag/drop or click)
- * - Thought process textarea below
- * - Saves & loads per day via localStorage using key: tradeFeedback:YYYY-MM-DD
- *
- * Production webhook (hard-coded, with env fallback):
- *   https://jacobtf007.app.n8n.cloud/webhook/trade_feedback
- *
- * If you also set .env:
- *   VITE_N8N_TRADE_FEEDBACK_WEBHOOK=https://jacobtf007.app.n8n.cloud/webhook/trade_feedback
- */
-
-// ✅ Put the production URL here. If you later set the env var, it will override.
+// ✅ Single source of truth for prod:
 const PROD_WEBHOOK = "https://jacobtf007.app.n8n.cloud/webhook/trade_feedback";
 
+// ✅ Env override if you ever want it later:
+const WEBHOOK_URL =
   (import.meta?.env && import.meta.env.VITE_N8N_TRADE_FEEDBACK_WEBHOOK) ||
   PROD_WEBHOOK;
 
 export default function App({ selectedDay = new Date().toISOString().slice(0, 10) }) {
   const [form, setForm] = useState({ strategyNotes: "", file: null });
   const [submitting, setSubmitting] = useState(false);
+  const [aiThinking, setAiThinking] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
   const [dragActive, setDragActive] = useState(false);
@@ -51,39 +37,38 @@ export default function App({ selectedDay = new Date().toISOString().slice(0, 10
     e.preventDefault();
     setError("");
     setSubmitting(true);
+    setAiThinking(true);
     setResult(null);
 
     try {
       if (!WEBHOOK_URL) throw new Error("No webhook URL configured.");
 
-      // Build multipart/form-data
       const fd = new FormData();
       fd.append("day", selectedDay);
       fd.append("strategyNotes", form.strategyNotes);
       if (form.file) fd.append("screenshot", form.file); // must be 'screenshot'
 
       console.log("[Trade Coach] POSTing to", WEBHOOK_URL);
-const res = await fetch(WEBHOOK_URL, {
-  method: "POST",
-  body: fd,
-});
+      const res = await fetch(WEBHOOK_URL, {
+        method: "POST",
+        body: fd,
+      });
 
-// read as text first for better Safari errors
-const text = await res.text();
-console.log("[Trade Coach] status", res.status, "body:", text?.slice(0, 200));
+      const text = await res.text();
+      console.log("[Trade Coach] status", res.status, "body:", text?.slice(0, 200));
 
-let data = null;
-try {
-  data = text ? JSON.parse(text) : null;
-} catch {
-  throw new Error(`Non-JSON response (${res.status}): ${text?.slice(0, 200)}`);
-}
+      let data = null;
+      try {
+        data = text ? JSON.parse(text) : null;
+      } catch {
+        throw new Error(`Non-JSON response (${res.status}): ${text?.slice(0, 200)}`);
+      }
 
-if (!res.ok) {
-  throw new Error(data?.message || data?.error || `Server responded ${res.status}`);
-}
+      if (!res.ok) {
+        throw new Error(data?.message || data?.error || `Server responded ${res.status}`);
+      }
 
-setResult(data);
+      setResult(data);
 
       // Persist the day’s result
       try {
@@ -97,6 +82,7 @@ setResult(data);
       setError(err?.message || "Submit failed");
     } finally {
       setSubmitting(false);
+      setAiThinking(false);
     }
   }
 
@@ -214,6 +200,60 @@ setResult(data);
       whiteSpace: "pre-wrap",
     },
     hint: { marginTop: 10, fontSize: 12, opacity: 0.7 },
+
+    // Chat styling
+    chatWrap: {
+      marginTop: 18,
+      background: "#0d121a",
+      border: "1px solid #243043",
+      borderRadius: 14,
+      padding: 14,
+      display: "grid",
+      gap: 10,
+    },
+    bubbleRow: {
+      display: "flex",
+      gap: 10,
+      alignItems: "flex-start",
+    },
+    bubbleUser: {
+      marginLeft: "auto",
+      background: "#1a2432",
+      border: "1px solid #243043",
+      color: "#e7ecf2",
+      padding: "10px 12px",
+      borderRadius: "14px 14px 2px 14px",
+      maxWidth: "80%",
+      whiteSpace: "pre-wrap",
+    },
+    bubbleAI: {
+      marginRight: "auto",
+      background: "#111820",
+      border: "1px solid #243043",
+      color: "#e7ecf2",
+      padding: "10px 12px",
+      borderRadius: "14px 14px 14px 2px",
+      maxWidth: "80%",
+      whiteSpace: "pre-wrap",
+    },
+    bubbleHeader: {
+      fontWeight: 800,
+      marginBottom: 6,
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
+    },
+    gradePill: {
+      fontSize: 16,
+      fontWeight: 900,
+      padding: "2px 8px",
+      borderRadius: 8,
+      background: "#1b9aaa22",
+      border: "1px solid #1b9aaa55",
+    },
+    sectionTitle: { fontWeight: 800, marginTop: 8, marginBottom: 4 },
+    ul: { margin: 0, paddingLeft: 18, opacity: 0.95 },
+    smallMeta: { fontSize: 11, opacity: 0.6, marginTop: 6 },
   };
 
   return (
@@ -297,52 +337,156 @@ setResult(data);
           </div>
         )}
 
-        {result && <FeedbackCard data={result} />}
+        {/* ✅ ChatGPT-style feedback below form */}
+        {aiThinking && (
+          <AIThinkingBubble styles={styles} />
+        )}
+
+        {result && !aiThinking && (
+          <ChatFeedback
+            data={result}
+            userNotes={form.strategyNotes}
+            styles={styles}
+          />
+        )}
       </div>
     </div>
   );
 }
 
-function FeedbackCard({ data }) {
-  const { id, timestamp, screenshotUrl, grade, feedback, inferred } = data || {};
-  const lineTop = [inferred?.market, inferred?.direction, inferred?.timeframe].filter(Boolean).join(" · ");
+/* ---------------- CHAT FEEDBACK UI ---------------- */
 
-  const card = {
-    background: "#121821",
-    borderRadius: 16,
-    boxShadow: "0 8px 30px rgba(0,0,0,.35)",
-    padding: 16,
-    marginTop: 20,
-  };
+function ChatFeedback({ data, userNotes, styles }) {
+  // Your webhook now returns { analysis: {...} }
+  const analysis = data?.analysis ?? data ?? {};
+  const screenshotUrl = data?.screenshotUrl;
+  const timestamp = data?.timestamp;
+
+  const {
+    grade,
+    oneLineVerdict,
+    whatWentRight = [],
+    whatWentWrong = [],
+    improvements = [],
+    lessonLearned,
+    confidence,
+  } = analysis;
 
   return (
-    <div style={card}>
-      <div style={{ display: "grid", gap: 16, gridTemplateColumns: "1fr", alignItems: "start" }}>
-        {screenshotUrl && (
-          <img
-            src={screenshotUrl}
-            alt="trade"
-            style={{ width: "100%", maxWidth: 420, borderRadius: 12, border: "1px solid #243043", justifySelf: "center" }}
-          />
-        )}
+    <div style={styles.chatWrap}>
+      {/* USER MESSAGE */}
+      <div style={styles.bubbleRow}>
+        <div style={styles.bubbleUser}>
+          <div style={{ fontWeight: 800, marginBottom: 6 }}>You</div>
 
-        <div>
-          <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}>
-            <div>
-              <div style={{ fontWeight: 800 }}>{lineTop || "Inferred details shown after uploading"}</div>
-              <div style={{ fontSize: 12, opacity: 0.7 }}>
-                {(inferred?.session ? inferred.session + " · " : "")}
-                {timestamp ? new Date(timestamp).toLocaleString() : ""}
-              </div>
-            </div>
-            <div style={{ fontSize: 28, fontWeight: 900, lineHeight: 1, padding: "6px 12px", borderRadius: 12, border: "1px solid #243043" }}>
-              {grade ?? "—"}
-            </div>
+          {screenshotUrl && (
+            <img
+              src={screenshotUrl}
+              alt="uploaded trade"
+              style={{
+                width: "100%",
+                maxWidth: 320,
+                borderRadius: 10,
+                border: "1px solid #243043",
+                marginBottom: 8,
+              }}
+            />
+          )}
+
+          <div>{userNotes}</div>
+        </div>
+      </div>
+
+      {/* AI MESSAGE */}
+      <div style={styles.bubbleRow}>
+        <div style={styles.bubbleAI}>
+          <div style={styles.bubbleHeader}>
+            <span>Trade Coach AI</span>
+            {grade && <span style={styles.gradePill}>{grade}</span>}
+            {typeof confidence === "number" && (
+              <span style={{ fontSize: 12, opacity: 0.7 }}>
+                ({Math.round(confidence * 100)}% confident)
+              </span>
+            )}
           </div>
 
-          {feedback?.verdict && <p style={{ marginTop: 12, opacity: 0.9 }}>{feedback.verdict}</p>}
+          {oneLineVerdict && <div style={{ opacity: 0.95 }}>{oneLineVerdict}</div>}
+
+          {whatWentRight.length > 0 && (
+            <>
+              <div style={styles.sectionTitle}>What went right</div>
+              <ul style={styles.ul}>
+                {whatWentRight.map((x, i) => <li key={i}>{x}</li>)}
+              </ul>
+            </>
+          )}
+
+          {whatWentWrong.length > 0 && (
+            <>
+              <div style={styles.sectionTitle}>What went wrong</div>
+              <ul style={styles.ul}>
+                {whatWentWrong.map((x, i) => <li key={i}>{x}</li>)}
+              </ul>
+            </>
+          )}
+
+          {improvements.length > 0 && (
+            <>
+              <div style={styles.sectionTitle}>Improvements</div>
+              <ul style={styles.ul}>
+                {improvements.map((x, i) => <li key={i}>{x}</li>)}
+              </ul>
+            </>
+          )}
+
+          {lessonLearned && (
+            <>
+              <div style={styles.sectionTitle}>Lesson learned</div>
+              <div style={{ opacity: 0.95 }}>{lessonLearned}</div>
+            </>
+          )}
+
+          {timestamp && (
+            <div style={styles.smallMeta}>
+              {new Date(timestamp).toLocaleString()}
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
+}
+
+/* ---------------- THINKING BUBBLE ---------------- */
+
+function AIThinkingBubble({ styles }) {
+  const dots = useDotsAnimation();
+
+  return (
+    <div style={styles.chatWrap}>
+      <div style={styles.bubbleRow}>
+        <div style={styles.bubbleAI}>
+          <div style={{ fontWeight: 800, marginBottom: 6 }}>
+            Trade Coach AI
+          </div>
+          <div style={{ opacity: 0.85 }}>
+            Analyzing trade{dots}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function useDotsAnimation() {
+  const [dots, setDots] = useState("");
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setDots((prev) => (prev === "..." ? "" : prev + "."));
+    }, 450);
+    return () => clearInterval(interval);
+  }, []);
+
+  return dots;
 }
