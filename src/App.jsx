@@ -118,7 +118,7 @@ export default function App({
         // show local preview immediately, replaced later with Drive URL
         screenshotUrl: null,
         localPreviewUrl,
-        localDataUrl, // ✅ NEW: persistent fallback
+        localDataUrl, // ✅ persistent fallback
         pending: true,
         analysis: null,
       };
@@ -166,6 +166,7 @@ export default function App({
           if (c.id !== tempId) return c;
 
           // Revoke local object URL once replaced (prevent memory leak)
+          // We still keep localDataUrl for fallback forever.
           if (c.localPreviewUrl) {
             try {
               URL.revokeObjectURL(c.localPreviewUrl);
@@ -175,10 +176,9 @@ export default function App({
           return {
             ...c,
             pending: false,
-            screenshotUrl: normalizeDriveUrl(data?.screenshotUrl) || null, // ✅ normalize
+            screenshotUrl: normalizeDriveUrl(data?.screenshotUrl) || null,
             analysis: data?.analysis || data || null,
             serverTimestamp: data?.timestamp || null,
-            // keep localDataUrl forever as fallback
           };
         })
       );
@@ -511,10 +511,39 @@ function ChatTurn({ chat, styles }) {
     confidence,
   } = analysis;
 
-  const userImgSrc =
-    normalizeDriveUrl(chat.screenshotUrl) || // ✅ first choice
-    chat.localDataUrl || // ✅ survives reload forever
-    chat.localPreviewUrl; // last resort for same-session
+  // ✅ START with Drive URL if present, but FALL BACK if it fails to load.
+  const initialImg =
+    normalizeDriveUrl(chat.screenshotUrl) ||
+    chat.localDataUrl ||
+    chat.localPreviewUrl ||
+    null;
+
+  const [imgSrc, setImgSrc] = useState(initialImg);
+
+  // If chat changes (new response), reset image src to latest best option
+  useEffect(() => {
+    const next =
+      normalizeDriveUrl(chat.screenshotUrl) ||
+      chat.localDataUrl ||
+      chat.localPreviewUrl ||
+      null;
+    setImgSrc(next);
+  }, [chat.screenshotUrl, chat.localDataUrl, chat.localPreviewUrl]);
+
+  function handleImgError() {
+    // If Drive fails, force fallback to localDataUrl (always works)
+    if (chat.localDataUrl && imgSrc !== chat.localDataUrl) {
+      setImgSrc(chat.localDataUrl);
+      return;
+    }
+    // If no dataUrl, fall back to previewUrl (same session only)
+    if (chat.localPreviewUrl && imgSrc !== chat.localPreviewUrl) {
+      setImgSrc(chat.localPreviewUrl);
+      return;
+    }
+    // Otherwise clear to avoid broken icon
+    setImgSrc(null);
+  }
 
   return (
     <>
@@ -523,9 +552,10 @@ function ChatTurn({ chat, styles }) {
         <div style={styles.bubbleUser}>
           <div style={{ fontWeight: 800, marginBottom: 6 }}>You</div>
 
-          {userImgSrc && (
+          {imgSrc && (
             <img
-              src={userImgSrc}
+              src={imgSrc}
+              onError={handleImgError}
               alt="uploaded trade"
               style={{
                 width: "100%",
