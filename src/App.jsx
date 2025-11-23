@@ -50,6 +50,10 @@ export default function App({
   // ✅ Form preview URL (avoid regenerating per-render)
   const [previewUrl, setPreviewUrl] = useState(null);
 
+  // ✅ Auto-scroll anchor
+  const chatEndRef = useRef(null);
+  const chatWrapRef = useRef(null);
+
   // Create / cleanup blob URL for the form preview
   useEffect(() => {
     if (!form.file) {
@@ -89,6 +93,17 @@ export default function App({
     }
   }, [chats, selectedDay]);
 
+  // ✅ Auto-scroll whenever a new chat is added OR updated
+  useEffect(() => {
+    if (!chats.length) return;
+
+    // If the chat wrap exists, scroll its bottom into view smoothly
+    chatEndRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "end",
+    });
+  }, [chats.length, chats]);
+
   const isValid = useMemo(() => !!form.strategyNotes && !!form.file, [form]);
   const onChange = (k, v) => setForm((prev) => ({ ...prev, [k]: v }));
 
@@ -118,7 +133,7 @@ export default function App({
         // show local preview immediately, replaced later with Drive URL
         screenshotUrl: null,
         localPreviewUrl,
-        localDataUrl, // ✅ persistent fallback
+        localDataUrl,
         pending: true,
         analysis: null,
       };
@@ -166,7 +181,6 @@ export default function App({
           if (c.id !== tempId) return c;
 
           // Revoke local object URL once replaced (prevent memory leak)
-          // We still keep localDataUrl for fallback forever.
           if (c.localPreviewUrl) {
             try {
               URL.revokeObjectURL(c.localPreviewUrl);
@@ -337,6 +351,7 @@ export default function App({
       padding: 14,
       display: "grid",
       gap: 12,
+      scrollBehavior: "smooth",
     },
     bubbleRow: {
       display: "flex",
@@ -486,10 +501,13 @@ export default function App({
 
         {/* ✅ ChatGPT-style history below form */}
         {chats.length > 0 && (
-          <div style={styles.chatWrap}>
+          <div ref={chatWrapRef} style={styles.chatWrap}>
             {chats.map((chat) => (
               <ChatTurn key={chat.id} chat={chat} styles={styles} />
             ))}
+
+            {/* ✅ Invisible anchor to scroll to */}
+            <div ref={chatEndRef} />
           </div>
         )}
       </div>
