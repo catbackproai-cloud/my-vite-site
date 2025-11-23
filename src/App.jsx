@@ -35,6 +35,53 @@ function normalizeDriveUrl(url) {
   return url;
 }
 
+// ✅ Safe localStorage write that trims data if quota is hit
+function safeSaveChats(key, chats) {
+  // 1) try full save
+  try {
+    localStorage.setItem(key, JSON.stringify(chats));
+    localStorage.setItem("lastTradeChats", JSON.stringify(chats));
+    return chats;
+  } catch {}
+
+  // 2) remove localPreviewUrl (never needed after refresh)
+  let trimmed = chats.map((c) => ({ ...c, localPreviewUrl: null }));
+  try {
+    localStorage.setItem(key, JSON.stringify(trimmed));
+    localStorage.setItem("lastTradeChats", JSON.stringify(trimmed));
+    return trimmed;
+  } catch {}
+
+  // 3) keep localDataUrl only for newest 10 chats
+  const keepN = 10;
+  trimmed = trimmed.map((c, i) => {
+    const keep = i >= trimmed.length - keepN;
+    return { ...c, localDataUrl: keep ? c.localDataUrl : null };
+  });
+  try {
+    localStorage.setItem(key, JSON.stringify(trimmed));
+    localStorage.setItem("lastTradeChats", JSON.stringify(trimmed));
+    return trimmed;
+  } catch {}
+
+  // 4) drop oldest chats until it fits
+  let dropCount = 0;
+  let dropping = [...trimmed];
+  while (dropping.length > 0) {
+    dropping = trimmed.slice(dropCount);
+    try {
+      localStorage.setItem(key, JSON.stringify(dropping));
+      localStorage.setItem("lastTradeChats", JSON.stringify(dropping));
+      return dropping;
+    } catch {
+      dropCount++;
+    }
+  }
+
+  // if all fails, give up and return what we have in memory
+  return chats;
+}
+
 export default function App({
   selectedDay = new Date().toISOString().slice(0, 10),
 }) {
@@ -82,22 +129,21 @@ export default function App({
     }
   }, [selectedDay]);
 
-  // Persist chats whenever they change
+  // Persist chats whenever they change (with quota protection)
   useEffect(() => {
-    try {
-      const key = `tradeChats:${selectedDay}`;
-      localStorage.setItem(key, JSON.stringify(chats));
-      localStorage.setItem("lastTradeChats", JSON.stringify(chats));
-    } catch {
-      /* ignore storage errors */
+    const key = `tradeChats:${selectedDay}`;
+    const savedVersion = safeSaveChats(key, chats);
+
+    // if we had to trim to save, update memory state too
+    if (savedVersion !== chats) {
+      setChats(savedVersion);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chats, selectedDay]);
 
   // ✅ Auto-scroll whenever a new chat is added OR updated
   useEffect(() => {
     if (!chats.length) return;
-
-    // If the chat wrap exists, scroll its bottom into view smoothly
     chatEndRef.current?.scrollIntoView({
       behavior: "smooth",
       block: "end",
@@ -201,6 +247,7 @@ export default function App({
       setForm({ strategyNotes: "", file: null });
     } catch (err) {
       setError(err?.message || "Submit failed");
+
       // If submission failed, mark last pending bubble as not pending + error note
       setChats((prev) => {
         const copy = [...prev];
@@ -505,8 +552,6 @@ export default function App({
             {chats.map((chat) => (
               <ChatTurn key={chat.id} chat={chat} styles={styles} />
             ))}
-
-            {/* ✅ Invisible anchor to scroll to */}
             <div ref={chatEndRef} />
           </div>
         )}
@@ -529,7 +574,6 @@ function ChatTurn({ chat, styles }) {
     confidence,
   } = analysis;
 
-  // ✅ START with Drive URL if present, but FALL BACK if it fails to load.
   const initialImg =
     normalizeDriveUrl(chat.screenshotUrl) ||
     chat.localDataUrl ||
@@ -538,7 +582,6 @@ function ChatTurn({ chat, styles }) {
 
   const [imgSrc, setImgSrc] = useState(initialImg);
 
-  // If chat changes (new response), reset image src to latest best option
   useEffect(() => {
     const next =
       normalizeDriveUrl(chat.screenshotUrl) ||
@@ -549,17 +592,14 @@ function ChatTurn({ chat, styles }) {
   }, [chat.screenshotUrl, chat.localDataUrl, chat.localPreviewUrl]);
 
   function handleImgError() {
-    // If Drive fails, force fallback to localDataUrl (always works)
     if (chat.localDataUrl && imgSrc !== chat.localDataUrl) {
       setImgSrc(chat.localDataUrl);
       return;
     }
-    // If no dataUrl, fall back to previewUrl (same session only)
     if (chat.localPreviewUrl && imgSrc !== chat.localPreviewUrl) {
       setImgSrc(chat.localPreviewUrl);
       return;
     }
-    // Otherwise clear to avoid broken icon
     setImgSrc(null);
   }
 
