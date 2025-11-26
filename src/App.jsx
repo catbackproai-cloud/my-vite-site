@@ -36,23 +36,28 @@ function normalizeDriveUrl(url) {
 }
 
 // ✅ Safe localStorage write that trims data if quota is hit
+// IMPORTANT: this should NEVER mutate the in-memory `chats` we're using in React.
+// It only controls what gets written to localStorage.
 function safeSaveChats(key, chats) {
   // 1) try full save
   try {
     localStorage.setItem(key, JSON.stringify(chats));
     localStorage.setItem("lastTradeChats", JSON.stringify(chats));
-    return chats;
+    return;
   } catch {}
 
-  // 2) remove localPreviewUrl (never needed after refresh)
-  let trimmed = chats.map((c) => ({ ...c, localPreviewUrl: null }));
+  // 2) remove localPreviewUrl (never needed after refresh) in what we SAVE
+  let trimmed = chats.map((c) => {
+    const { localPreviewUrl, ...rest } = c;
+    return { ...rest, localPreviewUrl: null };
+  });
   try {
     localStorage.setItem(key, JSON.stringify(trimmed));
     localStorage.setItem("lastTradeChats", JSON.stringify(trimmed));
-    return trimmed;
+    return;
   } catch {}
 
-  // 3) keep localDataUrl only for newest 10 chats
+  // 3) keep localDataUrl only for newest 10 chats in what we SAVE
   const keepN = 10;
   trimmed = trimmed.map((c, i) => {
     const keep = i >= trimmed.length - keepN;
@@ -61,25 +66,23 @@ function safeSaveChats(key, chats) {
   try {
     localStorage.setItem(key, JSON.stringify(trimmed));
     localStorage.setItem("lastTradeChats", JSON.stringify(trimmed));
-    return trimmed;
+    return;
   } catch {}
 
-  // 4) drop oldest chats until it fits
+  // 4) drop oldest chats until it fits (only in what we write)
   let dropCount = 0;
-  let dropping = [...trimmed];
-  while (dropping.length > 0) {
-    dropping = trimmed.slice(dropCount);
+  while (dropCount < trimmed.length) {
+    const dropping = trimmed.slice(dropCount);
     try {
       localStorage.setItem(key, JSON.stringify(dropping));
       localStorage.setItem("lastTradeChats", JSON.stringify(dropping));
-      return dropping;
+      return;
     } catch {
       dropCount++;
     }
   }
 
-  // if all fails, give up and return what we have in memory
-  return chats;
+  // if all fails, give up on saving — but DO NOT touch `chats` in memory
 }
 
 export default function App({
@@ -129,16 +132,11 @@ export default function App({
     }
   }, [selectedDay]);
 
-  // Persist chats whenever they change (with quota protection)
+  // ✅ Persist chats whenever they change (with quota protection),
+  // but DO NOT mutate React state here.
   useEffect(() => {
     const key = `tradeChats:${selectedDay}`;
-    const savedVersion = safeSaveChats(key, chats);
-
-    // if we had to trim to save, update memory state too
-    if (savedVersion !== chats) {
-      setChats(savedVersion);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    safeSaveChats(key, chats);
   }, [chats, selectedDay]);
 
   // ✅ Auto-scroll whenever a new chat is added OR updated
