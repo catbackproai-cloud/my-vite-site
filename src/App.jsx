@@ -35,53 +35,20 @@ function normalizeDriveUrl(url) {
   return url;
 }
 
-// ✅ Safe localStorage write that trims data if quota is hit
-// IMPORTANT: this never mutates the in-memory `chats` React state.
+// ✅ Safe localStorage write: NEVER drop chats, only strip heavy image data
 function safeSaveChats(key, chats) {
-  // 1) try full save
   try {
-    localStorage.setItem(key, JSON.stringify(chats));
-    localStorage.setItem("lastTradeChats", JSON.stringify(chats));
-    return;
-  } catch {}
+    // Strip localPreviewUrl & localDataUrl from what we SAVE,
+    // but leave the in-memory state untouched.
+    const leanChats = chats.map(({ localPreviewUrl, localDataUrl, ...rest }) => ({
+      ...rest,
+    }));
 
-  // 2) remove localPreviewUrl (never needed after refresh) in what we SAVE
-  let trimmed = chats.map((c) => {
-    const { localPreviewUrl, ...rest } = c;
-    return { ...rest, localPreviewUrl: null };
-  });
-  try {
-    localStorage.setItem(key, JSON.stringify(trimmed));
-    localStorage.setItem("lastTradeChats", JSON.stringify(trimmed));
-    return;
-  } catch {}
-
-  // 3) keep localDataUrl only for newest 10 chats in what we SAVE
-  const keepN = 10;
-  trimmed = trimmed.map((c, i) => {
-    const keep = i >= trimmed.length - keepN;
-    return { ...c, localDataUrl: keep ? c.localDataUrl : null };
-  });
-  try {
-    localStorage.setItem(key, JSON.stringify(trimmed));
-    localStorage.setItem("lastTradeChats", JSON.stringify(trimmed));
-    return;
-  } catch {}
-
-  // 4) drop oldest chats until it fits (only in what we write)
-  let dropCount = 0;
-  while (dropCount < trimmed.length) {
-    const dropping = trimmed.slice(dropCount);
-    try {
-      localStorage.setItem(key, JSON.stringify(dropping));
-      localStorage.setItem("lastTradeChats", JSON.stringify(dropping));
-      return;
-    } catch {
-      dropCount++;
-    }
+    localStorage.setItem(key, JSON.stringify(leanChats));
+    localStorage.setItem("lastTradeChats", JSON.stringify(leanChats));
+  } catch (e) {
+    console.warn("Failed to save chats to localStorage", e);
   }
-
-  // if all fails, give up on saving — but DO NOT touch `chats` in memory
 }
 
 export default function App({
@@ -161,7 +128,7 @@ export default function App({
     try {
       if (!WEBHOOK_URL) throw new Error("No webhook URL configured.");
 
-      // ✅ Persistent fallback image (survives reload)
+      // ✅ Persistent fallback image (survives reload until we decide to strip)
       const localDataUrl = await fileToDataUrl(form.file);
 
       // Local preview URL for instant UX (dies on refresh)
@@ -170,7 +137,7 @@ export default function App({
         : null;
 
       // Create a temp chat entry (pending)
-      const tempId = `tmp-${Date.now()}`;
+      const tempId = `tmp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
       const tempChat = {
         id: tempId,
         timestamp: new Date().toISOString(),
@@ -237,6 +204,11 @@ export default function App({
             screenshotUrl: normalizeDriveUrl(data?.screenshotUrl) || null,
             analysis: data?.analysis || data || null,
             serverTimestamp: data?.timestamp || null,
+
+            // We no longer need these once the Drive URL is set;
+            // they also won't be saved to localStorage.
+            localPreviewUrl: null,
+            localDataUrl: null,
           };
         })
       );
