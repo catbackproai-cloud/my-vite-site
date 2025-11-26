@@ -36,8 +36,7 @@ function normalizeDriveUrl(url) {
 }
 
 // ✅ Safe localStorage write that trims data if quota is hit
-// IMPORTANT: this should NEVER mutate the in-memory `chats` we're using in React.
-// It only controls what gets written to localStorage.
+// IMPORTANT: this never mutates the in-memory `chats` React state.
 function safeSaveChats(key, chats) {
   // 1) try full save
   try {
@@ -97,14 +96,14 @@ export default function App({
   // ✅ Chat history per-day
   const [chats, setChats] = useState([]);
 
-  // ✅ Form preview URL (avoid regenerating per-render)
+  // ✅ Form preview URL (for the composer thumbnail)
   const [previewUrl, setPreviewUrl] = useState(null);
 
   // ✅ Auto-scroll anchor
   const chatEndRef = useRef(null);
   const chatWrapRef = useRef(null);
 
-  // Create / cleanup blob URL for the form preview
+  // Create / cleanup blob URL for the preview thumbnail
   useEffect(() => {
     if (!form.file) {
       setPreviewUrl(null);
@@ -132,8 +131,7 @@ export default function App({
     }
   }, [selectedDay]);
 
-  // ✅ Persist chats whenever they change (with quota protection),
-  // but DO NOT mutate React state here.
+  // Persist chats whenever they change (with quota protection)
   useEffect(() => {
     const key = `tradeChats:${selectedDay}`;
     safeSaveChats(key, chats);
@@ -148,12 +146,16 @@ export default function App({
     });
   }, [chats.length, chats]);
 
-  const isValid = useMemo(() => !!form.strategyNotes && !!form.file, [form]);
+  const isValid = useMemo(
+    () => !!form.strategyNotes && !!form.file,
+    [form]
+  );
   const onChange = (k, v) => setForm((prev) => ({ ...prev, [k]: v }));
 
   async function handleSubmit(e) {
     e.preventDefault();
     setError("");
+    if (!isValid || submitting) return;
     setSubmitting(true);
 
     try {
@@ -173,9 +175,7 @@ export default function App({
         id: tempId,
         timestamp: new Date().toISOString(),
         userNotes: form.strategyNotes,
-
-        // show local preview immediately, replaced later with Drive URL
-        screenshotUrl: null,
+        screenshotUrl: null, // will be Drive URL later
         localPreviewUrl,
         localDataUrl,
         pending: true,
@@ -241,7 +241,7 @@ export default function App({
         })
       );
 
-      // Reset form (but DO NOT wipe chats)
+      // Reset composer (but DO NOT wipe chats)
       setForm({ strategyNotes: "", file: null });
     } catch (err) {
       setError(err?.message || "Submit failed");
@@ -272,7 +272,7 @@ export default function App({
     }
   }
 
-  // Drag & drop
+  // Drag & drop helpers
   function preventDefaults(e) {
     e.preventDefault();
     e.stopPropagation();
@@ -280,7 +280,10 @@ export default function App({
   function handleDrop(e) {
     preventDefaults(e);
     const file = e.dataTransfer?.files?.[0];
-    if (file && file.type.startsWith("image/")) onChange("file", file);
+    if (file && file.type.startsWith("image/")) {
+      onChange("file", file);
+    }
+    setDragActive(false);
   }
 
   const styles = {
@@ -299,8 +302,12 @@ export default function App({
       borderRadius: 16,
       boxShadow: "0 8px 30px rgba(0,0,0,.35)",
       padding: 20,
+      display: "flex",
+      flexDirection: "column",
+      gap: 12,
+      maxHeight: "90vh",
     },
-    header: { textAlign: "center", marginBottom: 16 },
+    header: { textAlign: "center" },
     dayBadge: {
       display: "inline-block",
       fontSize: 12,
@@ -312,50 +319,82 @@ export default function App({
     },
     title: { fontSize: 26, fontWeight: 800, margin: 0 },
     subtitle: { fontSize: 12, opacity: 0.7, marginTop: 6 },
-    form: { display: "grid", gap: 14 },
-    drop: {
+
+    // Shell around chat + composer
+    chatShell: {
+      display: "flex",
+      flexDirection: "column",
+      gap: 10,
+      flex: "1 1 auto",
+    },
+
+    // Scrollable chat area (replaces old big drop zone)
+    chatWindow: {
+      flex: "1 1 auto",
+      minHeight: 220,
+      maxHeight: 420,
       background: "#0d121a",
-      border: "2px dashed #243043",
-      borderRadius: 16,
-      height: 280,
-      display: "grid",
-      placeItems: "center",
-      textAlign: "center",
-      padding: 16,
-      cursor: "pointer",
-      transition: "border-color .2s ease, background .2s ease",
-      position: "relative",
-    },
-    dropActive: { borderColor: "#1b9aaa", background: "#0f1621" },
-    dropTextMain: { fontWeight: 700, marginBottom: 6 },
-    dropTextSub: { fontSize: 12, opacity: 0.7 },
-    previewImg: {
-      maxWidth: "100%",
-      maxHeight: 240,
-      borderRadius: 12,
+      borderRadius: 14,
       border: "1px solid #243043",
-      display: "block",
+      padding: 12,
+      display: "grid",
+      gap: 10,
+      overflowY: "auto",
+      scrollBehavior: "smooth",
     },
-    closeBtn: {
-      position: "absolute",
-      top: 8,
-      right: 8,
-      background: "rgba(0,0,0,0.6)",
-      color: "#fff",
-      border: "none",
-      borderRadius: "9999px",
-      width: 24,
-      height: 24,
-      lineHeight: "22px",
-      textAlign: "center",
+
+    // Composer at the bottom (screenshot + text + button)
+    composer: {
+      display: "grid",
+      gap: 8,
+      marginTop: 4,
+    },
+    composerTopRow: {
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: 10,
+    },
+
+    // Small screenshot box inside the chat area
+    dropMini: {
+      flex: "0 0 auto",
+      background: "#0d121a",
+      border: "1px dashed #243043",
+      borderRadius: 12,
+      padding: 10,
+      minWidth: 140,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 6,
       cursor: "pointer",
-      fontWeight: 800,
-      fontSize: 14,
-      opacity: 0.9,
+      fontSize: 12,
+      color: "rgba(231,236,242,0.8)",
+      transition: "border-color .2s ease, background .2s ease",
     },
+    dropMiniActive: {
+      borderColor: "#1b9aaa",
+      background: "#0f1621",
+    },
+    previewThumb: {
+      maxWidth: 80,
+      maxHeight: 60,
+      borderRadius: 8,
+      border: "1px solid #243043",
+      objectFit: "cover",
+    },
+    dropMiniLabel: {
+      display: "flex",
+      flexDirection: "column",
+      gap: 2,
+    },
+    dropMiniTitle: { fontWeight: 700, fontSize: 12 },
+    dropMiniHint: { fontSize: 11, opacity: 0.75 },
+
     textarea: {
       width: "100%",
-      minHeight: 160,
+      minHeight: 90,
       background: "#0d121a",
       border: "1px solid #243043",
       borderRadius: 12,
@@ -363,41 +402,35 @@ export default function App({
       padding: "10px 12px",
       outline: "none",
       resize: "vertical",
+      fontSize: 14,
     },
-    label: { fontSize: 12, opacity: 0.7, marginBottom: 6 },
+    label: { fontSize: 12, opacity: 0.7, marginBottom: 4 },
+
     button: {
-      marginTop: 4,
+      marginTop: 2,
       width: "100%",
       background: "#1b9aaa",
       color: "#fff",
       border: "none",
       borderRadius: 12,
-      padding: "12px 16px",
+      padding: "10px 14px",
       fontWeight: 800,
-      cursor: "pointer",
+      cursor: isValid && !submitting ? "pointer" : "not-allowed",
       opacity: isValid && !submitting ? 1 : 0.5,
+      fontSize: 14,
     },
     error: {
-      marginTop: 12,
-      padding: 12,
+      marginTop: 4,
+      padding: 10,
       borderRadius: 12,
       background: "#2b1620",
       color: "#ffd0d7",
       whiteSpace: "pre-wrap",
+      fontSize: 12,
     },
-    hint: { marginTop: 10, fontSize: 12, opacity: 0.7 },
+    hint: { marginTop: 6, fontSize: 11, opacity: 0.7 },
 
-    // Chat styling
-    chatWrap: {
-      marginTop: 18,
-      background: "#0d121a",
-      border: "1px solid #243043",
-      borderRadius: 14,
-      padding: 14,
-      display: "grid",
-      gap: 12,
-      scrollBehavior: "smooth",
-    },
+    // Chat bubbles
     bubbleRow: {
       display: "flex",
       gap: 10,
@@ -412,6 +445,7 @@ export default function App({
       borderRadius: "14px 14px 2px 14px",
       maxWidth: "80%",
       whiteSpace: "pre-wrap",
+      fontSize: 13,
     },
     bubbleAI: {
       marginRight: "auto",
@@ -422,6 +456,7 @@ export default function App({
       borderRadius: "14px 14px 14px 2px",
       maxWidth: "80%",
       whiteSpace: "pre-wrap",
+      fontSize: 13,
     },
     bubbleHeader: {
       fontWeight: 800,
@@ -431,7 +466,7 @@ export default function App({
       gap: 8,
     },
     gradePill: {
-      fontSize: 16,
+      fontSize: 14,
       fontWeight: 900,
       padding: "2px 8px",
       borderRadius: 8,
@@ -441,6 +476,12 @@ export default function App({
     sectionTitle: { fontWeight: 800, marginTop: 8, marginBottom: 4 },
     ul: { margin: 0, paddingLeft: 18, opacity: 0.95 },
     smallMeta: { fontSize: 11, opacity: 0.6, marginTop: 6 },
+    emptyState: {
+      fontSize: 12,
+      opacity: 0.7,
+      textAlign: "center",
+      padding: "8px 0",
+    },
   };
 
   return (
@@ -457,11 +498,14 @@ export default function App({
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} style={styles.form}>
-          {/* BIG SCREENSHOT UPLOAD BOX */}
+        <div style={styles.chatShell}>
+          {/* SCROLLABLE CHAT WINDOW */}
           <div
-            style={{ ...styles.drop, ...(dragActive ? styles.dropActive : {}) }}
-            onClick={() => fileInputRef.current?.click()}
+            ref={chatWrapRef}
+            style={{
+              ...styles.chatWindow,
+              ...(dragActive ? styles.dropMiniActive : {}),
+            }}
             onDragEnter={(e) => {
               preventDefaults(e);
               setDragActive(true);
@@ -471,66 +515,95 @@ export default function App({
               preventDefaults(e);
               setDragActive(false);
             }}
-            onDrop={(e) => {
-              handleDrop(e);
-              setDragActive(false);
-            }}
+            onDrop={handleDrop}
           >
-            {!form.file ? (
-              <div>
-                <div style={styles.dropTextMain}>Drop chart screenshot here</div>
-                <div style={styles.dropTextSub}>
-                  or click to browse (.png / .jpg)
-                </div>
+            {chats.length === 0 && (
+              <div style={styles.emptyState}>
+                No trades yet. Upload a chart + notes below to get feedback.
               </div>
-            ) : (
-              <>
-                <img
-                  src={previewUrl || ""}
-                  alt="preview"
-                  style={styles.previewImg}
-                />
-                <button
-                  type="button"
-                  aria-label="Remove screenshot"
-                  title="Remove"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onChange("file", null);
-                  }}
-                  style={styles.closeBtn}
-                >
-                  ×
-                </button>
-              </>
             )}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              onChange={(e) => onChange("file", e.target.files?.[0] || null)}
-              style={{ display: "none" }}
-            />
+
+            {chats.map((chat) => (
+              <ChatTurn key={chat.id} chat={chat} styles={styles} />
+            ))}
+            <div ref={chatEndRef} />
           </div>
 
-          {/* THOUGHT PROCESS TEXTBOX */}
-          <div>
-            <div style={styles.label}>
-              Strategy / thought process — what setup were you taking?
+          {/* COMPOSER (screenshot + notes + button) */}
+          <form onSubmit={handleSubmit} style={styles.composer}>
+            <div style={styles.composerTopRow}>
+              <div
+                style={{
+                  ...styles.dropMini,
+                  ...(dragActive ? styles.dropMiniActive : {}),
+                }}
+                onClick={() => fileInputRef.current?.click()}
+                onDragEnter={(e) => {
+                  preventDefaults(e);
+                  setDragActive(true);
+                }}
+                onDragOver={preventDefaults}
+                onDragLeave={(e) => {
+                  preventDefaults(e);
+                  setDragActive(false);
+                }}
+                onDrop={handleDrop}
+              >
+                {previewUrl ? (
+                  <>
+                    <img
+                      src={previewUrl}
+                      alt="preview"
+                      style={styles.previewThumb}
+                    />
+                    <div style={styles.dropMiniLabel}>
+                      <span style={styles.dropMiniTitle}>Screenshot added</span>
+                      <span style={styles.dropMiniHint}>
+                        Click to replace • drag a new image here
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  <div style={styles.dropMiniLabel}>
+                    <span style={styles.dropMiniTitle}>+ Add screenshot</span>
+                    <span style={styles.dropMiniHint}>
+                      Click or drag chart here (.png / .jpg)
+                    </span>
+                  </div>
+                )}
+
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) =>
+                    onChange("file", e.target.files?.[0] || null)
+                  }
+                  style={{ display: "none" }}
+                />
+              </div>
             </div>
-            <textarea
-              value={form.strategyNotes}
-              onChange={(e) => onChange("strategyNotes", e.target.value)}
-              placeholder="Explain your idea: HTF bias, BOS/CHoCH, FVG fill, OB mitigation, session, target, risk plan, management rules..."
-              required
-              style={styles.textarea}
-            />
-          </div>
 
-          <button disabled={!isValid || submitting} style={styles.button}>
-            {submitting ? "Uploading…" : "Get Feedback"}
-          </button>
-        </form>
+            <div>
+              <div style={styles.label}>
+                Strategy / thought process — what setup were you taking?
+              </div>
+              <textarea
+                value={form.strategyNotes}
+                onChange={(e) =>
+                  onChange("strategyNotes", e.target.value)
+                }
+                placeholder="Explain your idea: HTF bias, BOS/CHoCH, FVG fill, OB mitigation, session, target, risk plan, management rules..."
+                required
+                style={styles.textarea}
+              />
+            </div>
+
+            <button type="submit" disabled={!isValid || submitting} style={styles.button}>
+              {submitting ? "Uploading…" : "Get Feedback"}
+            </button>
+          </form>
+        </div>
 
         {error && (
           <div style={styles.error}>
@@ -541,16 +614,6 @@ export default function App({
                 your deploy env.
               </div>
             )}
-          </div>
-        )}
-
-        {/* ✅ ChatGPT-style history below form */}
-        {chats.length > 0 && (
-          <div ref={chatWrapRef} style={styles.chatWrap}>
-            {chats.map((chat) => (
-              <ChatTurn key={chat.id} chat={chat} styles={styles} />
-            ))}
-            <div ref={chatEndRef} />
           </div>
         )}
       </div>
