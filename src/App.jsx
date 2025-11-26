@@ -328,7 +328,7 @@ export default function App({
       flex: "1 1 auto",
     },
 
-    // Scrollable chat area (replaces old big drop zone)
+    // Scrollable chat area
     chatWindow: {
       flex: "1 1 auto",
       minHeight: 220,
@@ -343,27 +343,33 @@ export default function App({
       scrollBehavior: "smooth",
     },
 
-    // Composer at the bottom (screenshot + text + button)
+    // Composer at the bottom (row: 1/4 screenshot, 3/4 text)
     composer: {
-      display: "grid",
+      display: "flex",
+      flexDirection: "column",
       gap: 8,
       marginTop: 4,
     },
-    composerTopRow: {
+    composerRow: {
       display: "flex",
-      alignItems: "center",
-      justifyContent: "space-between",
       gap: 10,
+      alignItems: "stretch",
+    },
+    composerLeft: {
+      flex: "0 0 25%",
+      minWidth: 150,
+    },
+    composerRight: {
+      flex: "1 1 75%",
     },
 
-    // Small screenshot box inside the chat area
+    // Small screenshot box inside the composer
     dropMini: {
-      flex: "0 0 auto",
       background: "#0d121a",
       border: "1px dashed #243043",
       borderRadius: 12,
       padding: 10,
-      minWidth: 140,
+      height: "100%",
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
@@ -372,6 +378,8 @@ export default function App({
       fontSize: 12,
       color: "rgba(231,236,242,0.8)",
       transition: "border-color .2s ease, background .2s ease",
+      position: "relative",
+      boxSizing: "border-box",
     },
     dropMiniActive: {
       borderColor: "#1b9aaa",
@@ -391,6 +399,22 @@ export default function App({
     },
     dropMiniTitle: { fontWeight: 700, fontSize: 12 },
     dropMiniHint: { fontSize: 11, opacity: 0.75 },
+    miniCloseBtn: {
+      position: "absolute",
+      top: 6,
+      right: 6,
+      width: 20,
+      height: 20,
+      borderRadius: "9999px",
+      border: "none",
+      background: "rgba(0,0,0,0.7)",
+      color: "#fff",
+      fontSize: 12,
+      fontWeight: 800,
+      lineHeight: "18px",
+      textAlign: "center",
+      cursor: "pointer",
+    },
 
     textarea: {
       width: "100%",
@@ -403,6 +427,7 @@ export default function App({
       outline: "none",
       resize: "vertical",
       fontSize: 14,
+      boxSizing: "border-box",
     },
     label: { fontSize: 12, opacity: 0.7, marginBottom: 4 },
 
@@ -529,77 +554,98 @@ export default function App({
             <div ref={chatEndRef} />
           </div>
 
-          {/* COMPOSER (screenshot + notes + button) */}
+          {/* COMPOSER (screenshot left, text right) */}
           <form onSubmit={handleSubmit} style={styles.composer}>
-            <div style={styles.composerTopRow}>
-              <div
-                style={{
-                  ...styles.dropMini,
-                  ...(dragActive ? styles.dropMiniActive : {}),
-                }}
-                onClick={() => fileInputRef.current?.click()}
-                onDragEnter={(e) => {
-                  preventDefaults(e);
-                  setDragActive(true);
-                }}
-                onDragOver={preventDefaults}
-                onDragLeave={(e) => {
-                  preventDefaults(e);
-                  setDragActive(false);
-                }}
-                onDrop={handleDrop}
-              >
-                {previewUrl ? (
-                  <>
-                    <img
-                      src={previewUrl}
-                      alt="preview"
-                      style={styles.previewThumb}
-                    />
+            <div style={styles.composerRow}>
+              {/* LEFT: 1/4 screenshot picker */}
+              <div style={styles.composerLeft}>
+                <div
+                  style={{
+                    ...styles.dropMini,
+                    ...(dragActive ? styles.dropMiniActive : {}),
+                  }}
+                  onClick={() => fileInputRef.current?.click()}
+                  onDragEnter={(e) => {
+                    preventDefaults(e);
+                    setDragActive(true);
+                  }}
+                  onDragOver={preventDefaults}
+                  onDragLeave={(e) => {
+                    preventDefaults(e);
+                    setDragActive(false);
+                  }}
+                  onDrop={handleDrop}
+                >
+                  {previewUrl ? (
+                    <>
+                      <img
+                        src={previewUrl}
+                        alt="preview"
+                        style={styles.previewThumb}
+                      />
+                      <div style={styles.dropMiniLabel}>
+                        <span style={styles.dropMiniTitle}>
+                          Screenshot added
+                        </span>
+                        <span style={styles.dropMiniHint}>
+                          Click to replace • drag new chart here
+                        </span>
+                      </div>
+                      {/* X button to clear screenshot */}
+                      <button
+                        type="button"
+                        style={styles.miniCloseBtn}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onChange("file", null);
+                        }}
+                      >
+                        ×
+                      </button>
+                    </>
+                  ) : (
                     <div style={styles.dropMiniLabel}>
-                      <span style={styles.dropMiniTitle}>Screenshot added</span>
+                      <span style={styles.dropMiniTitle}>+ Add screenshot</span>
                       <span style={styles.dropMiniHint}>
-                        Click to replace • drag a new image here
+                        Click or drag chart here (.png / .jpg)
                       </span>
                     </div>
-                  </>
-                ) : (
-                  <div style={styles.dropMiniLabel}>
-                    <span style={styles.dropMiniTitle}>+ Add screenshot</span>
-                    <span style={styles.dropMiniHint}>
-                      Click or drag chart here (.png / .jpg)
-                    </span>
-                  </div>
-                )}
+                  )}
 
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) =>
+                      onChange("file", e.target.files?.[0] || null)
+                    }
+                    style={{ display: "none" }}
+                  />
+                </div>
+              </div>
+
+              {/* RIGHT: 3/4 textarea */}
+              <div style={styles.composerRight}>
+                <div style={styles.label}>
+                  Strategy / thought process — what setup were you taking?
+                </div>
+                <textarea
+                  value={form.strategyNotes}
                   onChange={(e) =>
-                    onChange("file", e.target.files?.[0] || null)
+                    onChange("strategyNotes", e.target.value)
                   }
-                  style={{ display: "none" }}
+                  placeholder="Explain your idea: HTF bias, BOS/CHoCH, FVG fill, OB mitigation, session, target, risk plan, management rules..."
+                  required
+                  style={styles.textarea}
                 />
               </div>
             </div>
 
-            <div>
-              <div style={styles.label}>
-                Strategy / thought process — what setup were you taking?
-              </div>
-              <textarea
-                value={form.strategyNotes}
-                onChange={(e) =>
-                  onChange("strategyNotes", e.target.value)
-                }
-                placeholder="Explain your idea: HTF bias, BOS/CHoCH, FVG fill, OB mitigation, session, target, risk plan, management rules..."
-                required
-                style={styles.textarea}
-              />
-            </div>
-
-            <button type="submit" disabled={!isValid || submitting} style={styles.button}>
+            <button
+              type="submit"
+              disabled={!isValid || submitting}
+              style={styles.button}
+            >
               {submitting ? "Uploading…" : "Get Feedback"}
             </button>
           </form>
