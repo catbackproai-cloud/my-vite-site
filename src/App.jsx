@@ -18,7 +18,15 @@ const LS_USER_KEY = "tc_user_v1";
 const LS_USAGE_KEY = "tc_usage_v1";
 
 function todayStr() {
-  return new Date().toISOString().slice(0, 10);
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+function parseLocalDateFromIso(iso) {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(y, m - 1, d); // local midnight, no timezone shift
 }
 
 /* ---------------- HELPERS ---------------- */
@@ -135,9 +143,10 @@ export default function App({
         if (currentDay < 1 || currentDay > daysInMonth) {
           week.push(null);
         } else {
-          const jsDate = new Date(year, month, currentDay);
-          const iso = jsDate.toISOString().slice(0, 10);
-          week.push({ day: currentDay, iso });
+          const m = String(month + 1).padStart(2, "0");
+const dStr = String(currentDay).padStart(2, "0");
+const iso = `${year}-${m}-${dStr}`;
+week.push({ day: currentDay, iso });
         }
         currentDay++;
       }
@@ -156,12 +165,15 @@ export default function App({
     year: "numeric",
   });
 
-  const formattedDayLabel = new Date(day).toLocaleDateString(undefined, {
+  const formattedDayLabel = parseLocalDateFromIso(day).toLocaleDateString(
+  undefined,
+  {
     weekday: "long",
     month: "short",
     day: "numeric",
     year: "numeric",
-  });
+  }
+);
 
   function goToPrevMonth() {
     setCalendarMonth((prev) => {
@@ -1083,15 +1095,15 @@ export default function App({
           <div
             style={styles.datePill}
             onClick={() => {
-              setShowCalendar((open) => !open);
-              if (!showCalendar) {
-                const d = new Date(day);
-                setCalendarMonth({
-                  year: d.getFullYear(),
-                  month: d.getMonth(),
-                });
-              }
-            }}
+  setShowCalendar((open) => !open);
+  if (!showCalendar) {
+    const d = parseLocalDateFromIso(day);
+    setCalendarMonth({
+      year: d.getFullYear(),
+      month: d.getMonth(),
+    });
+  }
+}}
           >
             <div style={styles.datePillText}>{formattedDayLabel}</div>
             <div style={styles.datePillIcon}>{showCalendar ? "▲" : "▼"}</div>
