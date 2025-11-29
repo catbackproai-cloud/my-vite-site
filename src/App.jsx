@@ -109,6 +109,80 @@ export default function App({
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
 
+  // ⭐ DAY + CALENDAR STATE
+  const [day, setDay] = useState(selectedDay); // internal selected day
+  const [showCalendar, setShowCalendar] = useState(false);
+  const [calendarMonth, setCalendarMonth] = useState(() => {
+    const d = new Date(selectedDay);
+    return { year: d.getFullYear(), month: d.getMonth() }; // 0-index
+  });
+
+  const todayIso = todayStr();
+
+  // Build calendar weeks for dropdown
+  function buildMonthWeeks() {
+    const { year, month } = calendarMonth;
+    const first = new Date(year, month, 1);
+    const startDow = first.getDay(); // 0-6, Sun-Sat
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    const weeks = [];
+    let currentDay = 1 - startDow; // may start negative for leading blanks
+
+    for (let w = 0; w < 6; w++) {
+      const week = [];
+      for (let d = 0; d < 7; d++) {
+        if (currentDay < 1 || currentDay > daysInMonth) {
+          week.push(null);
+        } else {
+          const jsDate = new Date(year, month, currentDay);
+          const iso = jsDate.toISOString().slice(0, 10);
+          week.push({ day: currentDay, iso });
+        }
+        currentDay++;
+      }
+      weeks.push(week);
+    }
+    return weeks;
+  }
+
+  const monthWeeks = buildMonthWeeks();
+  const calendarMonthLabel = new Date(
+    calendarMonth.year,
+    calendarMonth.month,
+    1
+  ).toLocaleDateString(undefined, {
+    month: "long",
+    year: "numeric",
+  });
+
+  const formattedDayLabel = new Date(day).toLocaleDateString(undefined, {
+    weekday: "long",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+
+  function goToPrevMonth() {
+    setCalendarMonth((prev) => {
+      const d = new Date(prev.year, prev.month - 1, 1);
+      return { year: d.getFullYear(), month: d.getMonth() };
+    });
+  }
+
+  function goToNextMonth() {
+    setCalendarMonth((prev) => {
+      const d = new Date(prev.year, prev.month + 1, 1);
+      return { year: d.getFullYear(), month: d.getMonth() };
+    });
+  }
+
+  function handlePickDate(iso) {
+    setDay(iso);
+    setShowCalendar(false);
+    // when the day changes, chats use the useEffect below
+  }
+
   // Screenshot preview blob
   useEffect(() => {
     if (!form.file) {
@@ -127,7 +201,7 @@ export default function App({
   // Load saved chats per day
   useEffect(() => {
     try {
-      const key = `tradeChats:${selectedDay}`;
+      const key = `tradeChats:${day}`;
       const saved = localStorage.getItem(key);
       setChats(saved ? JSON.parse(saved) : []);
       setForm((prev) => ({ ...prev, file: null }));
@@ -135,13 +209,13 @@ export default function App({
     } catch {
       setChats([]);
     }
-  }, [selectedDay]);
+  }, [day]);
 
   // Persist chats
   useEffect(() => {
-    const key = `tradeChats:${selectedDay}`;
+    const key = `tradeChats:${day}`;
     safeSaveChats(key, chats);
-  }, [chats, selectedDay]);
+  }, [chats, day]);
 
   // Auto-scroll
   useEffect(() => {
@@ -234,6 +308,7 @@ export default function App({
       if (gate.reason === "needSignup") {
         setAuthMode("signup");
         setAuthForm({ name: "", email: "", password: "" });
+        setAuthError("");
         setShowSignup(true);
       } else if (gate.reason === "limitReached") {
         setShowPaywall(true);
@@ -268,7 +343,7 @@ export default function App({
       setChats((prev) => [...prev, tempChat]);
 
       const fd = new FormData();
-      fd.append("day", selectedDay);
+      fd.append("day", day);
       fd.append("strategyNotes", form.strategyNotes);
       fd.append("userId", user?.userId || "");
       fd.append("userEmail", user?.email || "");
@@ -406,7 +481,7 @@ export default function App({
       padding: "80px 12px 24px", // top padding to clear fixed header
     },
 
-    // 🔹 GLOBAL FIXED HEADER (TOP OF WHOLE SITE)
+    // 🔹 GLOBAL FIXED HEADER
     siteHeader: {
       position: "fixed",
       top: 0,
@@ -424,7 +499,7 @@ export default function App({
     },
     siteHeaderTitle: {
       fontSize: 18,
-      fontWeight: 800, // bold Trade Coach
+      fontWeight: 800,
     },
     siteHeaderActions: {
       display: "flex",
@@ -494,6 +569,112 @@ export default function App({
       fontSize: 11,
       opacity: 0.7,
       padding: "4px 10px",
+    },
+
+    // 🔹 DATE DROPDOWN ROW (sits in the "gap" under header, above chat card)
+    dateRow: {
+      width: "100%",
+      maxWidth: 760,
+      margin: "0 auto 12px",
+      display: "flex",
+      justifyContent: "center",
+      position: "relative",
+    },
+    datePill: {
+      minWidth: 260,
+      padding: "8px 14px",
+      borderRadius: 999,
+      background: "#121821",
+      border: "1px solid #243043",
+      fontSize: 13,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      cursor: "pointer",
+      boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
+    },
+    datePillText: {
+      whiteSpace: "nowrap",
+      overflow: "hidden",
+      textOverflow: "ellipsis",
+    },
+    datePillIcon: {
+      fontSize: 12,
+      opacity: 0.8,
+      marginLeft: 8,
+    },
+
+    calendarPanel: {
+      position: "absolute",
+      top: "115%",
+      zIndex: 60,
+      background: "#121821",
+      borderRadius: 16,
+      border: "1px solid #243043",
+      padding: 12,
+      boxShadow: "0 18px 50px rgba(0,0,0,0.7)",
+      width: 320,
+    },
+    calendarHeader: {
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 8,
+      fontSize: 13,
+    },
+    calendarHeaderTitle: {
+      fontWeight: 700,
+    },
+    calendarNavBtn: {
+      width: 26,
+      height: 26,
+      borderRadius: 999,
+      border: "1px solid #243043",
+      background: "transparent",
+      color: "#e7ecf2",
+      fontSize: 13,
+      cursor: "pointer",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    weekdayRow: {
+      display: "grid",
+      gridTemplateColumns: "repeat(7, 1fr)",
+      gap: 4,
+      fontSize: 11,
+      opacity: 0.7,
+      marginBottom: 4,
+    },
+    weekdayCell: {
+      textAlign: "center",
+      padding: "4px 0",
+    },
+    calendarWeek: {
+      display: "grid",
+      gridTemplateColumns: "repeat(7, 1fr)",
+      gap: 4,
+      marginTop: 2,
+    },
+    dayCellEmpty: {
+      padding: "6px 0",
+      fontSize: 12,
+    },
+    dayCellBase: {
+      padding: "6px 0",
+      fontSize: 12,
+      textAlign: "center",
+      borderRadius: 8,
+      cursor: "pointer",
+      border: "1px solid transparent",
+    },
+    dayCellSelected: {
+      background: "#1b9aaa",
+      color: "#fff",
+      borderColor: "#1b9aaa",
+    },
+    dayCellToday: {
+      borderColor: "#1b9aaa88",
     },
 
     card: {
@@ -721,7 +902,7 @@ export default function App({
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
-      zIndex: 90, // above header + dropdown
+      zIndex: 90,
       padding: "16px",
     },
     modalCard: {
@@ -895,8 +1076,95 @@ export default function App({
         </div>
       </div>
 
-      {/* PAGE CONTENT (date selector from parent will sit under header too) */}
+      {/* PAGE CONTENT */}
       <div style={styles.page}>
+        {/* 🔹 DATE DROPDOWN IN THE GAP (below header, above card) */}
+        <div style={styles.dateRow}>
+          <div
+            style={styles.datePill}
+            onClick={() => {
+              setShowCalendar((open) => !open);
+              if (!showCalendar) {
+                const d = new Date(day);
+                setCalendarMonth({
+                  year: d.getFullYear(),
+                  month: d.getMonth(),
+                });
+              }
+            }}
+          >
+            <div style={styles.datePillText}>{formattedDayLabel}</div>
+            <div style={styles.datePillIcon}>{showCalendar ? "▲" : "▼"}</div>
+          </div>
+
+          {showCalendar && (
+            <div style={styles.calendarPanel}>
+              <div style={styles.calendarHeader}>
+                <button
+                  type="button"
+                  style={styles.calendarNavBtn}
+                  onClick={goToPrevMonth}
+                >
+                  ‹
+                </button>
+                <div style={styles.calendarHeaderTitle}>
+                  {calendarMonthLabel}
+                </div>
+                <button
+                  type="button"
+                  style={styles.calendarNavBtn}
+                  onClick={goToNextMonth}
+                >
+                  ›
+                </button>
+              </div>
+
+              <div style={styles.weekdayRow}>
+                {["S", "M", "T", "W", "T", "F", "S"].map((w) => (
+                  <div key={w} style={styles.weekdayCell}>
+                    {w}
+                  </div>
+                ))}
+              </div>
+
+              {monthWeeks.map((week, wi) => (
+                <div key={wi} style={styles.calendarWeek}>
+                  {week.map((cell, di) => {
+                    if (!cell) {
+                      return (
+                        <div
+                          key={di}
+                          style={styles.dayCellEmpty}
+                        />
+                      );
+                    }
+                    const isSelected = cell.iso === day;
+                    const isToday = cell.iso === todayIso;
+
+                    let style = { ...styles.dayCellBase };
+                    if (isSelected) {
+                      style = { ...style, ...styles.dayCellSelected };
+                    } else if (isToday) {
+                      style = { ...style, ...styles.dayCellToday };
+                    }
+
+                    return (
+                      <div
+                        key={di}
+                        style={style}
+                        onClick={() => handlePickDate(cell.iso)}
+                      >
+                        {cell.day}
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* MAIN CARD */}
         <div style={styles.card}>
           <div style={styles.header}>
             <h1 style={styles.title}>Trade Coach (Personal)</h1>
@@ -905,7 +1173,7 @@ export default function App({
               feedback
             </div>
             <div style={styles.dayBadge}>
-              Day: {selectedDay} • saved per-day
+              Day: {day} • saved per-day
             </div>
             {user && (
               <div style={styles.planBadge}>
