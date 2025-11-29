@@ -38,10 +38,8 @@ function fileToDataUrl(file) {
 function normalizeDriveUrl(url) {
   if (!url) return null;
 
-  // already a direct uc?id=
   if (url.includes("drive.google.com/uc?id=")) return url;
 
-  // turn /file/d/FILEID/view into uc?id=FILEID
   const m = url.match(/drive\.google\.com\/file\/d\/([^/]+)/);
   if (m?.[1]) return `https://drive.google.com/uc?id=${m[1]}`;
 
@@ -73,17 +71,12 @@ export default function App({
   const [dragActive, setDragActive] = useState(false);
   const fileInputRef = useRef(null);
 
-  // ✅ Chat history per-day
   const [chats, setChats] = useState([]);
-
-  // ✅ Form preview URL (for the composer thumbnail)
   const [previewUrl, setPreviewUrl] = useState(null);
-
-  // ✅ Auto-scroll anchor
   const chatEndRef = useRef(null);
   const chatWrapRef = useRef(null);
 
-  // ⭐ logged-in user (email-based)
+  // ⭐ logged-in user
   const [user, setUser] = useState(() => {
     try {
       const raw = localStorage.getItem(LS_USER_KEY);
@@ -116,7 +109,7 @@ export default function App({
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
 
-  // Create / cleanup blob URL for the preview thumbnail
+  // Screenshot preview blob
   useEffect(() => {
     if (!form.file) {
       setPreviewUrl(null);
@@ -131,7 +124,7 @@ export default function App({
     };
   }, [form.file]);
 
-  // Load saved chats for the selected day
+  // Load saved chats per day
   useEffect(() => {
     try {
       const key = `tradeChats:${selectedDay}`;
@@ -144,13 +137,13 @@ export default function App({
     }
   }, [selectedDay]);
 
-  // Persist chats whenever they change
+  // Persist chats
   useEffect(() => {
     const key = `tradeChats:${selectedDay}`;
     safeSaveChats(key, chats);
   }, [chats, selectedDay]);
 
-  // Auto-scroll when chats change
+  // Auto-scroll
   useEffect(() => {
     if (!chats.length) return;
     chatEndRef.current?.scrollIntoView({
@@ -178,7 +171,7 @@ export default function App({
   );
   const onChange = (k, v) => setForm((prev) => ({ ...prev, [k]: v }));
 
-  // Simple gating logic
+  // Gating logic
   function canSubmitNow() {
     const today = todayStr();
 
@@ -199,7 +192,7 @@ export default function App({
     return { allowed: true, reason: "freeWithinLimit" };
   }
 
-  // Signup / login with email + password
+  // Signup / login
   async function handleAuthSubmit(e) {
     e.preventDefault();
     setAuthError("");
@@ -240,6 +233,7 @@ export default function App({
     if (!gate.allowed) {
       if (gate.reason === "needSignup") {
         setAuthMode("signup");
+        setAuthForm({ name: "", email: "", password: "" });
         setShowSignup(true);
       } else if (gate.reason === "limitReached") {
         setShowPaywall(true);
@@ -409,22 +403,30 @@ export default function App({
       color: "#e7ecf2",
       display: "grid",
       placeItems: "center",
-      padding: "24px 12px",
+      padding: "80px 12px 24px", // top padding to clear fixed header
     },
 
-    // NEW: header row inside card
-    appHeaderRow: {
+    // 🔹 GLOBAL FIXED HEADER (TOP OF WHOLE SITE)
+    siteHeader: {
+      position: "fixed",
+      top: 0,
+      left: 0,
+      right: 0,
+      height: 56,
       display: "flex",
-      justifyContent: "space-between",
       alignItems: "center",
-      marginBottom: 8,
-      gap: 12,
+      justifyContent: "space-between",
+      padding: "0 32px",
+      background: "rgba(7,11,16,0.96)",
+      borderBottom: "1px solid #151e2a",
+      backdropFilter: "blur(16px)",
+      zIndex: 70,
     },
-    appHeaderLeft: {
-      fontSize: 16,
-      fontWeight: 800, // bold "Trade Coach"
+    siteHeaderTitle: {
+      fontSize: 18,
+      fontWeight: 800, // bold Trade Coach
     },
-    appHeaderRight: {
+    siteHeaderActions: {
       display: "flex",
       alignItems: "center",
       gap: 10,
@@ -472,7 +474,7 @@ export default function App({
     },
     dropdownMenu: {
       position: "absolute",
-      top: 34,
+      top: 38,
       right: 0,
       background: "#121821",
       borderRadius: 10,
@@ -480,7 +482,7 @@ export default function App({
       minWidth: 160,
       boxShadow: "0 14px 40px rgba(0,0,0,0.5)",
       padding: 6,
-      zIndex: 40,
+      zIndex: 80,
     },
     dropdownItem: {
       padding: "8px 10px",
@@ -719,7 +721,7 @@ export default function App({
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
-      zIndex: 50,
+      zIndex: 90, // above header + dropdown
       padding: "16px",
     },
     modalCard: {
@@ -792,263 +794,267 @@ export default function App({
     "U";
 
   return (
-    <div style={styles.page}>
-      <div style={styles.card}>
-        {/* HEADER ROW INSIDE CARD */}
-        <div style={styles.appHeaderRow}>
-          <div style={styles.appHeaderLeft}>Trade Coach</div>
+    <>
+      {/* 🔹 GLOBAL HEADER (fixed, very top of site) */}
+      <div style={styles.siteHeader}>
+        <div style={styles.siteHeaderTitle}>Trade Coach</div>
 
-          <div style={styles.appHeaderRight}>
-            {!user && (
-              <>
-                <button
-                  style={styles.headerButtonGhost}
-                  onClick={() => {
-                    setAuthMode("login");
-                    setAuthForm({ name: "", email: "", password: "" });
-                    setAuthError("");
-                    setShowSignup(true);
-                  }}
-                >
-                  Sign In
-                </button>
-                <button
-                  style={styles.headerButtonPrimary}
-                  onClick={() => {
-                    setAuthMode("signup");
-                    setAuthForm({ name: "", email: "", password: "" });
-                    setAuthError("");
-                    setShowSignup(true);
-                  }}
-                >
-                  Sign Up
-                </button>
-              </>
-            )}
+        <div style={styles.siteHeaderActions}>
+          {!user && (
+            <>
+              <button
+                style={styles.headerButtonGhost}
+                onClick={() => {
+                  setAuthMode("login");
+                  setAuthForm({ name: "", email: "", password: "" });
+                  setAuthError("");
+                  setShowSignup(true);
+                }}
+              >
+                Sign In
+              </button>
+              <button
+                style={styles.headerButtonPrimary}
+                onClick={() => {
+                  setAuthMode("signup");
+                  setAuthForm({ name: "", email: "", password: "" });
+                  setAuthError("");
+                  setShowSignup(true);
+                }}
+              >
+                Sign Up
+              </button>
+            </>
+          )}
 
-            {user && (
-              <div style={{ position: "relative" }}>
-                <div
-                  style={styles.userBadge}
-                  onClick={() =>
-                    setProfileDropdownOpen((open) => !open)
-                  }
-                >
-                  <div style={styles.avatar}>{userInitials}</div>
-                  <div>
-                    <div style={{ fontSize: 12 }}>{user.name}</div>
-                    <div style={{ fontSize: 10, opacity: 0.7 }}>
-                      {user.plan === "pro" ? "Pro" : "Free"}
-                    </div>
+          {user && (
+            <div style={{ position: "relative" }}>
+              <div
+                style={styles.userBadge}
+                onClick={() =>
+                  setProfileDropdownOpen((open) => !open)
+                }
+              >
+                <div style={styles.avatar}>{userInitials}</div>
+                <div>
+                  <div style={{ fontSize: 12 }}>{user.name}</div>
+                  <div style={{ fontSize: 10, opacity: 0.7 }}>
+                    {user.plan === "pro" ? "Pro" : "Free"}
                   </div>
                 </div>
-
-                {profileDropdownOpen && (
-                  <div style={styles.dropdownMenu}>
-                    <div style={styles.dropdownItemMuted}>
-                      Signed in as
-                      <br />
-                      <span style={{ fontSize: 11 }}>{user.email}</span>
-                    </div>
-                    <div
-                      style={{
-                        ...styles.dropdownItem,
-                        marginTop: 4,
-                      }}
-                      onClick={() => {
-                        setShowProfile(true);
-                        setProfileDropdownOpen(false);
-                      }}
-                      onMouseEnter={(e) =>
-                        (e.currentTarget.style.background = "#1a2432")
-                      }
-                      onMouseLeave={(e) =>
-                        (e.currentTarget.style.background = "transparent")
-                      }
-                    >
-                      Profile
-                    </div>
-                    <div
-                      style={{
-                        ...styles.dropdownItem,
-                        color: "#ff9ba8",
-                      }}
-                      onClick={() => {
-                        localStorage.removeItem(LS_USER_KEY);
-                        setUser(null);
-                        setProfileDropdownOpen(false);
-                      }}
-                      onMouseEnter={(e) =>
-                        (e.currentTarget.style.background = "#2b1620")
-                      }
-                      onMouseLeave={(e) =>
-                        (e.currentTarget.style.background = "transparent")
-                      }
-                    >
-                      Log out
-                    </div>
-                  </div>
-                )}
               </div>
-            )}
-          </div>
-        </div>
 
-        {/* MAIN TITLE + DAY BADGE */}
-        <div style={styles.header}>
-          <h1 style={styles.title}>Trade Coach (Personal)</h1>
-          <div style={styles.subtitle}>
-            Upload chart (screenshot) → then write your thought process → AI
-            feedback
-          </div>
-          <div style={styles.dayBadge}>
-            Day: {selectedDay} • saved per-day
-          </div>
-          {user && (
-            <div style={styles.planBadge}>
-              {user.plan === "pro"
-                ? "Pro plan • unlimited feedback"
-                : "Free plan • 1 feedback per day"}
+              {profileDropdownOpen && (
+                <div style={styles.dropdownMenu}>
+                  <div style={styles.dropdownItemMuted}>
+                    Signed in as
+                    <br />
+                    <span style={{ fontSize: 11 }}>{user.email}</span>
+                  </div>
+                  <div
+                    style={{
+                      ...styles.dropdownItem,
+                      marginTop: 4,
+                    }}
+                    onClick={() => {
+                      setShowProfile(true);
+                      setProfileDropdownOpen(false);
+                    }}
+                    onMouseEnter={(e) =>
+                      (e.currentTarget.style.background = "#1a2432")
+                    }
+                    onMouseLeave={(e) =>
+                      (e.currentTarget.style.background = "transparent")
+                    }
+                  >
+                    Profile
+                  </div>
+                  <div
+                    style={{
+                      ...styles.dropdownItem,
+                      color: "#ff9ba8",
+                    }}
+                    onClick={() => {
+                      localStorage.removeItem(LS_USER_KEY);
+                      setUser(null);
+                      setProfileDropdownOpen(false);
+                    }}
+                    onMouseEnter={(e) =>
+                      (e.currentTarget.style.background = "#2b1620")
+                    }
+                    onMouseLeave={(e) =>
+                      (e.currentTarget.style.background = "transparent")
+                    }
+                  >
+                    Log out
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
+      </div>
 
-        <div style={styles.chatShell}>
-          {/* SCROLLABLE CHAT WINDOW */}
-          <div
-            ref={chatWrapRef}
-            style={{
-              ...styles.chatWindow,
-              ...(dragActive ? styles.dropMiniActive : {}),
-            }}
-            onDragEnter={(e) => {
-              preventDefaults(e);
-              setDragActive(true);
-            }}
-            onDragOver={preventDefaults}
-            onDragLeave={(e) => {
-              preventDefaults(e);
-              setDragActive(false);
-            }}
-            onDrop={handleDrop}
-          >
-            {chats.length === 0 && (
-              <div style={styles.emptyState}>
-                No trades yet. Upload a chart + notes below to get feedback.
+      {/* PAGE CONTENT (date selector from parent will sit under header too) */}
+      <div style={styles.page}>
+        <div style={styles.card}>
+          <div style={styles.header}>
+            <h1 style={styles.title}>Trade Coach (Personal)</h1>
+            <div style={styles.subtitle}>
+              Upload chart (screenshot) → then write your thought process → AI
+              feedback
+            </div>
+            <div style={styles.dayBadge}>
+              Day: {selectedDay} • saved per-day
+            </div>
+            {user && (
+              <div style={styles.planBadge}>
+                {user.plan === "pro"
+                  ? "Pro plan • unlimited feedback"
+                  : "Free plan • 1 feedback per day"}
               </div>
             )}
-
-            {chats.map((chat) => (
-              <ChatTurn key={chat.id} chat={chat} styles={styles} />
-            ))}
-            <div ref={chatEndRef} />
           </div>
 
-          {/* COMPOSER */}
-          <form onSubmit={handleSubmit} style={styles.composer}>
-            <div style={styles.composerRow}>
-              <div style={styles.composerLeft}>
-                <div
-                  style={{
-                    ...styles.dropMini,
-                    ...(dragActive ? styles.dropMiniActive : {}),
-                  }}
-                  onClick={() => fileInputRef.current?.click()}
-                  onDragEnter={(e) => {
-                    preventDefaults(e);
-                    setDragActive(true);
-                  }}
-                  onDragOver={preventDefaults}
-                  onDragLeave={(e) => {
-                    preventDefaults(e);
-                    setDragActive(false);
-                  }}
-                  onDrop={handleDrop}
-                >
-                  {previewUrl ? (
-                    <>
-                      <img
-                        src={previewUrl}
-                        alt="preview"
-                        style={styles.previewThumb}
-                      />
+          <div style={styles.chatShell}>
+            {/* SCROLLABLE CHAT WINDOW */}
+            <div
+              ref={chatWrapRef}
+              style={{
+                ...styles.chatWindow,
+                ...(dragActive ? styles.dropMiniActive : {}),
+              }}
+              onDragEnter={(e) => {
+                preventDefaults(e);
+                setDragActive(true);
+              }}
+              onDragOver={preventDefaults}
+              onDragLeave={(e) => {
+                preventDefaults(e);
+                setDragActive(false);
+              }}
+              onDrop={handleDrop}
+            >
+              {chats.length === 0 && (
+                <div style={styles.emptyState}>
+                  No trades yet. Upload a chart + notes below to get feedback.
+                </div>
+              )}
+
+              {chats.map((chat) => (
+                <ChatTurn key={chat.id} chat={chat} styles={styles} />
+              ))}
+              <div ref={chatEndRef} />
+            </div>
+
+            {/* COMPOSER */}
+            <form onSubmit={handleSubmit} style={styles.composer}>
+              <div style={styles.composerRow}>
+                <div style={styles.composerLeft}>
+                  <div
+                    style={{
+                      ...styles.dropMini,
+                      ...(dragActive ? styles.dropMiniActive : {}),
+                    }}
+                    onClick={() => fileInputRef.current?.click()}
+                    onDragEnter={(e) => {
+                      preventDefaults(e);
+                      setDragActive(true);
+                    }}
+                    onDragOver={preventDefaults}
+                    onDragLeave={(e) => {
+                      preventDefaults(e);
+                      setDragActive(false);
+                    }}
+                    onDrop={handleDrop}
+                  >
+                    {previewUrl ? (
+                      <>
+                        <img
+                          src={previewUrl}
+                          alt="preview"
+                          style={styles.previewThumb}
+                        />
+                        <div style={styles.dropMiniLabel}>
+                          <span style={styles.dropMiniTitle}>
+                            Screenshot added
+                          </span>
+                          <span style={styles.dropMiniHint}>
+                            Click to replace • drag new chart here
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          style={styles.miniCloseBtn}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onChange("file", null);
+                          }}
+                        >
+                          ×
+                        </button>
+                      </>
+                    ) : (
                       <div style={styles.dropMiniLabel}>
                         <span style={styles.dropMiniTitle}>
-                          Screenshot added
+                          + Add screenshot
                         </span>
                         <span style={styles.dropMiniHint}>
-                          Click to replace • drag new chart here
+                          Click or drag chart here (.png / .jpg)
                         </span>
                       </div>
-                      <button
-                        type="button"
-                        style={styles.miniCloseBtn}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onChange("file", null);
-                        }}
-                      >
-                        ×
-                      </button>
-                    </>
-                  ) : (
-                    <div style={styles.dropMiniLabel}>
-                      <span style={styles.dropMiniTitle}>+ Add screenshot</span>
-                      <span style={styles.dropMiniHint}>
-                        Click or drag chart here (.png / .jpg)
-                      </span>
-                    </div>
-                  )}
+                    )}
 
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) =>
+                        onChange("file", e.target.files?.[0] || null)
+                      }
+                      style={{ display: "none" }}
+                    />
+                  </div>
+                </div>
+
+                <div style={styles.composerRight}>
+                  <div style={styles.label}>
+                    Strategy / thought process — what setup were you taking?
+                  </div>
+                  <textarea
+                    value={form.strategyNotes}
                     onChange={(e) =>
-                      onChange("file", e.target.files?.[0] || null)
+                      onChange("strategyNotes", e.target.value)
                     }
-                    style={{ display: "none" }}
+                    placeholder="Explain your idea: HTF bias, BOS/CHoCH, FVG fill, OB mitigation, session, target, risk plan, management rules..."
+                    required
+                    style={styles.textarea}
                   />
                 </div>
               </div>
 
-              <div style={styles.composerRight}>
-                <div style={styles.label}>
-                  Strategy / thought process — what setup were you taking?
-                </div>
-                <textarea
-                  value={form.strategyNotes}
-                  onChange={(e) =>
-                    onChange("strategyNotes", e.target.value)
-                  }
-                  placeholder="Explain your idea: HTF bias, BOS/CHoCH, FVG fill, OB mitigation, session, target, risk plan, management rules..."
-                  required
-                  style={styles.textarea}
-                />
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={!isValid || submitting}
-              style={styles.button}
-            >
-              {submitting ? "Uploading…" : "Get Feedback"}
-            </button>
-          </form>
-        </div>
-
-        {error && (
-          <div style={styles.error}>
-            Error: {error}
-            {!WEBHOOK_URL && (
-              <div style={styles.hint}>
-                Tip: define VITE_N8N_TRADE_FEEDBACK_WEBHOOK in .env.local and in
-                your deploy env.
-              </div>
-            )}
+              <button
+                type="submit"
+                disabled={!isValid || submitting}
+                style={styles.button}
+              >
+                {submitting ? "Uploading…" : "Get Feedback"}
+              </button>
+            </form>
           </div>
-        )}
+
+          {error && (
+            <div style={styles.error}>
+              Error: {error}
+              {!WEBHOOK_URL && (
+                <div style={styles.hint}>
+                  Tip: define VITE_N8N_TRADE_FEEDBACK_WEBHOOK in .env.local and
+                  in your deploy env.
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* AUTH MODAL */}
@@ -1194,7 +1200,7 @@ export default function App({
               type="button"
               style={styles.modalButtonPrimary}
               onClick={() => {
-                // TODO: connect Stripe / payment link
+                // TODO: wire to Stripe / payment link
               }}
             >
               Upgrade to Pro
@@ -1255,7 +1261,7 @@ export default function App({
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
 
