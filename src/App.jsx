@@ -8,6 +8,19 @@ const WEBHOOK_URL =
   (import.meta?.env && import.meta.env.VITE_N8N_TRADE_FEEDBACK_WEBHOOK) ||
   PROD_WEBHOOK;
 
+// ⭐ NEW: signup / login webhook (email-based)
+const SIGNUP_WEBHOOK =
+  import.meta.env?.VITE_N8N_TRADECOACH_SIGNUP ||
+  "https://jacobtf007.app.n8n.cloud/webhook/tradecoach_signup";
+
+// ⭐ NEW: localStorage keys for user + usage
+const LS_USER_KEY = "tc_user_v1";
+const LS_USAGE_KEY = "tc_usage_v1";
+
+function todayStr() {
+  return new Date().toISOString().slice(0, 10);
+}
+
 /* ---------------- HELPERS ---------------- */
 
 // Convert image file -> base64 data url (persists across reload)
@@ -70,6 +83,32 @@ export default function App({
   const chatEndRef = useRef(null);
   const chatWrapRef = useRef(null);
 
+  // ⭐ NEW: logged-in user (email-based)
+  const [user, setUser] = useState(() => {
+    try {
+      const raw = localStorage.getItem(LS_USER_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  // ⭐ NEW: usage tracking (anon + per-day count for free plan)
+  const [usage, setUsage] = useState(() => {
+    try {
+      const raw = localStorage.getItem(LS_USAGE_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    return { anonUsed: false, lastDate: null, countToday: 0 };
+  });
+
+  // ⭐ NEW: auth / paywall popups
+  const [showSignup, setShowSignup] = useState(false);
+  const [showPaywall, setShowPaywall] = useState(false);
+  const [authForm, setAuthForm] = useState({ name: "", email: "" });
+  const [authLoading, setAuthLoading] = useState(false);
+  const [authError, setAuthError] = useState("");
+
   // Create / cleanup blob URL for the preview thumbnail
   useEffect(() => {
     if (!form.file) {
@@ -113,16 +152,98 @@ export default function App({
     });
   }, [chats.length, chats]);
 
+  // ⭐ NEW: persist user + usage to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem(LS_USER_KEY, JSON.stringify(user));
+    } catch {}
+  }, [user]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(LS_USAGE_KEY, JSON.stringify(usage));
+    } catch {}
+  }, [usage]);
+
   const isValid = useMemo(
     () => !!form.strategyNotes && !!form.file,
     [form]
   );
   const onChange = (k, v) => setForm((prev) => ({ ...prev, [k]: v }));
 
+  // ⭐ NEW: simple gating logic
+  function canSubmitNow() {
+    const today = todayStr();
+
+    // 1️⃣ No user yet
+    if (!user) {
+      if (!usage.anonUsed) {
+        return { allowed: true, reason: "firstAnon" }; // first-ever free
+      }
+      return { allowed: false, reason: "needSignup" }; // must sign up
+    }
+
+    // 2️⃣ Logged in
+    const isPro = user.plan === "pro";
+    if (isPro) {
+      return { allowed: true, reason: "pro" }; // unlimited
+    }
+
+    // 3️⃣ Free plan: 1 per day
+    if (usage.lastDate === today && (usage.countToday || 0) >= 1) {
+      return { allowed: false, reason: "limitReached" };
+    }
+
+    return { allowed: true, reason: "freeWithinLimit" };
+  }
+
+  // ⭐ NEW: signup / login with email
+  async function handleAuthSubmit(e) {
+    e.preventDefault();
+    setAuthError("");
+    setAuthLoading(true);
+
+    try {
+      const res = await fetch(SIGNUP_WEBHOOK, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(authForm),
+      });
+
+      if (!res.ok) throw new Error("Signup/login failed");
+
+      const data = await res.json(); // { userId, name, email, plan? }
+      setUser({
+        userId: data.userId,
+        name: data.name,
+        email: data.email,
+        plan: data.plan || "free",
+      });
+      setShowSignup(false);
+    } catch (err) {
+      console.error(err);
+      setAuthError("Could not sign you in. Try again.");
+    } finally {
+      setAuthLoading(false);
+    }
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
     setError("");
     if (!isValid || submitting) return;
+
+    // ⭐ NEW: gate before sending
+    const gate = canSubmitNow();
+    if (!gate.allowed) {
+      if (gate.reason === "needSignup") {
+        setShowSignup(true);
+      } else if (gate.reason === "limitReached") {
+        setShowPaywall(true);
+      }
+      return;
+    }
+
     setSubmitting(true);
 
     try {
@@ -155,6 +276,10 @@ export default function App({
       const fd = new FormData();
       fd.append("day", selectedDay);
       fd.append("strategyNotes", form.strategyNotes);
+      // ⭐ NEW: include user + plan info for backend
+      fd.append("userId", user?.userId || "");
+      fd.append("userEmail", user?.email || "");
+      fd.append("userPlan", user?.plan || (gate.reason === "firstAnon" ? "anon" : "free"));
       if (form.file) fd.append("screenshot", form.file); // must be 'screenshot'
 
       console.log("[Trade Coach] POSTing to", WEBHOOK_URL);
@@ -213,6 +338,34 @@ export default function App({
         })
       );
 
+      // ⭐ NEW: update usage counters after a successful call
+      const today = todayStr();
+      setUsage((prev) => {
+        // first anonymous free
+        if (!user && gate.reason === "firstAnon") {
+          return { anonUsed: true, lastDate: today, countToday: 1 };
+        }
+
+        // logged-in free plan
+        if (user && user.plan !== "pro") {
+          if (prev.lastDate === today) {
+            return {
+              ...prev,
+              lastDate: today,
+              countToday: (prev.countToday || 0) + 1,
+            };
+          }
+          return {
+            ...prev,
+            lastDate: today,
+            countToday: 1,
+          };
+        }
+
+        // pro or anything else
+        return { ...prev, lastDate: today };
+      });
+
       // Reset composer (but DO NOT wipe chats)
       setForm({ strategyNotes: "", file: null });
     } catch (err) {
@@ -266,6 +419,7 @@ export default function App({
       display: "grid",
       placeItems: "center",
       padding: "24px 12px",
+      position: "relative", // ⭐ so overlays sit correctly
     },
     card: {
       width: "100%",
@@ -288,6 +442,17 @@ export default function App({
       borderRadius: 10,
       padding: "4px 10px",
       marginTop: 6,
+    },
+    // ⭐ NEW: small plan badge (free/pro) under the date
+    planBadge: {
+      display: "inline-block",
+      fontSize: 11,
+      opacity: 0.8,
+      borderRadius: 999,
+      padding: "4px 10px",
+      marginTop: 6,
+      background: "#0d121a",
+      border: "1px solid #243043",
     },
     title: { fontSize: 26, fontWeight: 800, margin: 0 },
     subtitle: { fontSize: 12, opacity: 0.7, marginTop: 6 },
@@ -479,6 +644,81 @@ export default function App({
       textAlign: "center",
       padding: "8px 0",
     },
+
+    // ⭐ NEW: modal styles
+    overlay: {
+      position: "fixed",
+      inset: 0,
+      background: "rgba(0,0,0,0.65)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      zIndex: 50,
+      padding: "16px",
+    },
+    modalCard: {
+      width: "100%",
+      maxWidth: 420,
+      background: "#121821",
+      borderRadius: 16,
+      border: "1px solid #243043",
+      padding: 18,
+      boxShadow: "0 20px 60px rgba(0,0,0,0.6)",
+      fontSize: 13,
+    },
+    modalTitle: {
+      fontSize: 18,
+      fontWeight: 800,
+      marginBottom: 6,
+      textAlign: "center",
+    },
+    modalText: {
+      fontSize: 12,
+      opacity: 0.8,
+      marginBottom: 12,
+      textAlign: "center",
+    },
+    input: {
+      width: "100%",
+      borderRadius: 10,
+      border: "1px solid #243043",
+      background: "#0d121a",
+      color: "#e7ecf2",
+      padding: "8px 10px",
+      fontSize: 13,
+      marginBottom: 8,
+      boxSizing: "border-box",
+    },
+    modalButtonPrimary: {
+      width: "100%",
+      borderRadius: 10,
+      border: "none",
+      padding: "9px 12px",
+      fontSize: 13,
+      fontWeight: 700,
+      background: "#1b9aaa",
+      color: "#fff",
+      cursor: "pointer",
+      marginTop: 4,
+    },
+    modalButtonSecondary: {
+      width: "100%",
+      borderRadius: 10,
+      border: "1px solid #243043",
+      padding: "8px 12px",
+      fontSize: 12,
+      fontWeight: 500,
+      background: "transparent",
+      color: "#e7ecf2",
+      cursor: "pointer",
+      marginTop: 8,
+    },
+    modalError: {
+      fontSize: 11,
+      color: "#ff9ba8",
+      marginTop: 4,
+      textAlign: "center",
+    },
   };
 
   return (
@@ -493,6 +733,14 @@ export default function App({
           <div style={styles.dayBadge}>
             Day: {selectedDay} • saved per-day
           </div>
+          {/* ⭐ show plan if logged in */}
+          {user && (
+            <div style={styles.planBadge}>
+              {user.plan === "pro"
+                ? "Pro plan • unlimited feedback"
+                : "Free plan • 1 feedback per day"}
+            </div>
+          )}
         </div>
 
         <div style={styles.chatShell}>
@@ -635,6 +883,94 @@ export default function App({
           </div>
         )}
       </div>
+
+      {/* ⭐ SIGNUP MODAL (email login after first free anon use) */}
+      {showSignup && (
+        <div style={styles.overlay}>
+          <div style={styles.modalCard}>
+            <div style={styles.modalTitle}>
+              Create your free Trade Coach account
+            </div>
+            <div style={styles.modalText}>
+              You&apos;ve used your first free AI review. Log in with your email
+              to save your trades and get 1 free review every day.
+            </div>
+            <form onSubmit={handleAuthSubmit}>
+              <input
+                type="text"
+                required
+                placeholder="Name"
+                value={authForm.name}
+                onChange={(e) =>
+                  setAuthForm((f) => ({ ...f, name: e.target.value }))
+                }
+                style={styles.input}
+              />
+              <input
+                type="email"
+                required
+                placeholder="Email"
+                value={authForm.email}
+                onChange={(e) =>
+                  setAuthForm((f) => ({ ...f, email: e.target.value }))
+                }
+                style={styles.input}
+              />
+              {authError && (
+                <div style={styles.modalError}>{authError}</div>
+              )}
+              <button
+                type="submit"
+                disabled={authLoading}
+                style={{
+                  ...styles.modalButtonPrimary,
+                  opacity: authLoading ? 0.7 : 1,
+                  cursor: authLoading ? "default" : "pointer",
+                }}
+              >
+                {authLoading ? "Signing you in..." : "Continue"}
+              </button>
+            </form>
+            <button
+              type="button"
+              style={styles.modalButtonSecondary}
+              onClick={() => setShowSignup(false)}
+            >
+              Cancel for now
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ⭐ PAYWALL MODAL (free daily limit hit) */}
+      {showPaywall && (
+        <div style={styles.overlay}>
+          <div style={styles.modalCard}>
+            <div style={styles.modalTitle}>Daily limit reached</div>
+            <div style={styles.modalText}>
+              You&apos;ve used your free AI review for today. Upgrade to Pro for
+              unlimited feedback and full trade history.
+            </div>
+            <button
+              type="button"
+              style={styles.modalButtonPrimary}
+              // TODO: wire to Stripe or payment link
+              onClick={() => {
+                // placeholder – keep modal open for now
+              }}
+            >
+              Upgrade to Pro
+            </button>
+            <button
+              type="button"
+              style={styles.modalButtonSecondary}
+              onClick={() => setShowPaywall(false)}
+            >
+              Maybe later
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
