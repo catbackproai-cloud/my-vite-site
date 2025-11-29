@@ -105,7 +105,11 @@ export default function App({
   // ⭐ NEW: auth / paywall popups
   const [showSignup, setShowSignup] = useState(false);
   const [showPaywall, setShowPaywall] = useState(false);
-  const [authForm, setAuthForm] = useState({ name: "", email: "" });
+  const [authForm, setAuthForm] = useState({
+    name: "",
+    email: "",
+    password: "",
+  });
   const [authLoading, setAuthLoading] = useState(false);
   const [authError, setAuthError] = useState("");
 
@@ -197,7 +201,7 @@ export default function App({
     return { allowed: true, reason: "freeWithinLimit" };
   }
 
-  // ⭐ NEW: signup / login with email
+  // ⭐ NEW: signup / login with email + password
   async function handleAuthSubmit(e) {
     e.preventDefault();
     setAuthError("");
@@ -207,7 +211,7 @@ export default function App({
       const res = await fetch(SIGNUP_WEBHOOK, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(authForm),
+        body: JSON.stringify(authForm), // includes name, email, password
       });
 
       if (!res.ok) throw new Error("Signup/login failed");
@@ -222,7 +226,7 @@ export default function App({
       setShowSignup(false);
     } catch (err) {
       console.error(err);
-      setAuthError("Could not sign you in. Try again.");
+      setAuthError("Could not sign you in. Check details and try again.");
     } finally {
       setAuthLoading(false);
     }
@@ -279,7 +283,10 @@ export default function App({
       // ⭐ NEW: include user + plan info for backend
       fd.append("userId", user?.userId || "");
       fd.append("userEmail", user?.email || "");
-      fd.append("userPlan", user?.plan || (gate.reason === "firstAnon" ? "anon" : "free"));
+      fd.append(
+        "userPlan",
+        user?.plan || (gate.reason === "firstAnon" ? "anon" : "free")
+      );
       if (form.file) fd.append("screenshot", form.file); // must be 'screenshot'
 
       console.log("[Trade Coach] POSTing to", WEBHOOK_URL);
@@ -633,7 +640,6 @@ export default function App({
       padding: "2px 8px",
       borderRadius: 8,
       background: "#1b9aaa22",
-      border: "1px solid #1b9aaa55",
     },
     sectionTitle: { fontWeight: 800, marginTop: 8, marginBottom: 4 },
     ul: { margin: 0, paddingLeft: 18, opacity: 0.95 },
@@ -884,7 +890,7 @@ export default function App({
         )}
       </div>
 
-      {/* ⭐ SIGNUP MODAL (email login after first free anon use) */}
+      {/* ⭐ SIGNUP MODAL (email + password login after first free anon use) */}
       {showSignup && (
         <div style={styles.overlay}>
           <div style={styles.modalCard}>
@@ -913,6 +919,16 @@ export default function App({
                 value={authForm.email}
                 onChange={(e) =>
                   setAuthForm((f) => ({ ...f, email: e.target.value }))
+                }
+                style={styles.input}
+              />
+              <input
+                type="password"
+                required
+                placeholder="Password"
+                value={authForm.password}
+                onChange={(e) =>
+                  setAuthForm((f) => ({ ...f, password: e.target.value }))
                 }
                 style={styles.input}
               />
@@ -1123,3 +1139,4 @@ function ChatTurn({ chat, styles }) {
     </>
   );
 }
+
