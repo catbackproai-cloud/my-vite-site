@@ -53,9 +53,11 @@ function safeSaveChats(key, chats) {
   try {
     // Strip localPreviewUrl & localDataUrl from what we SAVE,
     // but leave the in-memory state untouched.
-    const leanChats = chats.map(({ localPreviewUrl, localDataUrl, ...rest }) => ({
-      ...rest,
-    }));
+    const leanChats = chats.map(
+      ({ localPreviewUrl, localDataUrl, ...rest }) => ({
+        ...rest,
+      })
+    );
 
     localStorage.setItem(key, JSON.stringify(leanChats));
     localStorage.setItem("lastTradeChats", JSON.stringify(leanChats));
@@ -102,7 +104,7 @@ export default function App({
     return { anonUsed: false, lastDate: null, countToday: 0 };
   });
 
-  // ⭐ NEW: auth / paywall popups
+  // ⭐ NEW: auth / paywall / profile
   const [showSignup, setShowSignup] = useState(false);
   const [showPaywall, setShowPaywall] = useState(false);
   const [authForm, setAuthForm] = useState({
@@ -112,6 +114,9 @@ export default function App({
   });
   const [authLoading, setAuthLoading] = useState(false);
   const [authError, setAuthError] = useState("");
+  const [authMode, setAuthMode] = useState("signup"); // "signup" | "login"
+  const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
 
   // Create / cleanup blob URL for the preview thumbnail
   useEffect(() => {
@@ -224,6 +229,7 @@ export default function App({
         plan: data.plan || "free",
       });
       setShowSignup(false);
+      setProfileDropdownOpen(false);
     } catch (err) {
       console.error(err);
       setAuthError("Could not sign you in. Check details and try again.");
@@ -241,6 +247,7 @@ export default function App({
     const gate = canSubmitNow();
     if (!gate.allowed) {
       if (gate.reason === "needSignup") {
+        setAuthMode("signup");
         setShowSignup(true);
       } else if (gate.reason === "limitReached") {
         setShowPaywall(true);
@@ -262,7 +269,9 @@ export default function App({
         : null;
 
       // Create a temp chat entry (pending)
-      const tempId = `tmp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      const tempId = `tmp-${Date.now()}-${Math.random()
+        .toString(36)
+        .slice(2)}`;
       const tempChat = {
         id: tempId,
         timestamp: new Date().toISOString(),
@@ -428,6 +437,94 @@ export default function App({
       padding: "24px 12px",
       position: "relative", // ⭐ so overlays sit correctly
     },
+    // ⭐ HEADER BAR
+    headerBar: {
+      position: "absolute",
+      top: 0,
+      left: 0,
+      right: 0,
+      padding: "10px 20px",
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      pointerEvents: "none", // children re-enable
+    },
+    headerLeft: {
+      pointerEvents: "auto",
+      fontSize: 13,
+      opacity: 0.8,
+    },
+    headerRight: {
+      display: "flex",
+      gap: 10,
+      alignItems: "center",
+      pointerEvents: "auto",
+    },
+    headerButtonGhost: {
+      background: "transparent",
+      border: "1px solid #243043",
+      color: "#e7ecf2",
+      padding: "8px 14px",
+      borderRadius: 10,
+      fontSize: 13,
+      cursor: "pointer",
+    },
+    headerButtonPrimary: {
+      background: "#1b9aaa",
+      border: "none",
+      color: "#fff",
+      padding: "8px 14px",
+      borderRadius: 10,
+      fontSize: 13,
+      fontWeight: 700,
+      cursor: "pointer",
+    },
+    userBadge: {
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
+      padding: "6px 10px",
+      borderRadius: 999,
+      border: "1px solid #243043",
+      background: "#0d121a",
+      cursor: "pointer",
+      fontSize: 13,
+    },
+    avatar: {
+      width: 24,
+      height: 24,
+      borderRadius: "999px",
+      background: "#1b9aaa33",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      fontSize: 12,
+      fontWeight: 700,
+    },
+    dropdownMenu: {
+      position: "absolute",
+      top: 40,
+      right: 0,
+      background: "#121821",
+      borderRadius: 10,
+      border: "1px solid #243043",
+      minWidth: 160,
+      boxShadow: "0 14px 40px rgba(0,0,0,0.5)",
+      padding: 6,
+      zIndex: 40,
+    },
+    dropdownItem: {
+      padding: "8px 10px",
+      fontSize: 13,
+      cursor: "pointer",
+      borderRadius: 8,
+    },
+    dropdownItemMuted: {
+      fontSize: 11,
+      opacity: 0.7,
+      padding: "4px 10px",
+    },
+
     card: {
       width: "100%",
       maxWidth: 760,
@@ -450,7 +547,7 @@ export default function App({
       padding: "4px 10px",
       marginTop: 6,
     },
-    // ⭐ NEW: small plan badge (free/pro) under the date
+    // ⭐ small plan badge (free/pro) under the date
     planBadge: {
       display: "inline-block",
       fontSize: 11,
@@ -564,8 +661,6 @@ export default function App({
       width: "100%",
       minHeight: 90,
       background: "#0d121a",
-      border: "1px solid #243043",
-      borderRadius: 12,
       color: "#e7ecf2",
       padding: "10px 12px",
       outline: "none",
@@ -651,7 +746,7 @@ export default function App({
       padding: "8px 0",
     },
 
-    // ⭐ NEW: modal styles
+    // ⭐ modal styles
     overlay: {
       position: "fixed",
       inset: 0,
@@ -727,8 +822,113 @@ export default function App({
     },
   };
 
+  const userInitials =
+    user?.name?.trim()?.split(" ")?.map((p) => p[0])?.join("")?.toUpperCase() ||
+    "U";
+
   return (
     <div style={styles.page}>
+      {/* HEADER BAR */}
+      <div style={styles.headerBar}>
+        <div style={styles.headerLeft}>
+          <span>Trade Coach</span>
+        </div>
+        <div style={styles.headerRight}>
+          {!user && (
+            <>
+              <button
+                style={styles.headerButtonGhost}
+                onClick={() => {
+                  setAuthMode("login");
+                  setAuthForm({ name: "", email: "", password: "" });
+                  setAuthError("");
+                  setShowSignup(true);
+                }}
+              >
+                Sign In
+              </button>
+              <button
+                style={styles.headerButtonPrimary}
+                onClick={() => {
+                  setAuthMode("signup");
+                  setAuthForm({ name: "", email: "", password: "" });
+                  setAuthError("");
+                  setShowSignup(true);
+                }}
+              >
+                Sign Up
+              </button>
+            </>
+          )}
+
+          {user && (
+            <div style={{ position: "relative" }}>
+              <div
+                style={styles.userBadge}
+                onClick={() =>
+                  setProfileDropdownOpen((open) => !open)
+                }
+              >
+                <div style={styles.avatar}>{userInitials}</div>
+                <div>
+                  <div style={{ fontSize: 12 }}>{user.name}</div>
+                  <div style={{ fontSize: 10, opacity: 0.7 }}>
+                    {user.plan === "pro" ? "Pro" : "Free"}
+                  </div>
+                </div>
+              </div>
+
+              {profileDropdownOpen && (
+                <div style={styles.dropdownMenu}>
+                  <div style={styles.dropdownItemMuted}>
+                    Signed in as
+                    <br />
+                    <span style={{ fontSize: 11 }}>{user.email}</span>
+                  </div>
+                  <div
+                    style={{
+                      ...styles.dropdownItem,
+                      marginTop: 4,
+                    }}
+                    onClick={() => {
+                      setShowProfile(true);
+                      setProfileDropdownOpen(false);
+                    }}
+                    onMouseEnter={(e) =>
+                      (e.currentTarget.style.background = "#1a2432")
+                    }
+                    onMouseLeave={(e) =>
+                      (e.currentTarget.style.background = "transparent")
+                    }
+                  >
+                    Profile
+                  </div>
+                  <div
+                    style={{
+                      ...styles.dropdownItem,
+                      color: "#ff9ba8",
+                    }}
+                    onClick={() => {
+                      localStorage.removeItem(LS_USER_KEY);
+                      setUser(null);
+                      setProfileDropdownOpen(false);
+                    }}
+                    onMouseEnter={(e) =>
+                      (e.currentTarget.style.background = "#2b1620")
+                    }
+                    onMouseLeave={(e) =>
+                      (e.currentTarget.style.background = "transparent")
+                    }
+                  >
+                    Log out
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
       <div style={styles.card}>
         <div style={styles.header}>
           <h1 style={styles.title}>Trade Coach (Personal)</h1>
@@ -890,28 +1090,31 @@ export default function App({
         )}
       </div>
 
-      {/* ⭐ SIGNUP MODAL (email + password login after first free anon use) */}
+      {/* ⭐ AUTH MODAL (signup / login) */}
       {showSignup && (
         <div style={styles.overlay}>
           <div style={styles.modalCard}>
             <div style={styles.modalTitle}>
-              Create your free Trade Coach account
+              {authMode === "signup" ? "Create your free account" : "Sign in"}
             </div>
             <div style={styles.modalText}>
-              You&apos;ve used your first free AI review. Log in with your email
-              to save your trades and get 1 free review every day.
+              {authMode === "signup"
+                ? "Get 1 free AI trade review per day."
+                : "Sign in with your email and password."}
             </div>
             <form onSubmit={handleAuthSubmit}>
-              <input
-                type="text"
-                required
-                placeholder="Name"
-                value={authForm.name}
-                onChange={(e) =>
-                  setAuthForm((f) => ({ ...f, name: e.target.value }))
-                }
-                style={styles.input}
-              />
+              {authMode === "signup" && (
+                <input
+                  type="text"
+                  required={authMode === "signup"}
+                  placeholder="Name"
+                  value={authForm.name}
+                  onChange={(e) =>
+                    setAuthForm((f) => ({ ...f, name: e.target.value }))
+                  }
+                  style={styles.input}
+                />
+              )}
               <input
                 type="email"
                 required
@@ -944,7 +1147,13 @@ export default function App({
                   cursor: authLoading ? "default" : "pointer",
                 }}
               >
-                {authLoading ? "Signing you in..." : "Continue"}
+                {authLoading
+                  ? authMode === "signup"
+                    ? "Creating account..."
+                    : "Signing you in..."
+                  : authMode === "signup"
+                  ? "Create account"
+                  : "Sign in"}
               </button>
             </form>
             <button
@@ -954,6 +1163,59 @@ export default function App({
             >
               Cancel for now
             </button>
+
+            <div
+              style={{
+                marginTop: 10,
+                fontSize: 12,
+                textAlign: "center",
+                opacity: 0.8,
+              }}
+            >
+              {authMode === "signup" ? (
+                <>
+                  Already have an account?{" "}
+                  <button
+                    type="button"
+                    style={{
+                      background: "none",
+                      border: "none",
+                      color: "#1b9aaa",
+                      cursor: "pointer",
+                      padding: 0,
+                      fontSize: 12,
+                    }}
+                    onClick={() => {
+                      setAuthMode("login");
+                      setAuthError("");
+                    }}
+                  >
+                    Sign in instead
+                  </button>
+                </>
+              ) : (
+                <>
+                  New here?{" "}
+                  <button
+                    type="button"
+                    style={{
+                      background: "none",
+                      border: "none",
+                      color: "#1b9aaa",
+                      cursor: "pointer",
+                      padding: 0,
+                      fontSize: 12,
+                    }}
+                    onClick={() => {
+                      setAuthMode("signup");
+                      setAuthError("");
+                    }}
+                  >
+                    Create an account
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -983,6 +1245,53 @@ export default function App({
               onClick={() => setShowPaywall(false)}
             >
               Maybe later
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ⭐ PROFILE MODAL */}
+      {showProfile && user && (
+        <div style={styles.overlay}>
+          <div style={styles.modalCard}>
+            <div style={styles.modalTitle}>Profile</div>
+            <div style={styles.modalText}>
+              Basic info for your Trade Coach account.
+            </div>
+            <div
+              style={{
+                fontSize: 13,
+                lineHeight: 1.6,
+                marginBottom: 12,
+              }}
+            >
+              <div>
+                <strong>Name:</strong> {user.name}
+              </div>
+              <div>
+                <strong>Email:</strong> {user.email}
+              </div>
+              <div>
+                <strong>Plan:</strong>{" "}
+                {user.plan === "pro" ? "Pro (paid)" : "Free"}
+              </div>
+            </div>
+            <div
+              style={{
+                fontSize: 11,
+                opacity: 0.7,
+                marginBottom: 10,
+              }}
+            >
+              In a later version you can add password reset and plan upgrades
+              here.
+            </div>
+            <button
+              type="button"
+              style={styles.modalButtonSecondary}
+              onClick={() => setShowProfile(false)}
+            >
+              Close
             </button>
           </div>
         </div>
@@ -1139,4 +1448,3 @@ function ChatTurn({ chat, styles }) {
     </>
   );
 }
-
