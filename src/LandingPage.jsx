@@ -1,4 +1,8 @@
-export default function LandingPage({ onEnterApp }) {
+import { useNavigate } from "react-router-dom";
+
+export default function LandingPage() {
+  const navigate = useNavigate();
+
   const styles = {
     page: {
       minHeight: "100vh",
@@ -145,8 +149,12 @@ export default function LandingPage({ onEnterApp }) {
       opacity: 0.75,
       marginTop: 10,
     },
-    // simple mobile tweak
-    "@media (max-width: 768px)": {},
+  };
+
+  // For now both buttons just send to /workspace.
+  // Later you can swap primaryBtn to go to Stripe, then redirect back with a member ID.
+  const goToWorkspace = () => {
+    navigate("/workspace");
   };
 
   return (
@@ -169,36 +177,38 @@ export default function LandingPage({ onEnterApp }) {
           <ul style={styles.bullets}>
             <li style={styles.bullet}>
               <span style={styles.bulletDot}>•</span>
-              <span>See every trade graded like a coach is looking over your shoulder.</span>
+              <span>
+                See every trade graded like a coach is looking over your
+                shoulder.
+              </span>
             </li>
             <li style={styles.bullet}>
               <span style={styles.bulletDot}>•</span>
-              <span>Daily journal built-in so you can track psychology and execution.</span>
+              <span>
+                Daily journal built-in so you can track psychology and
+                execution.
+              </span>
             </li>
             <li style={styles.bullet}>
               <span style={styles.bulletDot}>•</span>
-              <span>Built for ICT / liquidity-based traders, not random indicator spam.</span>
+              <span>
+                Built for ICT / liquidity-based traders, not random indicator
+                spam.
+              </span>
             </li>
           </ul>
 
           <div style={styles.ctaRow}>
             <button
               style={styles.primaryBtn}
-              onClick={() => {
-                // TODO: hook to checkout
-                // For now we just drop them into the app:
-                onEnterApp?.();
-              }}
+              onClick={goToWorkspace}
             >
               Get started → open my portal
             </button>
 
             <button
               style={styles.ghostBtn}
-              onClick={() => {
-                // If someone already has a member ID, they can jump straight in
-                onEnterApp?.();
-              }}
+              onClick={goToWorkspace}
             >
               Already have a member ID?
             </button>
@@ -221,7 +231,8 @@ export default function LandingPage({ onEnterApp }) {
             <li style={styles.checkItem}>
               <span style={styles.checkIcon}>✓</span>
               <span style={styles.checkText}>
-                AI feedback tailored to your strategy (BOS/CHoCH, FVGs, OBs, sessions, etc.)
+                AI feedback tailored to your strategy (BOS/CHoCH, FVGs, OBs,
+                sessions, etc.)
               </span>
             </li>
             <li style={styles.checkItem}>
@@ -233,7 +244,8 @@ export default function LandingPage({ onEnterApp }) {
             <li style={styles.checkItem}>
               <span style={styles.checkIcon}>✓</span>
               <span style={styles.checkText}>
-                Private portal – your trades & notes stay attached to your member ID.
+                Private portal – your trades & notes stay attached to your
+                member ID.
               </span>
             </li>
           </ul>

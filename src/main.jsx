@@ -1,31 +1,20 @@
-import React, { useState } from "react";
-import { createRoot } from "react-dom/client";
-import App from "./App.jsx";
-import LandingPage from "./LandingPage.jsx";
+import React from "react";
+import ReactDOM from "react-dom/client";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import App from "./App.jsx";            // your Trade Coach portal
+import LandingPage from "./LandingPage.jsx"; // your marketing / signup page
 import "./index.css";
 
-function Root() {
-  // Decide initial view:
-  // if user already has an account saved, go straight to the app,
-  // otherwise show the landing page.
-  const [view, setView] = useState(() => {
-    try {
-      const raw = localStorage.getItem("tc_user_v1");
-      return raw ? "app" : "landing";
-    } catch {
-      return "landing";
-    }
-  });
-
-  if (view === "landing") {
-    return <LandingPage onEnterApp={() => setView("app")} />;
-  }
-
-  return <App />;
-}
-
-createRoot(document.getElementById("root")).render(
+ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-    <Root />
+    <BrowserRouter>
+      <Routes>
+        {/* Default route: landing page */}
+        <Route path="/" element={<LandingPage />} />
+
+        {/* Portal route: Trade Coach workspace */}
+        <Route path="/workspace" element={<App />} />
+      </Routes>
+    </BrowserRouter>
   </React.StrictMode>
 );
