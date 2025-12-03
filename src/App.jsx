@@ -1297,8 +1297,6 @@ export default function App({
             </div>
 
             <div style={styles.modalRow}>
-              <div style={styles.modalLabel}>Email</div>
-              <div style={styles.modalValue}>{member?.email || "—"}</div>
             </div>
             <div style={styles.modalRow}>
               <div style={styles.modalLabel}>Member ID</div>
