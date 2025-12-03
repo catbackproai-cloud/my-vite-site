@@ -125,6 +125,10 @@ export default function App({
     return { year: d.getFullYear(), month: d.getMonth() }; // 0-index
   });
 
+  // ⭐ TAB + JOURNAL STATE
+  const [activeTab, setActiveTab] = useState("coach"); // "coach" | "journal"
+  const [journalText, setJournalText] = useState("");
+
   const todayIso = todayStr();
 
   // Build calendar weeks for dropdown
@@ -144,9 +148,9 @@ export default function App({
           week.push(null);
         } else {
           const m = String(month + 1).padStart(2, "0");
-const dStr = String(currentDay).padStart(2, "0");
-const iso = `${year}-${m}-${dStr}`;
-week.push({ day: currentDay, iso });
+          const dStr = String(currentDay).padStart(2, "0");
+          const iso = `${year}-${m}-${dStr}`;
+          week.push({ day: currentDay, iso });
         }
         currentDay++;
       }
@@ -166,14 +170,14 @@ week.push({ day: currentDay, iso });
   });
 
   const formattedDayLabel = parseLocalDateFromIso(day).toLocaleDateString(
-  undefined,
-  {
-    weekday: "long",
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  }
-);
+    undefined,
+    {
+      weekday: "long",
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    }
+  );
 
   function goToPrevMonth() {
     setCalendarMonth((prev) => {
@@ -192,7 +196,7 @@ week.push({ day: currentDay, iso });
   function handlePickDate(iso) {
     setDay(iso);
     setShowCalendar(false);
-    // when the day changes, chats use the useEffect below
+    // when the day changes, chats & journal use the useEffects below
   }
 
   // Screenshot preview blob
@@ -228,6 +232,27 @@ week.push({ day: currentDay, iso });
     const key = `tradeChats:${day}`;
     safeSaveChats(key, chats);
   }, [chats, day]);
+
+  // 🔹 Load journal per day
+  useEffect(() => {
+    try {
+      const key = `tradeJournal:${day}`;
+      const saved = localStorage.getItem(key);
+      setJournalText(saved || "");
+    } catch {
+      setJournalText("");
+    }
+  }, [day]);
+
+  // 🔹 Persist journal per day
+  useEffect(() => {
+    try {
+      const key = `tradeJournal:${day}`;
+      localStorage.setItem(key, journalText || "");
+    } catch {
+      // ignore
+    }
+  }, [journalText, day]);
 
   // Auto-scroll
   useEffect(() => {
@@ -451,7 +476,7 @@ week.push({ day: currentDay, iso });
           copy[copy.length - 1] = {
             ...last,
             pending: false,
-            analysis: {
+              analysis: {
               grade: "N/A",
               oneLineVerdict: "Upload failed. Try again.",
               whatWentRight: [],
@@ -725,6 +750,51 @@ week.push({ day: currentDay, iso });
     title: { fontSize: 26, fontWeight: 800, margin: 0 },
     subtitle: { fontSize: 12, opacity: 0.7, marginTop: 6 },
 
+    // 🔹 TAB STRIP (Chrome-style)
+    tabRow: {
+      marginTop: 16,
+      marginBottom: 4,
+      display: "flex",
+      alignItems: "flex-end",
+      gap: 6,
+      borderBottom: "1px solid #243043",
+    },
+    tab: {
+      padding: "6px 14px",
+      borderRadius: "10px 10px 0 0",
+      background: "#0d121a",
+      border: "1px solid #243043",
+      borderBottom: "1px solid #243043",
+      fontSize: 13,
+      cursor: "pointer",
+      display: "flex",
+      alignItems: "center",
+      gap: 6,
+      color: "rgba(231,236,242,0.8)",
+      transform: "translateY(1px)",
+    },
+    tabActive: {
+      background: "#121821",
+      borderBottomColor: "#121821",
+      color: "#ffffff",
+      boxShadow: "0 -2px 12px rgba(0,0,0,0.45)",
+      zIndex: 2,
+    },
+    tabLabel: {
+      fontWeight: 600,
+      whiteSpace: "nowrap",
+    },
+    tabBadge: {
+      fontSize: 10,
+      padding: "2px 6px",
+      borderRadius: 999,
+      border: "1px solid #243043",
+      background: "#0b1018",
+      textTransform: "uppercase",
+      letterSpacing: 0.4,
+      opacity: 0.8,
+    },
+
     chatShell: {
       display: "flex",
       flexDirection: "column",
@@ -855,6 +925,68 @@ week.push({ day: currentDay, iso });
       fontSize: 12,
     },
     hint: { marginTop: 6, fontSize: 11, opacity: 0.7 },
+
+    // 🔹 JOURNAL
+    journalShell: {
+      flex: "1 1 auto",
+      background: "#0d121a",
+      borderRadius: 14,
+      border: "1px solid #243043",
+      padding: 14,
+      display: "flex",
+      flexDirection: "column",
+      gap: 10,
+      minHeight: 240,
+    },
+    journalHeaderRow: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "baseline",
+      gap: 8,
+    },
+    journalTitle: {
+      fontSize: 15,
+      fontWeight: 700,
+    },
+    journalSub: {
+      fontSize: 11,
+      opacity: 0.75,
+      marginTop: 4,
+    },
+    journalBadge: {
+      fontSize: 11,
+      padding: "4px 8px",
+      borderRadius: 999,
+      border: "1px solid #243043",
+      background: "#0b1018",
+      opacity: 0.9,
+      whiteSpace: "nowrap",
+    },
+    journalTextarea: {
+      width: "100%",
+      minHeight: 170,
+      background: "#05080d",
+      border: "1px solid #243043",
+      borderRadius: 12,
+      color: "#e7ecf2",
+      padding: "10px 12px",
+      outline: "none",
+      resize: "vertical",
+      fontSize: 14,
+      boxSizing: "border-box",
+    },
+    journalHintRow: {
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: 8,
+      fontSize: 11,
+      opacity: 0.75,
+    },
+    journalHint: {
+      fontSize: 11,
+      opacity: 0.75,
+    },
 
     bubbleRow: {
       display: "flex",
@@ -1095,15 +1227,15 @@ week.push({ day: currentDay, iso });
           <div
             style={styles.datePill}
             onClick={() => {
-  setShowCalendar((open) => !open);
-  if (!showCalendar) {
-    const d = parseLocalDateFromIso(day);
-    setCalendarMonth({
-      year: d.getFullYear(),
-      month: d.getMonth(),
-    });
-  }
-}}
+              setShowCalendar((open) => !open);
+              if (!showCalendar) {
+                const d = parseLocalDateFromIso(day);
+                setCalendarMonth({
+                  year: d.getFullYear(),
+                  month: d.getMonth(),
+                });
+              }
+            }}
           >
             <div style={styles.datePillText}>{formattedDayLabel}</div>
             <div style={styles.datePillIcon}>{showCalendar ? "▲" : "▼"}</div>
@@ -1196,142 +1328,200 @@ week.push({ day: currentDay, iso });
             )}
           </div>
 
-          <div style={styles.chatShell}>
-            {/* SCROLLABLE CHAT WINDOW */}
+          {/* 🔹 TAB STRIP ABOVE THE BOX */}
+          <div style={styles.tabRow}>
             <div
-              ref={chatWrapRef}
               style={{
-                ...styles.chatWindow,
-                ...(dragActive ? styles.dropMiniActive : {}),
+                ...styles.tab,
+                ...(activeTab === "coach" ? styles.tabActive : {}),
               }}
-              onDragEnter={(e) => {
-                preventDefaults(e);
-                setDragActive(true);
-              }}
-              onDragOver={preventDefaults}
-              onDragLeave={(e) => {
-                preventDefaults(e);
-                setDragActive(false);
-              }}
-              onDrop={handleDrop}
+              onClick={() => setActiveTab("coach")}
             >
-              {chats.length === 0 && (
-                <div style={styles.emptyState}>
-                  No trades yet. Upload a chart + notes below to get feedback.
-                </div>
-              )}
-
-              {chats.map((chat) => (
-                <ChatTurn key={chat.id} chat={chat} styles={styles} />
-              ))}
-              <div ref={chatEndRef} />
+              <span style={styles.tabLabel}>Trade Coach</span>
+              <span style={styles.tabBadge}>AI</span>
             </div>
-
-            {/* COMPOSER */}
-            <form onSubmit={handleSubmit} style={styles.composer}>
-              <div style={styles.composerRow}>
-                <div style={styles.composerLeft}>
-                  <div
-                    style={{
-                      ...styles.dropMini,
-                      ...(dragActive ? styles.dropMiniActive : {}),
-                    }}
-                    onClick={() => fileInputRef.current?.click()}
-                    onDragEnter={(e) => {
-                      preventDefaults(e);
-                      setDragActive(true);
-                    }}
-                    onDragOver={preventDefaults}
-                    onDragLeave={(e) => {
-                      preventDefaults(e);
-                      setDragActive(false);
-                    }}
-                    onDrop={handleDrop}
-                  >
-                    {previewUrl ? (
-                      <>
-                        <img
-                          src={previewUrl}
-                          alt="preview"
-                          style={styles.previewThumb}
-                        />
-                        <div style={styles.dropMiniLabel}>
-                          <span style={styles.dropMiniTitle}>
-                            Screenshot added
-                          </span>
-                          <span style={styles.dropMiniHint}>
-                            Click to replace • drag new chart here
-                          </span>
-                        </div>
-                        <button
-                          type="button"
-                          style={styles.miniCloseBtn}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onChange("file", null);
-                          }}
-                        >
-                          ×
-                        </button>
-                      </>
-                    ) : (
-                      <div style={styles.dropMiniLabel}>
-                        <span style={styles.dropMiniTitle}>
-                          + Add screenshot
-                        </span>
-                        <span style={styles.dropMiniHint}>
-                          Click or drag chart here (.png / .jpg)
-                        </span>
-                      </div>
-                    )}
-
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) =>
-                        onChange("file", e.target.files?.[0] || null)
-                      }
-                      style={{ display: "none" }}
-                    />
-                  </div>
-                </div>
-
-                <div style={styles.composerRight}>
-                  <div style={styles.label}>
-                    Strategy / thought process — what setup were you taking?
-                  </div>
-                  <textarea
-                    value={form.strategyNotes}
-                    onChange={(e) =>
-                      onChange("strategyNotes", e.target.value)
-                    }
-                    placeholder="Explain your idea: HTF bias, BOS/CHoCH, FVG fill, OB mitigation, session, target, risk plan, management rules..."
-                    required
-                    style={styles.textarea}
-                  />
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                disabled={!isValid || submitting}
-                style={styles.button}
-              >
-                {submitting ? "Uploading…" : "Get Feedback"}
-              </button>
-            </form>
+            <div
+              style={{
+                ...styles.tab,
+                ...(activeTab === "journal" ? styles.tabActive : {}),
+              }}
+              onClick={() => setActiveTab("journal")}
+            >
+              <span style={styles.tabLabel}>Journal</span>
+              <span style={styles.tabBadge}>Daily</span>
+            </div>
           </div>
 
-          {error && (
-            <div style={styles.error}>
-              Error: {error}
-              {!WEBHOOK_URL && (
-                <div style={styles.hint}>
-                  Tip: define VITE_N8N_TRADE_FEEDBACK_WEBHOOK in .env.local and
-                  in your deploy env.
+          {/* 🔹 TAB CONTENT */}
+          {activeTab === "coach" ? (
+            <>
+              <div style={styles.chatShell}>
+                {/* SCROLLABLE CHAT WINDOW */}
+                <div
+                  ref={chatWrapRef}
+                  style={{
+                    ...styles.chatWindow,
+                    ...(dragActive ? styles.dropMiniActive : {}),
+                  }}
+                  onDragEnter={(e) => {
+                    preventDefaults(e);
+                    setDragActive(true);
+                  }}
+                  onDragOver={preventDefaults}
+                  onDragLeave={(e) => {
+                    preventDefaults(e);
+                    setDragActive(false);
+                  }}
+                  onDrop={handleDrop}
+                >
+                  {chats.length === 0 && (
+                    <div style={styles.emptyState}>
+                      No trades yet. Upload a chart + notes below to get
+                      feedback.
+                    </div>
+                  )}
+
+                  {chats.map((chat) => (
+                    <ChatTurn key={chat.id} chat={chat} styles={styles} />
+                  ))}
+                  <div ref={chatEndRef} />
+                </div>
+
+                {/* COMPOSER */}
+                <form onSubmit={handleSubmit} style={styles.composer}>
+                  <div style={styles.composerRow}>
+                    <div style={styles.composerLeft}>
+                      <div
+                        style={{
+                          ...styles.dropMini,
+                          ...(dragActive ? styles.dropMiniActive : {}),
+                        }}
+                        onClick={() => fileInputRef.current?.click()}
+                        onDragEnter={(e) => {
+                          preventDefaults(e);
+                          setDragActive(true);
+                        }}
+                        onDragOver={preventDefaults}
+                        onDragLeave={(e) => {
+                          preventDefaults(e);
+                          setDragActive(false);
+                        }}
+                        onDrop={handleDrop}
+                      >
+                        {previewUrl ? (
+                          <>
+                            <img
+                              src={previewUrl}
+                              alt="preview"
+                              style={styles.previewThumb}
+                            />
+                            <div style={styles.dropMiniLabel}>
+                              <span style={styles.dropMiniTitle}>
+                                Screenshot added
+                              </span>
+                              <span style={styles.dropMiniHint}>
+                                Click to replace • drag new chart here
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              style={styles.miniCloseBtn}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onChange("file", null);
+                              }}
+                            >
+                              ×
+                            </button>
+                          </>
+                        ) : (
+                          <div style={styles.dropMiniLabel}>
+                            <span style={styles.dropMiniTitle}>
+                              + Add screenshot
+                            </span>
+                            <span style={styles.dropMiniHint}>
+                              Click or drag chart here (.png / .jpg)
+                            </span>
+                          </div>
+                        )}
+
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) =>
+                            onChange("file", e.target.files?.[0] || null)
+                          }
+                          style={{ display: "none" }}
+                        />
+                      </div>
+                    </div>
+
+                    <div style={styles.composerRight}>
+                      <div style={styles.label}>
+                        Strategy / thought process — what setup were you
+                        taking?
+                      </div>
+                      <textarea
+                        value={form.strategyNotes}
+                        onChange={(e) =>
+                          onChange("strategyNotes", e.target.value)
+                        }
+                        placeholder="Explain your idea: HTF bias, BOS/CHoCH, FVG fill, OB mitigation, session, target, risk plan, management rules..."
+                        required
+                        style={styles.textarea}
+                      />
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={!isValid || submitting}
+                    style={styles.button}
+                  >
+                    {submitting ? "Uploading…" : "Get Feedback"}
+                  </button>
+                </form>
+              </div>
+
+              {error && (
+                <div style={styles.error}>
+                  Error: {error}
+                  {!WEBHOOK_URL && (
+                    <div style={styles.hint}>
+                      Tip: define VITE_N8N_TRADE_FEEDBACK_WEBHOOK in
+                      .env.local and in your deploy env.
+                    </div>
+                  )}
                 </div>
               )}
+            </>
+          ) : (
+            <div style={styles.journalShell}>
+              <div style={styles.journalHeaderRow}>
+                <div>
+                  <div style={styles.journalTitle}>Daily Journal</div>
+                  <div style={styles.journalSub}>
+                    Capture how today felt, what you learned, and how you&apos;ll
+                    improve next session.
+                  </div>
+                </div>
+                <div style={styles.journalBadge}>Saved for {day}</div>
+              </div>
+
+              <textarea
+                style={styles.journalTextarea}
+                value={journalText}
+                onChange={(e) => setJournalText(e.target.value)}
+                placeholder="Prompts: What did I do well today? What tilted me? Did I follow my plan? What is one thing I will do better next session?"
+              />
+
+              <div style={styles.journalHintRow}>
+                <span style={styles.journalHint}>
+                  Auto-saved per day — switch dates above like normal to see past
+                  entries.
+                </span>
+              </div>
             </div>
           )}
         </div>
