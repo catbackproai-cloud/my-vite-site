@@ -13,6 +13,11 @@ export default function LandingPage() {
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [memberId, setMemberId] = useState("");
 
+  // existing-member portal state
+  const [showMemberPortal, setShowMemberPortal] = useState(false);
+  const [memberPortalId, setMemberPortalId] = useState("");
+  const [memberPortalError, setMemberPortalError] = useState("");
+
   const styles = {
     page: {
       minHeight: "100vh",
@@ -160,7 +165,7 @@ export default function LandingPage() {
       marginTop: 10,
     },
 
-    // checkout overlay
+    // overlays
     overlay: {
       position: "fixed",
       inset: 0,
@@ -258,7 +263,7 @@ export default function LandingPage() {
     navigate("/workspace");
   };
 
-  // This will be replaced with your real Stripe flow later.
+  // Simulated checkout + member ID generation
   async function handleCheckoutSubmit(e) {
     e.preventDefault();
     setCheckoutError("");
@@ -269,29 +274,44 @@ export default function LandingPage() {
         throw new Error("Please enter your name and email.");
       }
 
-      // TODO: call your backend to create a Stripe Checkout session
-      // and redirect to Stripe. After successful payment, your backend
-      // would generate + store the member ID and send it to the user.
-      //
-      // For now we simulate "payment success" + member ID creation.
+      // TODO: Replace with real Stripe checkout flow.
       const generatedId =
         "TC-" + Math.random().toString(36).slice(2, 8).toUpperCase();
 
       setMemberId(generatedId);
 
-      // Store locally so the portal can auto-detect it later if you want
       try {
         localStorage.setItem("tc_member_id", generatedId);
         localStorage.setItem("tc_member_email", checkoutForm.email);
         localStorage.setItem("tc_member_name", checkoutForm.name);
       } catch {
-        // ignore storage errors
+        // ignore
       }
     } catch (err) {
       setCheckoutError(err?.message || "Something went wrong.");
     } finally {
       setCheckoutLoading(false);
     }
+  }
+
+  // Existing member: user pastes Member ID
+  function handleMemberPortalSubmit(e) {
+    e.preventDefault();
+    setMemberPortalError("");
+
+    if (!memberPortalId.trim()) {
+      setMemberPortalError("Please enter your Member ID.");
+      return;
+    }
+
+    // Later you could validate this against your backend.
+    try {
+      localStorage.setItem("tc_member_id", memberPortalId.trim());
+    } catch {
+      // ignore
+    }
+
+    openWorkspace();
   }
 
   return (
@@ -349,7 +369,10 @@ export default function LandingPage() {
 
               <button
                 style={styles.ghostBtn}
-                onClick={openWorkspace}
+                onClick={() => {
+                  setShowMemberPortal(true);
+                  setMemberPortalError("");
+                }}
               >
                 Already have a member ID?
               </button>
@@ -486,6 +509,46 @@ export default function LandingPage() {
               onClick={() => setShowCheckout(false)}
             >
               Cancel for now
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* EXISTING MEMBER PORTAL OVERLAY */}
+      {showMemberPortal && (
+        <div style={styles.overlay}>
+          <div style={styles.modal}>
+            <div style={styles.modalTitle}>Enter your Member ID</div>
+            <div style={styles.modalText}>
+              Already purchased? Paste your Member ID below to open your Trade
+              Coach workspace.
+            </div>
+
+            <form onSubmit={handleMemberPortalSubmit}>
+              <input
+                type="text"
+                placeholder="e.g. TC-ABC123"
+                value={memberPortalId}
+                onChange={(e) => setMemberPortalId(e.target.value)}
+                style={styles.input}
+                autoCapitalize="characters"
+              />
+
+              {memberPortalError && (
+                <div style={styles.modalError}>{memberPortalError}</div>
+              )}
+
+              <button type="submit" style={styles.modalPrimaryBtn}>
+                Open my workspace
+              </button>
+            </form>
+
+            <button
+              type="button"
+              style={styles.modalSecondaryBtn}
+              onClick={() => setShowMemberPortal(false)}
+            >
+              Cancel
             </button>
           </div>
         </div>
