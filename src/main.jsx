@@ -21,23 +21,6 @@ function isoDay(d) {
   return startOfDay(d).toISOString().slice(0, 10); // YYYY-MM-DD
 }
 
-function DateNav({ date, setDate }) {
-  const label = useMemo(() => fmt(date), [date]);
-
-  function shiftDays(n) {
-    const next = new Date(date);
-    next.setDate(next.getDate() + n);
-    setDate(startOfDay(next));
-  }
-
-  useEffect(() => {
-    function onKey(e) {
-      if (e.key === "ArrowLeft") shiftDays(-1);
-      if (e.key === "ArrowRight") shiftDays(1);
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [date]);
 
   const bar = {
     width: "100%",
@@ -80,7 +63,7 @@ function DateNav({ date, setDate }) {
       <div style={note}>Any saved information for each day will be saved for that day.</div>
     </div>
   );
-}
+
 
 function Root() {
   const [date, setDate] = useState(() => startOfDay(new Date()));
@@ -88,7 +71,6 @@ function Root() {
 
   return (
     <React.StrictMode>
-      <DateNav date={date} setDate={setDate} />
       <App selectedDay={dayKey} />
     </React.StrictMode>
   );
