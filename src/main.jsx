@@ -1,20 +1,33 @@
-import React from "react";
-import ReactDOM from "react-dom/client";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import App from "./App.jsx";            // your Trade Coach portal
-import LandingPage from "./LandingPage.jsx"; // your marketing / signup page
-import "./index.css";
+// main.jsx
+import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom";
+import LandingPage from "./LandingPage.jsx";
+import App from "./App.jsx";
 
-ReactDOM.createRoot(document.getElementById("root")).render(
-  <React.StrictMode>
+const MEMBER_KEY = "tc_member_id";
+
+// Simple guard component
+function WorkspaceGuard() {
+  const navigate = useNavigate();
+
+  const memberId = window.localStorage.getItem(MEMBER_KEY);
+
+  // If no member id, kick them back to landing
+  if (!memberId) {
+    navigate("/", { replace: true });
+    return null; // nothing while redirecting
+  }
+
+  // If they DO have one, show the portal
+  return <App />;
+}
+
+export default function Root() {
+  return (
     <BrowserRouter>
       <Routes>
-        {/* Default route: landing page */}
         <Route path="/" element={<LandingPage />} />
-
-        {/* Portal route: Trade Coach workspace */}
-        <Route path="/workspace" element={<App />} />
+        <Route path="/workspace" element={<WorkspaceGuard />} />
       </Routes>
     </BrowserRouter>
-  </React.StrictMode>
-);
+  );
+}
