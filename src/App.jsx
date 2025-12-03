@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 // ✅ Single source of truth for prod:
-const PROD_WEBHOOK = "https://jacobtf007.app.n8n.cloud/webhook/trade_feedback";
+const PROD_WEBHOOK = "https://jacobtf007.app.n8n.cloud/webhook/tradecoach_signup";
 
 // ✅ Env override if you ever want it later:
 const WEBHOOK_URL =
