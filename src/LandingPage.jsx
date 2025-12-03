@@ -1,19 +1,19 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-export default function LandingPage() {
+const CREATE_MEMBER_WEBHOOK =
+  import.meta.env?.VITE_N8N_TRADECOACH_CREATE_MEMBER ||
+  "https://jacobtf007.app.n8n.cloud/webhook/tradecoach_create_member";
+
+export default function LandingPage({ onEnterApp }) {
   const navigate = useNavigate();
 
   const [showCheckout, setShowCheckout] = useState(false);
-  const [checkoutForm, setCheckoutForm] = useState({
-    name: "",
-    email: "",
-  });
-  const [checkoutError, setCheckoutError] = useState("");
+  const [checkoutForm, setCheckoutForm] = useState({ name: "", email: "" });
   const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [checkoutError, setCheckoutError] = useState("");
   const [memberId, setMemberId] = useState("");
 
-  // existing-member portal state
   const [showMemberPortal, setShowMemberPortal] = useState(false);
   const [memberPortalId, setMemberPortalId] = useState("");
   const [memberPortalError, setMemberPortalError] = useState("");
@@ -164,8 +164,6 @@ export default function LandingPage() {
       opacity: 0.75,
       marginTop: 10,
     },
-
-    // overlays
     overlay: {
       position: "fixed",
       inset: 0,
@@ -173,29 +171,29 @@ export default function LandingPage() {
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
-      zIndex: 90,
-      padding: 16,
+      padding: "16px",
+      zIndex: 80,
     },
-    modal: {
+    modalCard: {
       width: "100%",
       maxWidth: 420,
-      background: "#0d121a",
-      borderRadius: 18,
-      border: "1px solid #1b2535",
+      background: "#111823",
+      borderRadius: 16,
+      border: "1px solid #252f40",
+      boxShadow: "0 24px 70px rgba(0,0,0,0.8)",
       padding: 20,
-      boxShadow: "0 24px 70px rgba(0,0,0,0.7)",
       fontSize: 13,
     },
     modalTitle: {
       fontSize: 18,
       fontWeight: 800,
-      marginBottom: 4,
+      marginBottom: 6,
       textAlign: "center",
     },
     modalText: {
       fontSize: 12,
       opacity: 0.8,
-      marginBottom: 14,
+      marginBottom: 12,
       textAlign: "center",
     },
     input: {
@@ -209,7 +207,7 @@ export default function LandingPage() {
       marginBottom: 8,
       boxSizing: "border-box",
     },
-    modalPrimaryBtn: {
+    modalButtonPrimary: {
       width: "100%",
       borderRadius: 10,
       border: "none",
@@ -221,7 +219,7 @@ export default function LandingPage() {
       cursor: "pointer",
       marginTop: 4,
     },
-    modalSecondaryBtn: {
+    modalButtonSecondary: {
       width: "100%",
       borderRadius: 10,
       border: "1px solid #243043",
@@ -239,31 +237,52 @@ export default function LandingPage() {
       marginTop: 4,
       textAlign: "center",
     },
-    memberIdBox: {
-      marginTop: 12,
+    idBox: {
+      marginTop: 10,
       padding: 10,
       borderRadius: 10,
-      border: "1px dashed #243043",
       background: "#05080f",
+      border: "1px dashed #243043",
       fontSize: 12,
+      textAlign: "center",
+      wordBreak: "break-all",
     },
-    memberIdLabel: {
-      fontSize: 11,
-      opacity: 0.75,
-      marginBottom: 4,
-    },
-    memberIdValue: {
-      fontFamily: "monospace",
-      fontSize: 14,
+    idLabel: {
       fontWeight: 700,
+      marginBottom: 4,
+      display: "block",
+    },
+    idValue: {
+      fontFamily: "monospace",
+      fontSize: 13,
+    },
+    idHint: {
+      marginTop: 6,
+      fontSize: 11,
+      opacity: 0.8,
     },
   };
 
-  const openWorkspace = () => {
-    navigate("/workspace");
-  };
+  function openWorkspace() {
+    const id = memberId || memberPortalId;
+    if (!id) {
+      setMemberPortalError("Enter your member ID first.");
+      return;
+    }
 
-  // Simulated checkout + member ID generation
+    try {
+      localStorage.setItem("tc_member_id", id);
+    } catch {
+      // ignore
+    }
+
+    if (onEnterApp) {
+      onEnterApp();
+    } else {
+      navigate("/workspace");
+    }
+  }
+
   async function handleCheckoutSubmit(e) {
     e.preventDefault();
     setCheckoutError("");
@@ -274,27 +293,51 @@ export default function LandingPage() {
         throw new Error("Please enter your name and email.");
       }
 
-      // TODO: Replace with real Stripe checkout flow.
-      const generatedId =
-        "TC-" + Math.random().toString(36).slice(2, 8).toUpperCase();
+      const res = await fetch(CREATE_MEMBER_WEBHOOK, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: checkoutForm.name,
+          email: checkoutForm.email,
+        }),
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        console.error("Create member failed:", res.status, text);
+        throw new Error("Could not create your member ID. Try again.");
+      }
+
+      const data = await res.json(); // { memberId, name, email, message }
+      const generatedId = data.memberId;
+
+      if (!generatedId) {
+        throw new Error("Server did not return a member ID.");
+      }
 
       setMemberId(generatedId);
 
       try {
         localStorage.setItem("tc_member_id", generatedId);
-        localStorage.setItem("tc_member_email", checkoutForm.email);
-        localStorage.setItem("tc_member_name", checkoutForm.name);
+        localStorage.setItem(
+          "tc_member_email",
+          data.email || checkoutForm.email
+        );
+        localStorage.setItem(
+          "tc_member_name",
+          data.name || checkoutForm.name
+        );
       } catch {
         // ignore
       }
     } catch (err) {
+      console.error(err);
       setCheckoutError(err?.message || "Something went wrong.");
     } finally {
       setCheckoutLoading(false);
     }
   }
 
-  // Existing member: user pastes Member ID
   function handleMemberPortalSubmit(e) {
     e.preventDefault();
     setMemberPortalError("");
@@ -304,7 +347,6 @@ export default function LandingPage() {
       return;
     }
 
-    // Later you could validate this against your backend.
     try {
       localStorage.setItem("tc_member_id", memberPortalId.trim());
     } catch {
@@ -360,8 +402,10 @@ export default function LandingPage() {
               <button
                 style={styles.primaryBtn}
                 onClick={() => {
-                  setShowCheckout(true);
+                  setCheckoutForm({ name: "", email: "" });
                   setCheckoutError("");
+                  setMemberId("");
+                  setShowCheckout(true);
                 }}
               >
                 Get started → open my portal
@@ -370,8 +414,10 @@ export default function LandingPage() {
               <button
                 style={styles.ghostBtn}
                 onClick={() => {
-                  setShowMemberPortal(true);
+                  const existing = localStorage.getItem("tc_member_id") || "";
+                  setMemberPortalId(existing);
                   setMemberPortalError("");
+                  setShowMemberPortal(true);
                 }}
               >
                 Already have a member ID?
@@ -422,11 +468,13 @@ export default function LandingPage() {
         </div>
       </div>
 
-      {/* CHECKOUT OVERLAY */}
+      {/* CHECKOUT / CREATE MEMBER MODAL */}
       {showCheckout && (
         <div style={styles.overlay}>
-          <div style={styles.modal}>
-            <div style={styles.modalTitle}>Create your Trade Coach account</div>
+          <div style={styles.modalCard}>
+            <div style={styles.modalTitle}>
+              Create your Trade Coach account
+            </div>
             <div style={styles.modalText}>
               Enter your details and continue to payment. After purchase,
               you&apos;ll get a Member ID to unlock your portal.
@@ -460,52 +508,43 @@ export default function LandingPage() {
 
               <button
                 type="submit"
+                disabled={checkoutLoading}
                 style={{
-                  ...styles.modalPrimaryBtn,
+                  ...styles.modalButtonPrimary,
                   opacity: checkoutLoading ? 0.7 : 1,
                   cursor: checkoutLoading ? "default" : "pointer",
                 }}
-                disabled={checkoutLoading}
               >
                 {checkoutLoading
-                  ? "Processing..."
+                  ? "Processing…"
                   : "Pay with Stripe & generate Member ID"}
               </button>
             </form>
 
             {memberId && (
-              <div style={styles.memberIdBox}>
-                <div style={styles.memberIdLabel}>
-                  Your Member ID (save this – you&apos;ll need it in the
-                  portal):
-                </div>
-                <div style={styles.memberIdValue}>{memberId}</div>
-                <div
-                  style={{
-                    fontSize: 11,
-                    opacity: 0.75,
-                    marginTop: 6,
-                  }}
-                >
-                  Use this ID when you go to your workspace so the app can
-                  unlock your private journal + AI feedback.
+              <div style={styles.idBox}>
+                <span style={styles.idLabel}>Your Member ID:</span>
+                <span style={styles.idValue}>{memberId}</span>
+                <div style={styles.idHint}>
+                  Store this somewhere safe. You&apos;ll use it to log into
+                  your Trade Coach portal.
                 </div>
                 <button
                   type="button"
                   style={{
-                    ...styles.modalSecondaryBtn,
-                    marginTop: 8,
+                    ...styles.modalButtonPrimary,
+                    marginTop: 10,
                   }}
                   onClick={openWorkspace}
                 >
-                  Go to my workspace
+                  I saved it → go to my workspace
                 </button>
               </div>
             )}
 
             <button
               type="button"
-              style={styles.modalSecondaryBtn}
+              style={styles.modalButtonSecondary}
               onClick={() => setShowCheckout(false)}
             >
               Cancel for now
@@ -514,38 +553,41 @@ export default function LandingPage() {
         </div>
       )}
 
-      {/* EXISTING MEMBER PORTAL OVERLAY */}
+      {/* MEMBER ID LOGIN MODAL */}
       {showMemberPortal && (
         <div style={styles.overlay}>
-          <div style={styles.modal}>
+          <div style={styles.modalCard}>
             <div style={styles.modalTitle}>Enter your Member ID</div>
             <div style={styles.modalText}>
-              Already purchased? Paste your Member ID below to open your Trade
-              Coach workspace.
+              Paste the Member ID you received after purchase to unlock your
+              Trade Coach portal.
             </div>
 
             <form onSubmit={handleMemberPortalSubmit}>
               <input
                 type="text"
-                placeholder="e.g. TC-ABC123"
+                placeholder="Member ID (e.g. TC-ABC123)"
                 value={memberPortalId}
                 onChange={(e) => setMemberPortalId(e.target.value)}
                 style={styles.input}
-                autoCapitalize="characters"
+                required
               />
 
               {memberPortalError && (
                 <div style={styles.modalError}>{memberPortalError}</div>
               )}
 
-              <button type="submit" style={styles.modalPrimaryBtn}>
-                Open my workspace
+              <button
+                type="submit"
+                style={styles.modalButtonPrimary}
+              >
+                Continue to my workspace
               </button>
             </form>
 
             <button
               type="button"
-              style={styles.modalSecondaryBtn}
+              style={styles.modalButtonSecondary}
               onClick={() => setShowMemberPortal(false)}
             >
               Cancel
