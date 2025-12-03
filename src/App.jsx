@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 // ✅ Single source of truth for prod:
 const PROD_WEBHOOK = "https://jacobtf007.app.n8n.cloud/webhook/trade_feedback";
@@ -7,6 +8,8 @@ const PROD_WEBHOOK = "https://jacobtf007.app.n8n.cloud/webhook/trade_feedback";
 const WEBHOOK_URL =
   (import.meta?.env && import.meta.env.VITE_N8N_TRADE_FEEDBACK_WEBHOOK) ||
   PROD_WEBHOOK;
+
+const MEMBER_LS_KEY = "tc_member_v1";
 
 function todayStr() {
   const d = new Date();
@@ -64,6 +67,8 @@ function safeSaveChats(key, chats) {
 export default function App({
   selectedDay = new Date().toISOString().slice(0, 10),
 }) {
+  const navigate = useNavigate();
+
   const [form, setForm] = useState({ strategyNotes: "", file: null });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -74,6 +79,20 @@ export default function App({
   const [previewUrl, setPreviewUrl] = useState(null);
   const chatEndRef = useRef(null);
   const chatWrapRef = useRef(null);
+
+  // ⭐ member info (from localStorage)
+  const [member, setMember] = useState(() => {
+    try {
+      const raw = localStorage.getItem(MEMBER_LS_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  // ⭐ header menu + profile modal state
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
 
   // ⭐ DAY + CALENDAR STATE
   const [day, setDay] = useState(selectedDay); // internal selected day
@@ -393,9 +412,45 @@ export default function App({
       gap: 10,
       fontSize: 12,
       opacity: 0.8,
+      position: "relative",
+    },
+    menuButton: {
+      width: 28,
+      height: 28,
+      borderRadius: 999,
+      border: "1px solid #243043",
+      background: "#0d121a",
+      color: "#e7ecf2",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      cursor: "pointer",
+      fontSize: 18,
+      padding: 0,
+    },
+    menuDropdown: {
+      position: "absolute",
+      top: 36,
+      right: 0,
+      background: "#121821",
+      borderRadius: 12,
+      border: "1px solid #243043",
+      boxShadow: "0 16px 50px rgba(0,0,0,0.6)",
+      padding: 6,
+      minWidth: 160,
+      zIndex: 80,
+    },
+    menuItem: {
+      padding: "8px 10px",
+      borderRadius: 8,
+      fontSize: 13,
+      cursor: "pointer",
+    },
+    menuItemDanger: {
+      color: "#ff9ba8",
     },
 
-    // 🔹 DATE DROPDOWN ROW (sits in the "gap" under header, above chat card)
+    // 🔹 DATE DROPDOWN ROW
     dateRow: {
       width: "100%",
       maxWidth: 760,
@@ -815,7 +870,75 @@ export default function App({
       textAlign: "center",
       padding: "8px 0",
     },
+
+    // 🔹 PROFILE MODAL
+    overlay: {
+      position: "fixed",
+      inset: 0,
+      background: "rgba(0,0,0,0.65)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      zIndex: 90,
+      padding: 16,
+    },
+    modalCard: {
+      width: "100%",
+      maxWidth: 380,
+      background: "#121821",
+      borderRadius: 16,
+      border: "1px solid #243043",
+      padding: 18,
+      boxShadow: "0 20px 60px rgba(0,0,0,0.6)",
+      fontSize: 13,
+    },
+    modalTitle: {
+      fontSize: 18,
+      fontWeight: 800,
+      marginBottom: 6,
+      textAlign: "center",
+    },
+    modalText: {
+      fontSize: 12,
+      opacity: 0.8,
+      marginBottom: 12,
+      textAlign: "center",
+    },
+    modalRow: {
+      marginBottom: 8,
+      fontSize: 13,
+    },
+    modalLabel: {
+      fontWeight: 700,
+      opacity: 0.9,
+    },
+    modalValue: {
+      opacity: 0.9,
+    },
+    modalCloseBtn: {
+      marginTop: 12,
+      width: "100%",
+      borderRadius: 10,
+      border: "1px solid #243043",
+      padding: "8px 12px",
+      fontSize: 13,
+      fontWeight: 500,
+      background: "transparent",
+      color: "#e7ecf2",
+      cursor: "pointer",
+    },
   };
+
+  function handleLogout() {
+    try {
+      localStorage.removeItem(MEMBER_LS_KEY);
+    } catch {
+      // ignore
+    }
+    setMember(null);
+    setMenuOpen(false);
+    navigate("/"); // back to landing page
+  }
 
   return (
     <>
@@ -823,8 +946,46 @@ export default function App({
       <div style={styles.siteHeader}>
         <div style={styles.siteHeaderTitle}>Trade Coach Portal</div>
         <div style={styles.siteHeaderActions}>
-          {/* You can drop a “Back to landing” or Member ID info here later */}
-          Personal workspace
+          <span>Personal workspace</span>
+          <button
+            type="button"
+            style={styles.menuButton}
+            onClick={() => setMenuOpen((open) => !open)}
+          >
+            ⋯
+          </button>
+
+          {menuOpen && (
+            <div style={styles.menuDropdown}>
+              <div
+                style={styles.menuItem}
+                onClick={() => {
+                  setShowProfile(true);
+                  setMenuOpen(false);
+                }}
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.background = "#1a2432")
+                }
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.background = "transparent")
+                }
+              >
+                Profile
+              </div>
+              <div
+                style={{ ...styles.menuItem, ...styles.menuItemDanger }}
+                onClick={handleLogout}
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.background = "#2b1620")
+                }
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.background = "transparent")
+                }
+              >
+                Log out
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -1125,6 +1286,35 @@ export default function App({
           )}
         </div>
       </div>
+
+      {/* PROFILE MODAL */}
+      {showProfile && (
+        <div style={styles.overlay}>
+          <div style={styles.modalCard}>
+            <div style={styles.modalTitle}>Profile</div>
+            <div style={styles.modalText}>
+              Basic info for your Trade Coach portal.
+            </div>
+
+            <div style={styles.modalRow}>
+              <div style={styles.modalLabel}>Email</div>
+              <div style={styles.modalValue}>{member?.email || "—"}</div>
+            </div>
+            <div style={styles.modalRow}>
+              <div style={styles.modalLabel}>Member ID</div>
+              <div style={styles.modalValue}>{member?.memberId || "—"}</div>
+            </div>
+
+            <button
+              type="button"
+              style={styles.modalCloseBtn}
+              onClick={() => setShowProfile(false)}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </>
   );
 }
