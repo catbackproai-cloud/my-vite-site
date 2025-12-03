@@ -5,6 +5,26 @@ const CREATE_MEMBER_WEBHOOK =
   import.meta.env?.VITE_N8N_TRADECOACH_CREATE_MEMBER ||
   "https://jacobtf007.app.n8n.cloud/webhook/tradecoach_create_member";
 
+const MEMBER_LS_KEY = "tc_member_v1";
+
+function saveMemberToLocal(partial) {
+  const base = {
+    memberId: "",
+    email: "",
+    name: "",
+    plan: "personal",
+    createdAt: new Date().toISOString(),
+  };
+
+  const payload = { ...base, ...partial };
+
+  try {
+    localStorage.setItem(MEMBER_LS_KEY, JSON.stringify(payload));
+  } catch (err) {
+    console.error("Failed to save member to localStorage", err);
+  }
+}
+
 export default function LandingPage({ onEnterApp }) {
   const navigate = useNavigate();
 
@@ -264,18 +284,7 @@ export default function LandingPage({ onEnterApp }) {
   };
 
   function openWorkspace() {
-    const id = memberId || memberPortalId;
-    if (!id) {
-      setMemberPortalError("Enter your member ID first.");
-      return;
-    }
-
-    try {
-      localStorage.setItem("tc_member_id", id);
-    } catch {
-      // ignore
-    }
-
+    // at this point tc_member_v1 is already saved
     if (onEnterApp) {
       onEnterApp();
     } else {
@@ -308,7 +317,7 @@ export default function LandingPage({ onEnterApp }) {
         throw new Error("Could not create your member ID. Try again.");
       }
 
-      const data = await res.json(); // { memberId, name, email, message }
+      const data = await res.json(); // { memberId, name, email, plan?, createdAt? }
       const generatedId = data.memberId;
 
       if (!generatedId) {
@@ -317,19 +326,14 @@ export default function LandingPage({ onEnterApp }) {
 
       setMemberId(generatedId);
 
-      try {
-        localStorage.setItem("tc_member_id", generatedId);
-        localStorage.setItem(
-          "tc_member_email",
-          data.email || checkoutForm.email
-        );
-        localStorage.setItem(
-          "tc_member_name",
-          data.name || checkoutForm.name
-        );
-      } catch {
-        // ignore
-      }
+      // Save full member object for workspace
+      saveMemberToLocal({
+        memberId: generatedId,
+        email: data.email || checkoutForm.email,
+        name: data.name || checkoutForm.name,
+        plan: data.plan || "personal",
+        createdAt: data.createdAt || new Date().toISOString(),
+      });
     } catch (err) {
       console.error(err);
       setCheckoutError(err?.message || "Something went wrong.");
@@ -342,16 +346,18 @@ export default function LandingPage({ onEnterApp }) {
     e.preventDefault();
     setMemberPortalError("");
 
-    if (!memberPortalId.trim()) {
+    const trimmed = memberPortalId.trim();
+    if (!trimmed) {
       setMemberPortalError("Please enter your Member ID.");
       return;
     }
 
-    try {
-      localStorage.setItem("tc_member_id", memberPortalId.trim());
-    } catch {
-      // ignore
-    }
+    // We only know the ID here; email/name can be populated later from n8n if you want.
+    saveMemberToLocal({
+      memberId: trimmed,
+      email: "",
+      name: "",
+    });
 
     openWorkspace();
   }
@@ -414,8 +420,17 @@ export default function LandingPage({ onEnterApp }) {
               <button
                 style={styles.ghostBtn}
                 onClick={() => {
-                  const existing = localStorage.getItem("tc_member_id") || "";
-                  setMemberPortalId(existing);
+                  let existingId = "";
+                  try {
+                    const raw = localStorage.getItem(MEMBER_LS_KEY);
+                    if (raw) {
+                      const parsed = JSON.parse(raw);
+                      existingId = parsed.memberId || "";
+                    }
+                  } catch {
+                    // ignore
+                  }
+                  setMemberPortalId(existingId);
                   setMemberPortalError("");
                   setShowMemberPortal(true);
                 }}
@@ -577,10 +592,7 @@ export default function LandingPage({ onEnterApp }) {
                 <div style={styles.modalError}>{memberPortalError}</div>
               )}
 
-              <button
-                type="submit"
-                style={styles.modalButtonPrimary}
-              >
+              <button type="submit" style={styles.modalButtonPrimary}>
                 Continue to my workspace
               </button>
             </form>
