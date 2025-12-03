@@ -1,29 +1,31 @@
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App.jsx";
+import LandingPage from "./LandingPage.jsx";
 import "./index.css";
 
-// Helpers
-function startOfDay(d) {
-  const x = new Date(d);
-  x.setHours(0, 0, 0, 0);
-  return x;
-}
-
-function isoDay(d) {
-  return startOfDay(d).toISOString().slice(0, 10); // YYYY-MM-DD
-}
-
 function Root() {
-  // Just compute today's day key once and pass it into the app
-  const [date] = useState(() => startOfDay(new Date()));
-  const dayKey = useMemo(() => isoDay(date), [date]);
+  // Decide initial view:
+  // if user already has an account saved, go straight to the app,
+  // otherwise show the landing page.
+  const [view, setView] = useState(() => {
+    try {
+      const raw = localStorage.getItem("tc_user_v1");
+      return raw ? "app" : "landing";
+    } catch {
+      return "landing";
+    }
+  });
 
-  return (
-    <React.StrictMode>
-      <App selectedDay={dayKey} />
-    </React.StrictMode>
-  );
+  if (view === "landing") {
+    return <LandingPage onEnterApp={() => setView("app")} />;
+  }
+
+  return <App />;
 }
 
-createRoot(document.getElementById("root")).render(<Root />);
+createRoot(document.getElementById("root")).render(
+  <React.StrictMode>
+    <Root />
+  </React.StrictMode>
+);
