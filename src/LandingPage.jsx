@@ -41,42 +41,104 @@ export default function LandingPage({ onEnterApp }) {
   const styles = {
     page: {
       minHeight: "100vh",
-      background: "#05070c",
+      background:
+        "radial-gradient(circle at top, #162238 0, #05070c 55%, #020308 100%)",
       color: "#e7ecf2",
       display: "flex",
-      alignItems: "center",
+      alignItems: "stretch",
       justifyContent: "center",
-      padding: "40px 16px",
+      padding: "32px 16px 40px",
       fontFamily:
         '-apple-system, BlinkMacSystemFont, system-ui, -system-ui, "SF Pro Text", sans-serif',
+      boxSizing: "border-box",
     },
-    card: {
+    shell: {
       width: "100%",
-      maxWidth: 820,
-      background: "#0d121a",
-      borderRadius: 20,
-      border: "1px solid #161f2b",
-      boxShadow: "0 24px 70px rgba(0,0,0,0.65)",
-      padding: "28px 28px 24px",
-      display: "grid",
-      gridTemplateColumns: "minmax(0, 1.3fr) minmax(0, 1fr)",
-      gap: 24,
-    },
-    left: {},
-    right: {
-      background: "#05080f",
-      borderRadius: 16,
-      border: "1px dashed #252f40",
-      padding: 16,
+      maxWidth: 1120,
       display: "flex",
       flexDirection: "column",
-      gap: 10,
-      fontSize: 13,
+      gap: 18,
     },
+
+    // NAV
+    nav: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      padding: "4px 8px 0",
+      marginBottom: 4,
+    },
+    logoRow: {
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
+      fontSize: 14,
+      fontWeight: 800,
+      letterSpacing: 0.4,
+    },
+    logoDot: {
+      width: 22,
+      height: 22,
+      borderRadius: 999,
+      background:
+        "conic-gradient(from 210deg, #1b9aaa, #38d5ff, #1b9aaa, #1b9aaa)",
+      boxShadow: "0 0 0 1px rgba(0,0,0,0.7), 0 0 16px rgba(27,154,170,0.65)",
+    },
+    logoSub: {
+      fontSize: 11,
+      fontWeight: 500,
+      opacity: 0.7,
+    },
+    navRight: {
+      display: "flex",
+      gap: 10,
+      alignItems: "center",
+      fontSize: 12,
+      opacity: 0.85,
+    },
+    badgeTiny: {
+      padding: "3px 8px",
+      borderRadius: 999,
+      border: "1px solid #243043",
+      background: "rgba(7,12,20,0.7)",
+    },
+
+    // HERO CARD
+    heroCard: {
+      width: "100%",
+      background: "rgba(7,12,20,0.96)",
+      borderRadius: 22,
+      border: "1px solid rgba(36,48,67,0.9)",
+      boxShadow: "0 32px 90px rgba(0,0,0,0.75)",
+      padding: "26px 26px 22px",
+      display: "grid",
+      gridTemplateColumns: "minmax(0, 1.55fr) minmax(0, 1.1fr)",
+      gap: 26,
+      boxSizing: "border-box",
+    },
+    heroLeft: {
+      display: "flex",
+      flexDirection: "column",
+      gap: 14,
+      justifyContent: "center",
+    },
+    heroRight: {
+      background:
+        "linear-gradient(140deg, #05080f 0%, #05080f 55%, #071321 100%)",
+      borderRadius: 18,
+      border: "1px solid #243043",
+      padding: 18,
+      display: "flex",
+      flexDirection: "column",
+      gap: 12,
+      fontSize: 13,
+      boxShadow: "0 18px 60px rgba(0,0,0,0.7)",
+    },
+
     badgeRow: {
       display: "flex",
       gap: 8,
-      marginBottom: 10,
+      marginBottom: 4,
       flexWrap: "wrap",
     },
     badge: {
@@ -84,54 +146,76 @@ export default function LandingPage({ onEnterApp }) {
       padding: "4px 10px",
       borderRadius: 999,
       border: "1px solid #243043",
-      background: "#05080f",
+      background: "rgba(5,8,15,0.9)",
       textTransform: "uppercase",
       letterSpacing: 0.12,
       opacity: 0.9,
     },
+
     title: {
-      fontSize: 32,
-      fontWeight: 800,
-      marginBottom: 6,
+      fontSize: 34,
+      fontWeight: 900,
+      letterSpacing: -0.5,
+      marginBottom: 4,
+    },
+    titleAccent: {
+      fontWeight: 900,
+      background:
+        "linear-gradient(120deg, #ffffff, #e3f8ff, #76e4ff, #ffffff 90%)",
+      WebkitBackgroundClip: "text",
+      color: "transparent",
     },
     sub: {
       fontSize: 14,
-      opacity: 0.8,
-      maxWidth: 420,
-      marginBottom: 20,
+      opacity: 0.83,
+      maxWidth: 460,
+      marginBottom: 6,
     },
-    bullets: {
+
+    featureList: {
       listStyle: "none",
       padding: 0,
-      margin: "0 0 20px",
+      margin: "4px 0 12px",
       fontSize: 13,
       opacity: 0.9,
+      display: "flex",
+      flexDirection: "column",
+      gap: 6,
     },
-    bullet: {
+    featureItem: {
       display: "flex",
       gap: 8,
-      marginBottom: 8,
+      alignItems: "flex-start",
     },
-    bulletDot: {
-      fontSize: 16,
-      lineHeight: "18px",
+    featureDot: {
+      fontSize: 15,
+      lineHeight: "19px",
+      color: "#1b9aaa",
     },
+
     ctaRow: {
       display: "flex",
       flexWrap: "wrap",
       gap: 10,
       alignItems: "center",
-      marginBottom: 4,
+      marginTop: 6,
     },
     primaryBtn: {
       borderRadius: 999,
       border: "none",
-      background: "#1b9aaa",
-      padding: "10px 18px",
+      background:
+        "linear-gradient(135deg, #1b9aaa, #30d3ff, #1b9aaa 80%, #158593)",
+      padding: "10px 20px",
       fontSize: 14,
-      fontWeight: 700,
+      fontWeight: 800,
       cursor: "pointer",
-      color: "#fff",
+      color: "#05080c",
+      boxShadow:
+        "0 12px 30px rgba(0,0,0,0.8), 0 0 20px rgba(48,211,255,0.5)",
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
+      borderImage: "linear-gradient(120deg,#46d6ff,#1b9aaa) 1",
     },
     ghostBtn: {
       borderRadius: 999,
@@ -141,23 +225,47 @@ export default function LandingPage({ onEnterApp }) {
       fontSize: 13,
       cursor: "pointer",
       color: "#e7ecf2",
+      display: "flex",
+      alignItems: "center",
+      gap: 6,
     },
-    tinyHint: {
+    ctaHint: {
       fontSize: 11,
       opacity: 0.7,
-      marginTop: 6,
+      marginTop: 4,
     },
-    price: {
+
+    // RIGHT: PRICING / VALUE
+    priceTag: {
       fontSize: 22,
-      fontWeight: 800,
+      fontWeight: 900,
       marginBottom: 4,
+    },
+    priceLabel: {
+      fontSize: 11,
+      textTransform: "uppercase",
+      letterSpacing: 0.12,
+      opacity: 0.7,
     },
     priceSub: {
       fontSize: 12,
       opacity: 0.8,
-      marginBottom: 12,
+      marginBottom: 10,
     },
-    checkList: {
+    rightDivider: {
+      height: 1,
+      width: "100%",
+      background: "linear-gradient(90deg, transparent, #243043, transparent)",
+      margin: "4px 0 6px",
+    },
+    miniHeading: {
+      fontSize: 11,
+      textTransform: "uppercase",
+      letterSpacing: 0.14,
+      opacity: 0.7,
+      marginBottom: 4,
+    },
+    checklist: {
       listStyle: "none",
       padding: 0,
       margin: 0,
@@ -179,11 +287,116 @@ export default function LandingPage({ onEnterApp }) {
       fontSize: 13,
       opacity: 0.9,
     },
-    memberHint: {
+    tinyMuted: {
       fontSize: 11,
-      opacity: 0.75,
-      marginTop: 10,
+      opacity: 0.7,
+      marginTop: 8,
     },
+    tagRow: {
+      display: "flex",
+      flexWrap: "wrap",
+      gap: 6,
+      marginTop: 4,
+    },
+    tagPill: {
+      padding: "3px 8px",
+      borderRadius: 999,
+      border: "1px solid #243043",
+      fontSize: 11,
+      opacity: 0.85,
+    },
+
+    // HOW IT WORKS / COMPARISON
+    lowerRow: {
+      display: "grid",
+      gridTemplateColumns: "minmax(0, 1.5fr) minmax(0, 1.1fr)",
+      gap: 16,
+      marginTop: 6,
+    },
+    lowerCard: {
+      background: "rgba(7,11,18,0.98)",
+      borderRadius: 18,
+      border: "1px solid #161f2b",
+      padding: 16,
+      fontSize: 13,
+      boxShadow: "0 18px 60px rgba(0,0,0,0.55)",
+    },
+    lowerTitle: {
+      fontSize: 13,
+      textTransform: "uppercase",
+      letterSpacing: 0.16,
+      opacity: 0.75,
+      marginBottom: 6,
+    },
+    lowerBig: {
+      fontSize: 16,
+      fontWeight: 700,
+      marginBottom: 8,
+    },
+    stepList: {
+      listStyle: "none",
+      padding: 0,
+      margin: 0,
+      display: "flex",
+      flexDirection: "column",
+      gap: 6,
+    },
+    stepItem: {
+      display: "flex",
+      gap: 10,
+      alignItems: "flex-start",
+    },
+    stepBadge: {
+      width: 20,
+      height: 20,
+      borderRadius: 999,
+      border: "1px solid #243043",
+      background: "#05080f",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      fontSize: 11,
+      opacity: 0.85,
+    },
+    stepText: {
+      fontSize: 13,
+      opacity: 0.9,
+    },
+
+    compareGrid: {
+      display: "grid",
+      gridTemplateColumns: "minmax(0, 1fr)",
+      gap: 6,
+      marginTop: 6,
+    },
+    compareRow: {
+      display: "flex",
+      justifyContent: "space-between",
+      gap: 8,
+      fontSize: 12,
+      padding: "8px 10px",
+      borderRadius: 12,
+      border: "1px solid #151f2b",
+      background: "#05080f",
+    },
+    compareLabel: {
+      opacity: 0.8,
+    },
+    compareChecks: {
+      display: "flex",
+      gap: 10,
+      fontSize: 11,
+      textTransform: "uppercase",
+      letterSpacing: 0.12,
+    },
+    compareYes: {
+      color: "#3ad1ff",
+    },
+    compareNo: {
+      color: "#ff9ba8",
+      opacity: 0.9,
+    },
+
     overlay: {
       position: "fixed",
       inset: 0,
@@ -193,6 +406,7 @@ export default function LandingPage({ onEnterApp }) {
       justifyContent: "center",
       padding: "16px",
       zIndex: 80,
+      boxSizing: "border-box",
     },
     modalCard: {
       width: "100%",
@@ -203,6 +417,7 @@ export default function LandingPage({ onEnterApp }) {
       boxShadow: "0 24px 70px rgba(0,0,0,0.8)",
       padding: 20,
       fontSize: 13,
+      boxSizing: "border-box",
     },
     modalTitle: {
       fontSize: 18,
@@ -234,8 +449,9 @@ export default function LandingPage({ onEnterApp }) {
       padding: "9px 12px",
       fontSize: 13,
       fontWeight: 700,
-      background: "#1b9aaa",
-      color: "#fff",
+      background:
+        "linear-gradient(130deg, #1b9aaa, #30d3ff, #1b9aaa 90%, #158593)",
+      color: "#05080c",
       cursor: "pointer",
       marginTop: 4,
     },
@@ -284,7 +500,6 @@ export default function LandingPage({ onEnterApp }) {
   };
 
   function openWorkspace() {
-    // at this point tc_member_v1 is already saved
     if (onEnterApp) {
       onEnterApp();
     } else {
@@ -317,7 +532,7 @@ export default function LandingPage({ onEnterApp }) {
         throw new Error("Could not create your member ID. Try again.");
       }
 
-      const data = await res.json(); // { memberId, name, email, plan?, createdAt? }
+      const data = await res.json();
       const generatedId = data.memberId;
 
       if (!generatedId) {
@@ -326,7 +541,6 @@ export default function LandingPage({ onEnterApp }) {
 
       setMemberId(generatedId);
 
-      // Save full member object for workspace
       saveMemberToLocal({
         memberId: generatedId,
         email: data.email || checkoutForm.email,
@@ -352,7 +566,6 @@ export default function LandingPage({ onEnterApp }) {
       return;
     }
 
-    // We only know the ID here; email/name can be populated later from n8n if you want.
     saveMemberToLocal({
       memberId: trimmed,
       email: "",
@@ -365,119 +578,283 @@ export default function LandingPage({ onEnterApp }) {
   return (
     <>
       <div style={styles.page}>
-        <div style={styles.card}>
-          {/* LEFT: Marketing copy */}
-          <div style={styles.left}>
-            <div style={styles.badgeRow}>
-              <span style={styles.badge}>Personal Trade Coach</span>
-              <span style={styles.badge}>Journal + AI feedback</span>
+        <div style={styles.shell}>
+          {/* NAV */}
+          <div style={styles.nav}>
+            <div style={styles.logoRow}>
+              <div style={styles.logoDot} />
+              <div>
+                <div>Max Trade Coach</div>
+                <div style={styles.logoSub}>AI trade review · daily journal</div>
+              </div>
             </div>
-
-            <h1 style={styles.title}>Turn screenshots into trading lessons.</h1>
-            <p style={styles.sub}>
-              Upload your chart, explain your idea, and get structured feedback
-              on what you did right, what you missed, and how to improve your
-              next trade.
-            </p>
-
-            <ul style={styles.bullets}>
-              <li style={styles.bullet}>
-                <span style={styles.bulletDot}>•</span>
-                <span>
-                  See every trade graded like a coach is looking over your
-                  shoulder.
-                </span>
-              </li>
-              <li style={styles.bullet}>
-                <span style={styles.bulletDot}>•</span>
-                <span>
-                  Daily journal built-in so you can track psychology and
-                  execution.
-                </span>
-              </li>
-              <li style={styles.bullet}>
-                <span style={styles.bulletDot}>•</span>
-                <span>
-                  Built for ICT / liquidity-based traders, not random indicator
-                  spam.
-                </span>
-              </li>
-            </ul>
-
-            <div style={styles.ctaRow}>
-              <button
-                style={styles.primaryBtn}
-                onClick={() => {
-                  setCheckoutForm({ name: "", email: "" });
-                  setCheckoutError("");
-                  setMemberId("");
-                  setShowCheckout(true);
-                }}
-              >
-                Get started → open my portal
-              </button>
-
-              <button
-                style={styles.ghostBtn}
-                onClick={() => {
-                  let existingId = "";
-                  try {
-                    const raw = localStorage.getItem(MEMBER_LS_KEY);
-                    if (raw) {
-                      const parsed = JSON.parse(raw);
-                      existingId = parsed.memberId || "";
-                    }
-                  } catch {
-                    // ignore
-                  }
-                  setMemberPortalId(existingId);
-                  setMemberPortalError("");
-                  setShowMemberPortal(true);
-                }}
-              >
-                Already have a member ID?
-              </button>
-            </div>
-
-            <div style={styles.tinyHint}>
-              You&apos;ll get a private portal where your trades and notes are
-              saved per day.
+            <div style={styles.navRight}>
+              <span style={styles.badgeTiny}>Built for ICT / liquidity traders</span>
             </div>
           </div>
 
-          {/* RIGHT: pricing / what you get */}
-          <div style={styles.right}>
-            <div style={styles.price}>$XX / month</div>
-            <div style={styles.priceSub}>
-              One personal dashboard. Unlimited screenshots and notes.
+          {/* HERO */}
+          <div style={styles.heroCard}>
+            {/* LEFT: STORY + CTA */}
+            <div style={styles.heroLeft}>
+              <div style={styles.badgeRow}>
+                <span style={styles.badge}>Personal trade coach</span>
+                <span style={styles.badge}>Screenshot → feedback → plan</span>
+              </div>
+
+              <h1 style={styles.title}>
+                Turn every chart into a{" "}
+                <span style={styles.titleAccent}>trading lesson.</span>
+              </h1>
+
+              <p style={styles.sub}>
+                Max Trade Coach is your private workspace for trade screenshots,
+                AI feedback, and a daily journal. Upload a chart, explain what
+                you were thinking, and get a breakdown like a coach is sitting
+                next to you.
+              </p>
+
+              <ul style={styles.featureList}>
+                <li style={styles.featureItem}>
+                  <span style={styles.featureDot}>●</span>
+                  <span>
+                    <strong>AI that speaks your language:</strong> BOS/CHoCH,
+                    FVGs, OBs, liquidity sweeps, sessions, risk, and execution
+                    — not random indicator spam.
+                  </span>
+                </li>
+                <li style={styles.featureItem}>
+                  <span style={styles.featureDot}>●</span>
+                  <span>
+                    <strong>Every day saved to a timeline:</strong> trades +
+                    notes are tied to your date and Member ID so you can review
+                    any session in seconds.
+                  </span>
+                </li>
+                <li style={styles.featureItem}>
+                  <span style={styles.featureDot}>●</span>
+                  <span>
+                    <strong>Built for self-coached traders:</strong> not a
+                    signal group, not a course — a tool that forces you to
+                    think, journal, and improve.
+                  </span>
+                </li>
+              </ul>
+
+              <div style={styles.ctaRow}>
+                <button
+                  style={styles.primaryBtn}
+                  onClick={() => {
+                    setCheckoutForm({ name: "", email: "" });
+                    setCheckoutError("");
+                    setMemberId("");
+                    setShowCheckout(true);
+                  }}
+                >
+                  Get started → open my portal
+                </button>
+
+                <button
+                  style={styles.ghostBtn}
+                  onClick={() => {
+                    let existingId = "";
+                    try {
+                      const raw = localStorage.getItem(MEMBER_LS_KEY);
+                      if (raw) {
+                        const parsed = JSON.parse(raw);
+                        existingId = parsed.memberId || "";
+                      }
+                    } catch {
+                      // ignore
+                    }
+                    setMemberPortalId(existingId);
+                    setMemberPortalError("");
+                    setShowMemberPortal(true);
+                  }}
+                >
+                  Already have a Member ID?
+                </button>
+              </div>
+
+              <div style={styles.ctaHint}>
+                You get a private portal where screenshots, feedback, and
+                journal entries are saved per day — so you can study your own
+                data, not someone else&apos;s.
+              </div>
             </div>
 
-            <ul style={styles.checkList}>
-              <li style={styles.checkItem}>
-                <span style={styles.checkIcon}>✓</span>
-                <span style={styles.checkText}>
-                  AI feedback tailored to your strategy (BOS/CHoCH, FVGs, OBs,
-                  sessions, etc.)
-                </span>
-              </li>
-              <li style={styles.checkItem}>
-                <span style={styles.checkIcon}>✓</span>
-                <span style={styles.checkText}>
-                  Daily journal saved per date so you can review any session.
-                </span>
-              </li>
-              <li style={styles.checkItem}>
-                <span style={styles.checkIcon}>✓</span>
-                <span style={styles.checkText}>
-                  Private portal – your trades & notes stay attached to your
-                  member ID.
-                </span>
-              </li>
-            </ul>
+            {/* RIGHT: VALUE / PRICING / WHY IT’S BETTER */}
+            <div style={styles.heroRight}>
+              <div>
+                <div style={styles.priceLabel}>Max Trade Coach</div>
+                <div style={styles.priceTag}>$XX / month</div>
+                <div style={styles.priceSub}>
+                  One personal workspace. Unlimited screenshot reviews and
+                  journal entries.
+                </div>
+              </div>
 
-            <div style={styles.memberHint}>
-              After purchase you&apos;ll receive a Member ID that unlocks your
-              Trade Coach portal.
+              <div style={styles.rightDivider} />
+
+              <div>
+                <div style={styles.miniHeading}>What you get</div>
+                <ul style={styles.checklist}>
+                  <li style={styles.checkItem}>
+                    <span style={styles.checkIcon}>✓</span>
+                    <span style={styles.checkText}>
+                      AI feedback that grades your trade, highlights what you
+                      did well, and calls out execution mistakes.
+                    </span>
+                  </li>
+                  <li style={styles.checkItem}>
+                    <span style={styles.checkIcon}>✓</span>
+                    <span style={styles.checkText}>
+                      Daily journal built-in — track psychology, discipline, and
+                      rules for each session.
+                    </span>
+                  </li>
+                  <li style={styles.checkItem}>
+                    <span style={styles.checkIcon}>✓</span>
+                    <span style={styles.checkText}>
+                      Private Member ID workspace — your trades stay organized,
+                      not lost in your camera roll or Discord.
+                    </span>
+                  </li>
+                </ul>
+
+                <div style={styles.tagRow}>
+                  <span style={styles.tagPill}>NASDAQ / S&amp;P / US30</span>
+                  <span style={styles.tagPill}>GBP/USD · XAU/USD · FX</span>
+                  <span style={styles.tagPill}>Crypto pairs</span>
+                </div>
+              </div>
+
+              <div style={styles.rightDivider} />
+
+              <div>
+                <div style={styles.miniHeading}>Why not just use…</div>
+                <ul style={styles.checklist}>
+                  <li style={styles.checkItem}>
+                    <span style={styles.checkIcon}>✕</span>
+                    <span style={styles.checkText}>
+                      <strong>Random Discord signals:</strong> no context, no
+                      journaling, no accountability.
+                    </span>
+                  </li>
+                  <li style={styles.checkItem}>
+                    <span style={styles.checkIcon}>✕</span>
+                    <span style={styles.checkText}>
+                      <strong>Plain screenshot folders:</strong> zero notes,
+                      zero structure, you never review them.
+                    </span>
+                  </li>
+                  <li style={styles.checkItem}>
+                    <span style={styles.checkIcon}>✕</span>
+                    <span style={styles.checkText}>
+                      <strong>Generic journaling apps:</strong> they don&apos;t
+                      see your chart or understand BOS / FVG / liquidity.
+                    </span>
+                  </li>
+                </ul>
+              </div>
+
+              <div style={styles.tinyMuted}>
+                Max Trade Coach is built for traders who actually want to get
+                better — not just hunt the next &quot;alpha call.&quot;
+              </div>
+            </div>
+          </div>
+
+          {/* LOWER ROW: HOW IT WORKS + COMPARISON CHECKLIST */}
+          <div style={styles.lowerRow}>
+            {/* HOW IT WORKS */}
+            <div style={styles.lowerCard}>
+              <div style={styles.lowerTitle}>How Max Trade Coach works</div>
+              <div style={styles.lowerBig}>
+                Four simple steps every time you trade.
+              </div>
+              <ul style={styles.stepList}>
+                <li style={styles.stepItem}>
+                  <div style={styles.stepBadge}>1</div>
+                  <div style={styles.stepText}>
+                    <strong>Upload a screenshot</strong> of the chart you traded
+                    (entry, TP, SL — or the setup you&apos;re considering).
+                  </div>
+                </li>
+                <li style={styles.stepItem}>
+                  <div style={styles.stepBadge}>2</div>
+                  <div style={styles.stepText}>
+                    <strong>Tell the coach what you saw:</strong> pair,
+                    timeframe, session, liquidity sweep, FVG/OB, bias, target,
+                    and risk plan.
+                  </div>
+                </li>
+                <li style={styles.stepItem}>
+                  <div style={styles.stepBadge}>3</div>
+                  <div style={styles.stepText}>
+                    <strong>Get graded feedback:</strong> Max Trade Coach
+                    returns a grade, what went right/wrong, and what to focus on
+                    next time.
+                  </div>
+                </li>
+                <li style={styles.stepItem}>
+                  <div style={styles.stepBadge}>4</div>
+                  <div style={styles.stepText}>
+                    <strong>Journal the day:</strong> log what you learned,
+                    where you tilted, and one improvement for the next session.
+                  </div>
+                </li>
+              </ul>
+            </div>
+
+            {/* COMPARISON CHECKLIST */}
+            <div style={styles.lowerCard}>
+              <div style={styles.lowerTitle}>Why traders upgrade</div>
+              <div style={styles.lowerBig}>
+                Max Trade Coach vs everything else.
+              </div>
+
+              <div style={styles.compareGrid}>
+                <div style={styles.compareRow}>
+                  <span style={styles.compareLabel}>
+                    Actually reviews <strong>your</strong> trades
+                  </span>
+                  <div style={styles.compareChecks}>
+                    <span style={styles.compareYes}>Max: ✓</span>
+                    <span style={styles.compareNo}>Signals: ✕</span>
+                  </div>
+                </div>
+
+                <div style={styles.compareRow}>
+                  <span style={styles.compareLabel}>
+                    Structured daily journal attached to screenshots
+                  </span>
+                  <div style={styles.compareChecks}>
+                    <span style={styles.compareYes}>Max: ✓</span>
+                    <span style={styles.compareNo}>Photos app: ✕</span>
+                  </div>
+                </div>
+
+                <div style={styles.compareRow}>
+                  <span style={styles.compareLabel}>
+                    Understands BOS / CHoCH / FVG / liquidity
+                  </span>
+                  <div style={styles.compareChecks}>
+                    <span style={styles.compareYes}>Max: ✓</span>
+                    <span style={styles.compareNo}>Notion / notes: ✕</span>
+                  </div>
+                </div>
+
+                <div style={styles.compareRow}>
+                  <span style={styles.compareLabel}>
+                    Keeps everything in a single private portal
+                  </span>
+                  <div style={styles.compareChecks}>
+                    <span style={styles.compareYes}>Max: ✓</span>
+                    <span style={styles.compareNo}>Random files: ✕</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -487,12 +864,10 @@ export default function LandingPage({ onEnterApp }) {
       {showCheckout && (
         <div style={styles.overlay}>
           <div style={styles.modalCard}>
-            <div style={styles.modalTitle}>
-              Create your Trade Coach account
-            </div>
+            <div style={styles.modalTitle}>Create your Max Trade Coach ID</div>
             <div style={styles.modalText}>
               Enter your details and continue to payment. After purchase,
-              you&apos;ll get a Member ID to unlock your portal.
+              you&apos;ll receive a Member ID that unlocks your private portal.
             </div>
 
             <form onSubmit={handleCheckoutSubmit}>
@@ -541,8 +916,8 @@ export default function LandingPage({ onEnterApp }) {
                 <span style={styles.idLabel}>Your Member ID:</span>
                 <span style={styles.idValue}>{memberId}</span>
                 <div style={styles.idHint}>
-                  Store this somewhere safe. You&apos;ll use it to log into
-                  your Trade Coach portal.
+                  Save this somewhere safe — you&apos;ll use it to log into Max
+                  Trade Coach on any device.
                 </div>
                 <button
                   type="button"
@@ -552,7 +927,7 @@ export default function LandingPage({ onEnterApp }) {
                   }}
                   onClick={openWorkspace}
                 >
-                  I saved it → go to my workspace
+                  I saved it → go to my portal
                 </button>
               </div>
             )}
@@ -574,14 +949,14 @@ export default function LandingPage({ onEnterApp }) {
           <div style={styles.modalCard}>
             <div style={styles.modalTitle}>Enter your Member ID</div>
             <div style={styles.modalText}>
-              Paste the Member ID you received after purchase to unlock your
+              Paste the Member ID you received after purchase to unlock your Max
               Trade Coach portal.
             </div>
 
             <form onSubmit={handleMemberPortalSubmit}>
               <input
                 type="text"
-                placeholder="Member ID (e.g. TC-ABC123)"
+                placeholder="Member ID (e.g. MTC-ABC123)"
                 value={memberPortalId}
                 onChange={(e) => setMemberPortalId(e.target.value)}
                 style={styles.input}
@@ -593,7 +968,7 @@ export default function LandingPage({ onEnterApp }) {
               )}
 
               <button type="submit" style={styles.modalButtonPrimary}>
-                Continue to my workspace
+                Continue to my portal
               </button>
             </form>
 
