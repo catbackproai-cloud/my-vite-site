@@ -11,6 +11,23 @@ const WEBHOOK_URL =
 
 const MEMBER_LS_KEY = "tc_member_v1";
 
+const gradeColor = (grade) => {
+  switch (grade) {
+    case "A":
+      return "#2ecc71"; // green
+    case "B":
+      return "#7bd67b"; // soft green
+    case "C":
+      return "#f1c40f"; // yellow
+    case "D":
+      return "#e67e22"; // orange
+    case "F":
+      return "#e74c3c"; // red
+    default:
+      return "#bdc3c7"; // gray if missing
+  }
+};
+
 function todayStr() {
   const d = new Date();
   const y = d.getFullYear();
@@ -322,16 +339,16 @@ export default function App({
           }
 
           return {
-  ...c,
-  pending: false,
-  // no backend screenshot URL anymore
-  screenshotUrl: null,
-  analysis: data?.analysis || data || null,
-  serverTimestamp: data?.timestamp || null,
-  // keep local image so the user still sees it this session
-  localPreviewUrl: c.localPreviewUrl,
-  localDataUrl: c.localDataUrl,
-};
+            ...c,
+            pending: false,
+            // no backend screenshot URL anymore
+            screenshotUrl: null,
+            analysis: data?.analysis || data || null,
+            serverTimestamp: data?.timestamp || null,
+            // keep local image so the user still sees it this session
+            localPreviewUrl: c.localPreviewUrl,
+            localDataUrl: c.localDataUrl,
+          };
         })
       );
 
@@ -861,7 +878,7 @@ export default function App({
       fontWeight: 900,
       padding: "2px 8px",
       borderRadius: 8,
-      background: "#1b9aaa22",
+      background: "transparent",
     },
     sectionTitle: { fontWeight: 800, marginTop: 8, marginBottom: 4 },
     ul: { margin: 0, paddingLeft: 18, opacity: 0.95 },
@@ -1298,8 +1315,7 @@ export default function App({
               Basic info for your Trade Coach portal.
             </div>
 
-            <div style={styles.modalRow}>
-            </div>
+            <div style={styles.modalRow}></div>
             <div style={styles.modalRow}>
               <div style={styles.modalLabel}>Member ID</div>
               <div style={styles.modalValue}>{member?.memberId || "—"}</div>
@@ -1362,6 +1378,8 @@ function ChatTurn({ chat, styles }) {
     setImgSrc(null);
   }
 
+  const pillColor = gradeColor(grade);
+
   return (
     <>
       {/* USER MESSAGE */}
@@ -1394,10 +1412,26 @@ function ChatTurn({ chat, styles }) {
 
       {/* AI MESSAGE */}
       <div style={styles.bubbleRow}>
-        <div style={styles.bubbleAI}>
+        <div
+          style={{
+            ...styles.bubbleAI,
+            borderLeft: `4px solid ${pillColor}`,
+          }}
+        >
           <div style={styles.bubbleHeader}>
             <span>Trade Coach AI</span>
-            {grade && <span style={styles.gradePill}>{grade}</span>}
+            {grade && (
+              <span
+                style={{
+                  ...styles.gradePill,
+                  color: pillColor,
+                  border: `1px solid ${pillColor}`,
+                  background: `${pillColor}22`,
+                }}
+              >
+                {grade}
+              </span>
+            )}
             {typeof confidence === "number" && (
               <span style={{ fontSize: 12, opacity: 0.7 }}>
                 ({Math.round(confidence * 100)}% confident)
