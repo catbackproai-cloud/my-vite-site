@@ -322,14 +322,16 @@ export default function App({
           }
 
           return {
-            ...c,
-            pending: false,
-            screenshotUrl: normalizeDriveUrl(data?.screenshotUrl) || null,
-            analysis: data?.analysis || data || null,
-            serverTimestamp: data?.timestamp || null,
-            localPreviewUrl: null,
-            localDataUrl: null,
-          };
+  ...c,
+  pending: false,
+  // no backend screenshot URL anymore
+  screenshotUrl: null,
+  analysis: data?.analysis || data || null,
+  serverTimestamp: data?.timestamp || null,
+  // keep local image so the user still sees it this session
+  localPreviewUrl: c.localPreviewUrl,
+  localDataUrl: c.localDataUrl,
+};
         })
       );
 
