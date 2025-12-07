@@ -86,7 +86,12 @@ export default function App({
 }) {
   const navigate = useNavigate();
 
-  const [form, setForm] = useState({ strategyNotes: "", file: null });
+  const [form, setForm] = useState({
+    strategyNotes: "",
+    file: null,
+    timeframe: "",
+    instrument: "",
+  });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [dragActive, setDragActive] = useState(false);
@@ -258,7 +263,11 @@ export default function App({
   }, [chats.length, chats]);
 
   const isValid = useMemo(
-    () => !!form.strategyNotes && !!form.file,
+    () =>
+      !!form.strategyNotes &&
+      !!form.file &&
+      !!form.timeframe &&
+      !!form.instrument,
     [form]
   );
   const onChange = (k, v) => setForm((prev) => ({ ...prev, [k]: v }));
@@ -290,6 +299,8 @@ export default function App({
         localDataUrl,
         pending: true,
         analysis: null,
+        timeframe: form.timeframe,
+        instrument: form.instrument,
       };
 
       setChats((prev) => [...prev, tempChat]);
@@ -297,6 +308,8 @@ export default function App({
       const fd = new FormData();
       fd.append("day", day);
       fd.append("strategyNotes", form.strategyNotes);
+      fd.append("timeframe", form.timeframe);
+      fd.append("instrument", form.instrument);
       if (form.file) fd.append("screenshot", form.file);
 
       console.log("[Trade Coach] POSTing to", WEBHOOK_URL);
@@ -352,7 +365,12 @@ export default function App({
         })
       );
 
-      setForm({ strategyNotes: "", file: null });
+      // keep timeframe + instrument so they don't have to re-fill
+      setForm((prev) => ({
+        ...prev,
+        strategyNotes: "",
+        file: null,
+      }));
     } catch (err) {
       setError(err?.message || "Submit failed");
 
@@ -677,6 +695,7 @@ export default function App({
       display: "flex",
       gap: 10,
       alignItems: "stretch",
+      flexWrap: "wrap",
     },
     composerLeft: {
       flex: "0 0 25%",
@@ -684,6 +703,7 @@ export default function App({
     },
     composerRight: {
       flex: "1 1 75%",
+      minWidth: 260,
     },
 
     dropMini: {
@@ -738,6 +758,42 @@ export default function App({
       cursor: "pointer",
     },
 
+    label: { fontSize: 12, opacity: 0.7, marginBottom: 4 },
+
+    fieldRow: {
+      display: "flex",
+      gap: 8,
+      marginBottom: 6,
+      flexWrap: "wrap",
+    },
+    fieldHalf: {
+      flex: "1 1 0",
+      minWidth: 140,
+    },
+
+    input: {
+      width: "100%",
+      background: "#0d121a",
+      border: "1px solid #243043",
+      borderRadius: 10,
+      color: "#e7ecf2",
+      padding: "8px 10px",
+      fontSize: 13,
+      outline: "none",
+      boxSizing: "border-box",
+    },
+    select: {
+      width: "100%",
+      background: "#0d121a",
+      border: "1px solid #243043",
+      borderRadius: 10,
+      color: "#e7ecf2",
+      padding: "8px 10px",
+      fontSize: 13,
+      outline: "none",
+      boxSizing: "border-box",
+    },
+
     textarea: {
       width: "100%",
       minHeight: 90,
@@ -751,7 +807,6 @@ export default function App({
       fontSize: 14,
       boxSizing: "border-box",
     },
-    label: { fontSize: 12, opacity: 0.7, marginBottom: 4 },
 
     button: {
       marginTop: 2,
@@ -878,7 +933,7 @@ export default function App({
       fontWeight: 900,
       padding: "2px 8px",
       borderRadius: 8,
-      background: "transparent",
+      background: "#1b9aaa22",
     },
     sectionTitle: { fontWeight: 800, marginTop: 8, marginBottom: 4 },
     ul: { margin: 0, paddingLeft: 18, opacity: 0.95 },
@@ -1063,12 +1118,7 @@ export default function App({
                 <div key={wi} style={styles.calendarWeek}>
                   {week.map((cell, di) => {
                     if (!cell) {
-                      return (
-                        <div
-                          key={di}
-                          style={styles.dayCellEmpty}
-                        />
-                      );
+                      return <div key={di} style={styles.dayCellEmpty} />;
                     }
                     const isSelected = cell.iso === day;
                     const isToday = cell.iso === todayIso;
@@ -1101,8 +1151,8 @@ export default function App({
           <div style={styles.header}>
             <h1 style={styles.title}>Trade Coach (Personal)</h1>
             <div style={styles.subtitle}>
-              Upload chart (screenshot) → then write your thought process → AI
-              feedback
+              Upload chart (screenshot) → choose pair & timeframe → explain
+              your idea → AI feedback
             </div>
             <div style={styles.dayBadge}>Day: {day} • saved per-day</div>
           </div>
@@ -1155,7 +1205,7 @@ export default function App({
                 >
                   {chats.length === 0 && (
                     <div style={styles.emptyState}>
-                      No trades yet. Upload a chart + notes below to get
+                      No trades yet. Upload a chart + context below to get
                       feedback.
                     </div>
                   )}
@@ -1237,16 +1287,52 @@ export default function App({
                     </div>
 
                     <div style={styles.composerRight}>
+                      {/* New: instrument + timeframe */}
+                      <div style={styles.fieldRow}>
+                        <div style={styles.fieldHalf}>
+                          <div style={styles.label}>What were you trading?</div>
+                          <input
+                            type="text"
+                            style={styles.input}
+                            placeholder="e.g. NASDAQ, S&P 500, GBP/USD, XAU/USD"
+                            value={form.instrument}
+                            onChange={(e) =>
+                              onChange("instrument", e.target.value)
+                            }
+                          />
+                        </div>
+                        <div style={styles.fieldHalf}>
+                          <div style={styles.label}>Timeframe</div>
+                          <select
+                            style={styles.select}
+                            value={form.timeframe}
+                            onChange={(e) =>
+                              onChange("timeframe", e.target.value)
+                            }
+                          >
+                            <option value="">Select timeframe</option>
+                            <option value="1m">1m</option>
+                            <option value="3m">3m</option>
+                            <option value="5m">5m</option>
+                            <option value="15m">15m</option>
+                            <option value="30m">30m</option>
+                            <option value="1H">1H</option>
+                            <option value="2H">2H</option>
+                            <option value="4H">4H</option>
+                            <option value="Daily">Daily</option>
+                          </select>
+                        </div>
+                      </div>
+
                       <div style={styles.label}>
-                        Strategy / thought process — what setup were you
-                        taking?
+                        Strategy / thought process — what setup were you taking?
                       </div>
                       <textarea
                         value={form.strategyNotes}
                         onChange={(e) =>
                           onChange("strategyNotes", e.target.value)
                         }
-                        placeholder="Explain your idea: HTF bias, BOS/CHoCH, FVG fill, OB mitigation, session, target, risk plan, management rules..."
+                        placeholder="Explain your idea: HTF bias, BOS/CHoCH, FVG/OB, liquidity grab, session, target, risk plan, management rules..."
                         required
                         style={styles.textarea}
                       />
@@ -1378,8 +1464,6 @@ function ChatTurn({ chat, styles }) {
     setImgSrc(null);
   }
 
-  const pillColor = gradeColor(grade);
-
   return (
     <>
       {/* USER MESSAGE */}
@@ -1402,6 +1486,14 @@ function ChatTurn({ chat, styles }) {
             />
           )}
 
+          {(chat.instrument || chat.timeframe) && (
+            <div style={styles.smallMeta}>
+              {chat.instrument && <span>{chat.instrument}</span>}
+              {chat.instrument && chat.timeframe && <span> • </span>}
+              {chat.timeframe && <span>{chat.timeframe}</span>}
+            </div>
+          )}
+
           <div>{chat.userNotes}</div>
 
           <div style={styles.smallMeta}>
@@ -1412,21 +1504,15 @@ function ChatTurn({ chat, styles }) {
 
       {/* AI MESSAGE */}
       <div style={styles.bubbleRow}>
-        <div
-          style={{
-            ...styles.bubbleAI,
-            borderLeft: `4px solid ${pillColor}`,
-          }}
-        >
+        <div style={styles.bubbleAI}>
           <div style={styles.bubbleHeader}>
             <span>Trade Coach AI</span>
             {grade && (
               <span
                 style={{
                   ...styles.gradePill,
-                  color: pillColor,
-                  border: `1px solid ${pillColor}`,
-                  background: `${pillColor}22`,
+                  backgroundColor: gradeColor(grade),
+                  color: "#0b0f14",
                 }}
               >
                 {grade}
