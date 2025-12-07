@@ -35,6 +35,7 @@ function todayStr() {
   const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
 }
+
 function parseLocalDateFromIso(iso) {
   const [y, m, d] = iso.split("-").map(Number);
   return new Date(y, m - 1, d); // local midnight, no timezone shift
@@ -99,8 +100,6 @@ export default function App({
 
   const [chats, setChats] = useState([]);
   const [previewUrl, setPreviewUrl] = useState(null);
-  const chatEndRef = useRef(null);
-  const chatWrapRef = useRef(null);
 
   // ⭐ member info (from localStorage)
   const [member, setMember] = useState(() => {
@@ -124,11 +123,31 @@ export default function App({
     return { year: d.getFullYear(), month: d.getMonth() }; // 0-index
   });
 
-  // ⭐ TAB + JOURNAL STATE
-  const [activeTab, setActiveTab] = useState("coach"); // "coach" | "journal"
-  const [journalText, setJournalText] = useState("");
+  // ⭐ JOURNAL STATE (3 fields)
+  const [journal, setJournal] = useState({
+    notes: "",
+    learned: "",
+    improve: "",
+  });
 
   const todayIso = todayStr();
+
+  const isValid = useMemo(
+    () =>
+      !!form.strategyNotes &&
+      !!form.file &&
+      !!form.timeframe &&
+      !!form.instrument,
+    [form]
+  );
+
+  // latest trade for this day (we only SHOW this one)
+  const lastChat = chats.length ? chats[chats.length - 1] : null;
+  const isPending = !!lastChat?.pending;
+  const hasCompletedTrade = !!(lastChat && !lastChat.pending);
+
+  const buttonDisabled =
+    !hasCompletedTrade && (!isValid || submitting || isPending);
 
   // Build calendar weeks for dropdown
   function buildMonthWeeks() {
@@ -195,232 +214,19 @@ export default function App({
   function handlePickDate(iso) {
     setDay(iso);
     setShowCalendar(false);
-    // when the day changes, chats & journal use the useEffects below
   }
 
-  // Screenshot preview blob
-  useEffect(() => {
-    if (!form.file) {
-      setPreviewUrl(null);
-      return;
-    }
-    const url = URL.createObjectURL(form.file);
-    setPreviewUrl(url);
-    return () => {
-      try {
-        URL.revokeObjectURL(url);
-      } catch {}
-    };
-  }, [form.file]);
-
-  // Load saved chats per day
-  useEffect(() => {
-    try {
-      const key = `tradeChats:${day}`;
-      const saved = localStorage.getItem(key);
-      setChats(saved ? JSON.parse(saved) : []);
-      setForm((prev) => ({ ...prev, file: null }));
-      setError("");
-    } catch {
-      setChats([]);
-    }
-  }, [day]);
-
-  // Persist chats
-  useEffect(() => {
-    const key = `tradeChats:${day}`;
-    safeSaveChats(key, chats);
-  }, [chats, day]);
-
-  // 🔹 Load journal per day
-  useEffect(() => {
-    try {
-      const key = `tradeJournal:${day}`;
-      const saved = localStorage.getItem(key);
-      setJournalText(saved || "");
-    } catch {
-      setJournalText("");
-    }
-  }, [day]);
-
-  // 🔹 Persist journal per day
-  useEffect(() => {
-    try {
-      const key = `tradeJournal:${day}`;
-      localStorage.setItem(key, journalText || "");
-    } catch {
-      // ignore
-    }
-  }, [journalText, day]);
-
-  // Auto-scroll
-  useEffect(() => {
-    if (!chats.length) return;
-    chatEndRef.current?.scrollIntoView({
-      behavior: "smooth",
-      block: "end",
-    });
-  }, [chats.length, chats]);
-
-  const isValid = useMemo(
-    () =>
-      !!form.strategyNotes &&
-      !!form.file &&
-      !!form.timeframe &&
-      !!form.instrument,
-    [form]
-  );
   const onChange = (k, v) => setForm((prev) => ({ ...prev, [k]: v }));
 
-  async function handleSubmit(e) {
-    e.preventDefault();
-    setError("");
-    if (!isValid || submitting) return;
-
-    setSubmitting(true);
-
-    try {
-      if (!WEBHOOK_URL) throw new Error("No webhook URL configured.");
-
-      const localDataUrl = await fileToDataUrl(form.file);
-      const localPreviewUrl = form.file
-        ? URL.createObjectURL(form.file)
-        : null;
-
-      const tempId = `tmp-${Date.now()}-${Math.random()
-        .toString(36)
-        .slice(2)}`;
-      const tempChat = {
-        id: tempId,
-        timestamp: new Date().toISOString(),
-        userNotes: form.strategyNotes,
-        screenshotUrl: null,
-        localPreviewUrl,
-        localDataUrl,
-        pending: true,
-        analysis: null,
-        timeframe: form.timeframe,
-        instrument: form.instrument,
-      };
-
-      setChats((prev) => [...prev, tempChat]);
-
-      const fd = new FormData();
-      fd.append("day", day);
-      fd.append("strategyNotes", form.strategyNotes);
-      fd.append("timeframe", form.timeframe);
-      fd.append("instrument", form.instrument);
-      if (form.file) fd.append("screenshot", form.file);
-
-      console.log("[Trade Coach] POSTing to", WEBHOOK_URL);
-      const res = await fetch(WEBHOOK_URL, {
-        method: "POST",
-        body: fd,
-      });
-
-      const text = await res.text();
-      console.log(
-        "[Trade Coach] status",
-        res.status,
-        "body:",
-        text?.slice(0, 200)
-      );
-
-      let data = null;
-      try {
-        data = text ? JSON.parse(text) : null;
-      } catch {
-        throw new Error(
-          `Non-JSON response (${res.status}): ${text?.slice(0, 200)}`
-        );
-      }
-
-      if (!res.ok) {
-        throw new Error(
-          data?.message || data?.error || `Server responded ${res.status}`
-        );
-      }
-
-      setChats((prev) =>
-        prev.map((c) => {
-          if (c.id !== tempId) return c;
-
-          if (c.localPreviewUrl) {
-            try {
-              URL.revokeObjectURL(c.localPreviewUrl);
-            } catch {}
-          }
-
-          return {
-            ...c,
-            pending: false,
-            // no backend screenshot URL anymore
-            screenshotUrl: null,
-            analysis: data?.analysis || data || null,
-            serverTimestamp: data?.timestamp || null,
-            // keep local image so the user still sees it this session
-            localPreviewUrl: c.localPreviewUrl,
-            localDataUrl: c.localDataUrl,
-          };
-        })
-      );
-
-      // keep timeframe + instrument so they don't have to re-fill
-      setForm((prev) => ({
-        ...prev,
-        strategyNotes: "",
-        file: null,
-      }));
-    } catch (err) {
-      setError(err?.message || "Submit failed");
-
-      setChats((prev) => {
-        const copy = [...prev];
-        const last = copy[copy.length - 1];
-        if (last?.pending) {
-          copy[copy.length - 1] = {
-            ...last,
-            pending: false,
-            analysis: {
-              grade: "N/A",
-              oneLineVerdict: "Upload failed. Try again.",
-              whatWentRight: [],
-              whatWentWrong: [],
-              improvements: [],
-              lessonLearned: "",
-              confidence: 0,
-            },
-          };
-        }
-        return copy;
-      });
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  // Drag & drop helpers
-  function preventDefaults(e) {
-    e.preventDefault();
-    e.stopPropagation();
-  }
-  function handleDrop(e) {
-    preventDefaults(e);
-    const file = e.dataTransfer?.files?.[0];
-    if (file && file.type.startsWith("image/")) {
-      onChange("file", file);
-    }
-    setDragActive(false);
-  }
+  /* ---------------- STYLES ---------------- */
 
   const styles = {
     page: {
       minHeight: "100vh",
       background: "#0b0f14",
       color: "#e7ecf2",
-      display: "grid",
-      placeItems: "center",
-      padding: "80px 12px 24px", // top padding to clear fixed header
+      padding: "80px 16px 24px", // top padding to clear fixed header
+      boxSizing: "border-box",
     },
 
     // 🔹 GLOBAL FIXED HEADER
@@ -490,8 +296,8 @@ export default function App({
     // 🔹 DATE DROPDOWN ROW
     dateRow: {
       width: "100%",
-      maxWidth: 760,
-      margin: "0 auto 12px",
+      maxWidth: 1100,
+      margin: "0 auto 16px",
       display: "flex",
       justifyContent: "center",
       position: "relative",
@@ -593,103 +399,134 @@ export default function App({
       borderColor: "#1b9aaa88",
     },
 
-    card: {
+    // 🔹 MAIN 2/3 – 1/3 LAYOUT
+    mainShell: {
       width: "100%",
-      maxWidth: 760,
-      background: "#121821",
-      borderRadius: 16,
-      boxShadow: "0 8px 30px rgba(0,0,0,.35)",
-      padding: 20,
+      maxWidth: 1100,
+      margin: "0 auto",
+      display: "flex",
+      gap: 16,
+      alignItems: "stretch",
+      flexWrap: "wrap",
+    },
+    leftCol: {
+      flex: "2 1 360px",
       display: "flex",
       flexDirection: "column",
       gap: 12,
-      maxHeight: "90vh",
-      position: "relative",
     },
-    header: { textAlign: "center" },
-    dayBadge: {
-      display: "inline-block",
-      fontSize: 12,
-      opacity: 0.75,
-      border: "1px solid #243043",
-      borderRadius: 10,
-      padding: "4px 10px",
-      marginTop: 6,
-    },
-    title: { fontSize: 26, fontWeight: 800, margin: 0 },
-    subtitle: { fontSize: 12, opacity: 0.7, marginTop: 6 },
-
-    // 🔹 TAB STRIP (Chrome-style)
-    tabRow: {
-      marginTop: 16,
-      marginBottom: 4,
-      display: "flex",
-      alignItems: "flex-end",
-      gap: 6,
-      borderBottom: "1px solid #243043",
-    },
-    tab: {
-      padding: "6px 14px",
-      borderRadius: "10px 10px 0 0",
-      background: "#0d121a",
-      border: "1px solid #243043",
-      borderBottom: "1px solid #243043",
-      fontSize: 13,
-      cursor: "pointer",
-      display: "flex",
-      alignItems: "center",
-      gap: 6,
-      color: "rgba(231,236,242,0.8)",
-      transform: "translateY(1px)",
-    },
-    tabActive: {
-      background: "#121821",
-      borderBottomColor: "#121821",
-      color: "#ffffff",
-      boxShadow: "0 -2px 12px rgba(0,0,0,0.45)",
-      zIndex: 2,
-    },
-    tabLabel: {
-      fontWeight: 600,
-      whiteSpace: "nowrap",
-    },
-    tabBadge: {
-      fontSize: 10,
-      padding: "2px 6px",
-      borderRadius: 999,
-      border: "1px solid #243043",
-      background: "#0b1018",
-      textTransform: "uppercase",
-      letterSpacing: 0.4,
-      opacity: 0.8,
-    },
-
-    chatShell: {
+    rightCol: {
+      flex: "1 1 260px",
       display: "flex",
       flexDirection: "column",
-      gap: 10,
-      flex: "1 1 auto",
+      gap: 12,
     },
 
-    chatWindow: {
-      flex: "1 1 auto",
-      minHeight: 220,
-      maxHeight: 420,
+    coachCard: {
+      background: "#121821",
+      borderRadius: 16,
+      boxShadow: "0 8px 30px rgba(0,0,0,.35)",
+      padding: 18,
+      display: "flex",
+      flexDirection: "column",
+      gap: 12,
+      minHeight: 0,
+    },
+    coachHeaderRow: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "baseline",
+      gap: 8,
+    },
+    coachTitle: {
+      fontSize: 20,
+      fontWeight: 800,
+    },
+    coachSub: {
+      fontSize: 12,
+      opacity: 0.7,
+      marginTop: 4,
+      maxWidth: 360,
+    },
+    dayBadge: {
+      fontSize: 11,
+      opacity: 0.8,
+      border: "1px solid #243043",
+      borderRadius: 999,
+      padding: "4px 10px",
+      whiteSpace: "nowrap",
+      alignSelf: "flex-start",
+    },
+
+    // 🔹 STATUS BOX
+    statusBox: {
+      marginTop: 4,
       background: "#0d121a",
       borderRadius: 14,
       border: "1px solid #243043",
-      padding: 12,
-      display: "grid",
-      gap: 10,
-      overflowY: "auto",
-      scrollBehavior: "smooth",
-    },
-
-    composer: {
+      padding: 14,
+      minHeight: 230,
+      boxSizing: "border-box",
       display: "flex",
       flexDirection: "column",
       gap: 8,
+    },
+    statusPlaceholderTitle: {
+      fontSize: 16,
+      fontWeight: 700,
+      marginBottom: 4,
+    },
+    statusPlaceholderText: {
+      fontSize: 13,
+      opacity: 0.75,
+    },
+    statusHeaderRow: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      gap: 8,
+      marginBottom: 6,
+    },
+    statusHeaderLeft: {
+      display: "flex",
+      flexDirection: "column",
+      gap: 2,
+      fontSize: 12,
+    },
+    statusLabel: {
+      fontSize: 13,
+      fontWeight: 700,
+    },
+    statusMeta: {
+      fontSize: 11,
+      opacity: 0.7,
+    },
+    gradePill: {
+      fontSize: 14,
+      fontWeight: 900,
+      padding: "2px 8px",
+      borderRadius: 8,
+      background: "#1b9aaa22",
+    },
+    statusImg: {
+      width: "100%",
+      maxWidth: 320,
+      borderRadius: 10,
+      border: "1px solid #243043",
+      marginBottom: 6,
       marginTop: 4,
+      alignSelf: "flex-start",
+    },
+    sectionTitle: { fontWeight: 800, marginTop: 6, marginBottom: 4 },
+    ul: { margin: 0, paddingLeft: 18, opacity: 0.95, fontSize: 13 },
+    smallMeta: { fontSize: 11, opacity: 0.6, marginTop: 6 },
+
+    // 🔹 FORM BELOW STATUS
+    formSection: {
+      marginTop: 8,
+      display: "flex",
+      flexDirection: "column",
+      gap: 8,
     },
     composerRow: {
       display: "flex",
@@ -698,11 +535,11 @@ export default function App({
       flexWrap: "wrap",
     },
     composerLeft: {
-      flex: "0 0 25%",
+      flex: "0 0 180px",
       minWidth: 150,
     },
     composerRight: {
-      flex: "1 1 75%",
+      flex: "1 1 260px",
       minWidth: 260,
     },
 
@@ -712,6 +549,7 @@ export default function App({
       borderRadius: 12,
       padding: 10,
       height: "100%",
+      minHeight: 80,
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
@@ -811,15 +649,16 @@ export default function App({
     button: {
       marginTop: 2,
       width: "100%",
-      background: "#1b9aaa",
+      background: buttonDisabled ? "#1b9aaa88" : "#1b9aaa",
       color: "#fff",
       border: "none",
       borderRadius: 12,
       padding: "10px 14px",
       fontWeight: 800,
-      cursor: isValid && !submitting ? "pointer" : "not-allowed",
-      opacity: isValid && !submitting ? 1 : 0.5,
+      cursor: buttonDisabled ? "not-allowed" : "pointer",
+      opacity: buttonDisabled ? 0.6 : 1,
       fontSize: 14,
+      transition: "background .15s ease, opacity .15s ease",
     },
     error: {
       marginTop: 4,
@@ -830,19 +669,18 @@ export default function App({
       whiteSpace: "pre-wrap",
       fontSize: 12,
     },
-    hint: { marginTop: 6, fontSize: 11, opacity: 0.7 },
+    hint: { marginTop: 4, fontSize: 11, opacity: 0.7 },
 
     // 🔹 JOURNAL
-    journalShell: {
-      flex: "1 1 auto",
-      background: "#0d121a",
-      borderRadius: 14,
-      border: "1px solid #243043",
-      padding: 14,
+    journalCard: {
+      background: "#121821",
+      borderRadius: 16,
+      boxShadow: "0 8px 30px rgba(0,0,0,.35)",
+      padding: 18,
       display: "flex",
       flexDirection: "column",
       gap: 10,
-      minHeight: 240,
+      minHeight: 0,
     },
     journalHeaderRow: {
       display: "flex",
@@ -851,13 +689,14 @@ export default function App({
       gap: 8,
     },
     journalTitle: {
-      fontSize: 15,
-      fontWeight: 700,
+      fontSize: 18,
+      fontWeight: 800,
     },
     journalSub: {
       fontSize: 11,
       opacity: 0.75,
       marginTop: 4,
+      maxWidth: 260,
     },
     journalBadge: {
       fontSize: 11,
@@ -868,9 +707,14 @@ export default function App({
       opacity: 0.9,
       whiteSpace: "nowrap",
     },
-    journalTextarea: {
+    journalLabel: {
+      fontSize: 12,
+      opacity: 0.75,
+      marginBottom: 4,
+    },
+    journalTextareaBig: {
       width: "100%",
-      minHeight: 170,
+      minHeight: 140,
       background: "#05080d",
       border: "1px solid #243043",
       borderRadius: 12,
@@ -881,6 +725,19 @@ export default function App({
       fontSize: 14,
       boxSizing: "border-box",
     },
+    journalTextareaSmall: {
+      width: "100%",
+      minHeight: 70,
+      background: "#05080d",
+      border: "1px solid #243043",
+      borderRadius: 12,
+      color: "#e7ecf2",
+      padding: "8px 10px",
+      outline: "none",
+      resize: "vertical",
+      fontSize: 13,
+      boxSizing: "border-box",
+    },
     journalHintRow: {
       display: "flex",
       alignItems: "center",
@@ -888,61 +745,7 @@ export default function App({
       gap: 8,
       fontSize: 11,
       opacity: 0.75,
-    },
-    journalHint: {
-      fontSize: 11,
-      opacity: 0.75,
-    },
-
-    bubbleRow: {
-      display: "flex",
-      gap: 10,
-      alignItems: "flex-start",
-    },
-    bubbleUser: {
-      marginLeft: "auto",
-      background: "#1a2432",
-      border: "1px solid #243043",
-      color: "#e7ecf2",
-      padding: "10px 12px",
-      borderRadius: "14px 14px 2px 14px",
-      maxWidth: "80%",
-      whiteSpace: "pre-wrap",
-      fontSize: 13,
-    },
-    bubbleAI: {
-      marginRight: "auto",
-      background: "#111820",
-      border: "1px solid #243043",
-      color: "#e7ecf2",
-      padding: "10px 12px",
-      borderRadius: "14px 14px 14px 2px",
-      maxWidth: "80%",
-      whiteSpace: "pre-wrap",
-      fontSize: 13,
-    },
-    bubbleHeader: {
-      fontWeight: 800,
-      marginBottom: 6,
-      display: "flex",
-      alignItems: "center",
-      gap: 8,
-    },
-    gradePill: {
-      fontSize: 14,
-      fontWeight: 900,
-      padding: "2px 8px",
-      borderRadius: 8,
-      background: "#1b9aaa22",
-    },
-    sectionTitle: { fontWeight: 800, marginTop: 8, marginBottom: 4 },
-    ul: { margin: 0, paddingLeft: 18, opacity: 0.95 },
-    smallMeta: { fontSize: 11, opacity: 0.6, marginTop: 6 },
-    emptyState: {
-      fontSize: 12,
-      opacity: 0.7,
-      textAlign: "center",
-      padding: "8px 0",
+      marginTop: 4,
     },
 
     // 🔹 PROFILE MODAL
@@ -1003,6 +806,236 @@ export default function App({
     },
   };
 
+  /* ---------------- EFFECTS ---------------- */
+
+  // Screenshot preview blob
+  useEffect(() => {
+    if (!form.file) {
+      setPreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(form.file);
+    setPreviewUrl(url);
+    return () => {
+      try {
+        URL.revokeObjectURL(url);
+      } catch {}
+    };
+  }, [form.file]);
+
+  // Load saved chats per day
+  useEffect(() => {
+    try {
+      const key = `tradeChats:${day}`;
+      const saved = localStorage.getItem(key);
+      setChats(saved ? JSON.parse(saved) : []);
+      setForm((prev) => ({ ...prev, file: null }));
+      setPreviewUrl(null);
+      setError("");
+    } catch {
+      setChats([]);
+    }
+  }, [day]);
+
+  // Persist chats per day
+  useEffect(() => {
+    const key = `tradeChats:${day}`;
+    safeSaveChats(key, chats);
+  }, [chats, day]);
+
+  // 🔹 Load journal per day (v2 object, fallback to legacy string)
+  useEffect(() => {
+    try {
+      const keyV2 = `tradeJournalV2:${day}`;
+      const rawV2 = localStorage.getItem(keyV2);
+      if (rawV2) {
+        const parsed = JSON.parse(rawV2);
+        setJournal({
+          notes: parsed.notes || "",
+          learned: parsed.learned || "",
+          improve: parsed.improve || "",
+        });
+        return;
+      }
+
+      // legacy single-string journal
+      const legacyKey = `tradeJournal:${day}`;
+      const legacy = localStorage.getItem(legacyKey);
+      if (legacy) {
+        setJournal({
+          notes: legacy,
+          learned: "",
+          improve: "",
+        });
+        return;
+      }
+
+      setJournal({ notes: "", learned: "", improve: "" });
+    } catch {
+      setJournal({ notes: "", learned: "", improve: "" });
+    }
+  }, [day]);
+
+  // 🔹 Persist journal per day
+  useEffect(() => {
+    try {
+      const keyV2 = `tradeJournalV2:${day}`;
+      localStorage.setItem(keyV2, JSON.stringify(journal));
+    } catch {
+      // ignore
+    }
+  }, [journal, day]);
+
+  /* ---------------- HANDLERS ---------------- */
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setError("");
+
+    if (!isValid || submitting) return;
+
+    setSubmitting(true);
+
+    try {
+      if (!WEBHOOK_URL) throw new Error("No webhook URL configured.");
+
+      const localDataUrl = await fileToDataUrl(form.file);
+      const localPreviewUrl = form.file
+        ? URL.createObjectURL(form.file)
+        : null;
+
+      const tempId = `tmp-${Date.now()}-${Math.random()
+        .toString(36)
+        .slice(2)}`;
+      const tempChat = {
+        id: tempId,
+        timestamp: new Date().toISOString(),
+        userNotes: form.strategyNotes,
+        screenshotUrl: null,
+        localPreviewUrl,
+        localDataUrl,
+        pending: true,
+        analysis: null,
+        timeframe: form.timeframe,
+        instrument: form.instrument,
+      };
+
+      setChats((prev) => [...prev, tempChat]);
+
+      const fd = new FormData();
+      fd.append("day", day);
+      fd.append("strategyNotes", form.strategyNotes);
+      fd.append("timeframe", form.timeframe);
+      fd.append("instrument", form.instrument);
+      if (form.file) fd.append("screenshot", form.file);
+
+      const res = await fetch(WEBHOOK_URL, {
+        method: "POST",
+        body: fd,
+      });
+
+      const text = await res.text();
+
+      let data = null;
+      try {
+        data = text ? JSON.parse(text) : null;
+      } catch {
+        throw new Error(
+          `Non-JSON response (${res.status}): ${text?.slice(0, 200)}`
+        );
+      }
+
+      if (!res.ok) {
+        throw new Error(
+          data?.message || data?.error || `Server responded ${res.status}`
+        );
+      }
+
+      setChats((prev) =>
+        prev.map((c) => {
+          if (c.id !== tempId) return c;
+
+          if (c.localPreviewUrl) {
+            try {
+              URL.revokeObjectURL(c.localPreviewUrl);
+            } catch {}
+          }
+
+          return {
+            ...c,
+            pending: false,
+            screenshotUrl: null, // no backend screenshot URL anymore
+            analysis: data?.analysis || data || null,
+            serverTimestamp: data?.timestamp || null,
+            localPreviewUrl: c.localPreviewUrl,
+            localDataUrl: c.localDataUrl,
+          };
+        })
+      );
+
+      // keep timeframe + instrument so they don't have to re-fill
+      setForm((prev) => ({
+        ...prev,
+        strategyNotes: "",
+        file: null,
+      }));
+      setPreviewUrl(null);
+    } catch (err) {
+      setError(err?.message || "Submit failed");
+
+      setChats((prev) => {
+        const copy = [...prev];
+        const last = copy[copy.length - 1];
+        if (last?.pending) {
+          copy[copy.length - 1] = {
+            ...last,
+            pending: false,
+            analysis: {
+              grade: "N/A",
+              oneLineVerdict: "Upload failed. Try again.",
+              whatWentRight: [],
+              whatWentWrong: [],
+              improvements: [],
+              lessonLearned: "",
+              confidence: 0,
+            },
+          };
+        }
+        return copy;
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  function handleResetTrade() {
+    // Clear current trade status + form so user can start a fresh one
+    setChats([]);
+    setForm({
+      strategyNotes: "",
+      file: null,
+      timeframe: "",
+      instrument: "",
+    });
+    setPreviewUrl(null);
+    setError("");
+  }
+
+  // Drag & drop helpers
+  function preventDefaults(e) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+
+  function handleDrop(e) {
+    preventDefaults(e);
+    const file = e.dataTransfer?.files?.[0];
+    if (file && file.type.startsWith("image/")) {
+      onChange("file", file);
+    }
+    setDragActive(false);
+  }
+
   function handleLogout() {
     try {
       localStorage.removeItem(MEMBER_LS_KEY);
@@ -1013,6 +1046,31 @@ export default function App({
     setMenuOpen(false);
     navigate("/"); // back to landing page
   }
+
+  /* ---------------- RENDER ---------------- */
+
+  const analysis = lastChat?.analysis ?? {};
+  const {
+    grade,
+    oneLineVerdict,
+    whatWentRight = [],
+    whatWentWrong = [],
+    improvements = [],
+    lessonLearned,
+    confidence,
+  } = analysis;
+
+  const imgSrc =
+    normalizeDriveUrl(lastChat?.screenshotUrl) ||
+    lastChat?.localDataUrl ||
+    lastChat?.localPreviewUrl ||
+    null;
+
+  const primaryButtonLabel = hasCompletedTrade
+    ? "Submit another trade"
+    : submitting || isPending
+    ? "Uploading…"
+    : "Get feedback";
 
   return (
     <>
@@ -1065,7 +1123,7 @@ export default function App({
 
       {/* PAGE CONTENT */}
       <div style={styles.page}>
-        {/* 🔹 DATE DROPDOWN IN THE GAP (below header, above card) */}
+        {/* 🔹 DATE DROPDOWN */}
         <div style={styles.dateRow}>
           <div
             style={styles.datePill}
@@ -1146,249 +1204,374 @@ export default function App({
           )}
         </div>
 
-        {/* MAIN CARD */}
-        <div style={styles.card}>
-          <div style={styles.header}>
-            <h1 style={styles.title}>Trade Coach (Personal)</h1>
-            <div style={styles.subtitle}>
-              Upload chart (screenshot) → choose pair & timeframe → explain
-              your idea → AI feedback
-            </div>
-            <div style={styles.dayBadge}>Day: {day} • saved per-day</div>
-          </div>
-
-          {/* 🔹 TAB STRIP ABOVE THE BOX */}
-          <div style={styles.tabRow}>
-            <div
-              style={{
-                ...styles.tab,
-                ...(activeTab === "coach" ? styles.tabActive : {}),
-              }}
-              onClick={() => setActiveTab("coach")}
-            >
-              <span style={styles.tabLabel}>Trade Coach</span>
-              <span style={styles.tabBadge}>AI</span>
-            </div>
-            <div
-              style={{
-                ...styles.tab,
-                ...(activeTab === "journal" ? styles.tabActive : {}),
-              }}
-              onClick={() => setActiveTab("journal")}
-            >
-              <span style={styles.tabLabel}>Journal</span>
-              <span style={styles.tabBadge}>Daily</span>
-            </div>
-          </div>
-
-          {/* 🔹 TAB CONTENT */}
-          {activeTab === "coach" ? (
-            <>
-              <div style={styles.chatShell}>
-                {/* SCROLLABLE CHAT WINDOW */}
-                <div
-                  ref={chatWrapRef}
-                  style={{
-                    ...styles.chatWindow,
-                    ...(dragActive ? styles.dropMiniActive : {}),
-                  }}
-                  onDragEnter={(e) => {
-                    preventDefaults(e);
-                    setDragActive(true);
-                  }}
-                  onDragOver={preventDefaults}
-                  onDragLeave={(e) => {
-                    preventDefaults(e);
-                    setDragActive(false);
-                  }}
-                  onDrop={handleDrop}
-                >
-                  {chats.length === 0 && (
-                    <div style={styles.emptyState}>
-                      No trades yet. Upload a chart + context below to get
-                      feedback.
-                    </div>
-                  )}
-
-                  {chats.map((chat) => (
-                    <ChatTurn key={chat.id} chat={chat} styles={styles} />
-                  ))}
-                  <div ref={chatEndRef} />
+        {/* 🔹 2/3 – 1/3 LAYOUT */}
+        <div style={styles.mainShell}>
+          {/* LEFT: TRADE COACH */}
+          <div style={styles.leftCol}>
+            <div style={styles.coachCard}>
+              <div style={styles.coachHeaderRow}>
+                <div>
+                  <div style={styles.coachTitle}>Trade Coach</div>
+                  <div style={styles.coachSub}>
+                    Upload chart → choose pair & timeframe → explain your idea
+                    → AI feedback.
+                  </div>
                 </div>
+                <div style={styles.dayBadge}>Day: {day}</div>
+              </div>
 
-                {/* COMPOSER */}
-                <form onSubmit={handleSubmit} style={styles.composer}>
-                  <div style={styles.composerRow}>
-                    <div style={styles.composerLeft}>
-                      <div
-                        style={{
-                          ...styles.dropMini,
-                          ...(dragActive ? styles.dropMiniActive : {}),
-                        }}
-                        onClick={() => fileInputRef.current?.click()}
-                        onDragEnter={(e) => {
-                          preventDefaults(e);
-                          setDragActive(true);
-                        }}
-                        onDragOver={preventDefaults}
-                        onDragLeave={(e) => {
-                          preventDefaults(e);
-                          setDragActive(false);
-                        }}
-                        onDrop={handleDrop}
-                      >
-                        {previewUrl ? (
-                          <>
-                            <img
-                              src={previewUrl}
-                              alt="preview"
-                              style={styles.previewThumb}
-                            />
-                            <div style={styles.dropMiniLabel}>
-                              <span style={styles.dropMiniTitle}>
-                                Screenshot added
-                              </span>
-                              <span style={styles.dropMiniHint}>
-                                Click to replace • drag new chart here
-                              </span>
-                            </div>
-                            <button
-                              type="button"
-                              style={styles.miniCloseBtn}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onChange("file", null);
-                              }}
-                            >
-                              ×
-                            </button>
-                          </>
-                        ) : (
+              {/* STATUS BOX */}
+              <div style={styles.statusBox}>
+                {!lastChat && (
+                  <>
+                    <div style={styles.statusPlaceholderTitle}>Status…</div>
+                    <p style={styles.statusPlaceholderText}>
+                      Add a screenshot + your thought process below, then press
+                      &ldquo;Get feedback&rdquo; to see your trade graded here.
+                    </p>
+                  </>
+                )}
+
+                {lastChat && isPending && (
+                  <>
+                    <div style={styles.statusPlaceholderTitle}>
+                      Trade Coach analyzing…
+                    </div>
+                    <p style={styles.statusPlaceholderText}>
+                      Hold on a second while your trade is graded and broken
+                      down.
+                    </p>
+                  </>
+                )}
+
+                {lastChat && !isPending && (
+                  <>
+                    <div style={styles.statusHeaderRow}>
+                      <div style={styles.statusHeaderLeft}>
+                        <span style={styles.statusLabel}>Trade Coach AI</span>
+                        {(lastChat.instrument || lastChat.timeframe) && (
+                          <span style={styles.statusMeta}>
+                            {lastChat.instrument && (
+                              <span>{lastChat.instrument}</span>
+                            )}
+                            {lastChat.instrument && lastChat.timeframe && (
+                              <span> • </span>
+                            )}
+                            {lastChat.timeframe && (
+                              <span>{lastChat.timeframe}</span>
+                            )}
+                          </span>
+                        )}
+                      </div>
+                      {grade && (
+                        <span
+                          style={{
+                            ...styles.gradePill,
+                            backgroundColor: gradeColor(grade),
+                            color: "#0b0f14",
+                          }}
+                        >
+                          {grade}
+                        </span>
+                      )}
+                    </div>
+
+                    {typeof confidence === "number" && (
+                      <div style={styles.statusMeta}>
+                        {Math.round(confidence * 100)}% confident
+                      </div>
+                    )}
+
+                    {imgSrc && (
+                      <img
+                        src={imgSrc}
+                        alt="Trade screenshot"
+                        style={styles.statusImg}
+                      />
+                    )}
+
+                    {oneLineVerdict && (
+                      <div style={{ opacity: 0.95, fontSize: 13 }}>
+                        {oneLineVerdict}
+                      </div>
+                    )}
+
+                    {whatWentRight.length > 0 && (
+                      <>
+                        <div style={styles.sectionTitle}>What went right</div>
+                        <ul style={styles.ul}>
+                          {whatWentRight.map((x, i) => (
+                            <li key={i}>{x}</li>
+                          ))}
+                        </ul>
+                      </>
+                    )}
+
+                    {whatWentWrong.length > 0 && (
+                      <>
+                        <div style={styles.sectionTitle}>What went wrong</div>
+                        <ul style={styles.ul}>
+                          {whatWentWrong.map((x, i) => (
+                            <li key={i}>{x}</li>
+                          ))}
+                        </ul>
+                      </>
+                    )}
+
+                    {improvements.length > 0 && (
+                      <>
+                        <div style={styles.sectionTitle}>Improvements</div>
+                        <ul style={styles.ul}>
+                          {improvements.map((x, i) => (
+                            <li key={i}>{x}</li>
+                          ))}
+                        </ul>
+                      </>
+                    )}
+
+                    {lessonLearned && (
+                      <>
+                        <div style={styles.sectionTitle}>Lesson learned</div>
+                        <div style={{ opacity: 0.95, fontSize: 13 }}>
+                          {lessonLearned}
+                        </div>
+                      </>
+                    )}
+
+                    {(lastChat.serverTimestamp || lastChat.timestamp) && (
+                      <div style={styles.smallMeta}>
+                        {new Date(
+                          lastChat.serverTimestamp || lastChat.timestamp
+                        ).toLocaleString()}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+
+              {/* FORM AREA */}
+              <form
+                onSubmit={hasCompletedTrade ? undefined : handleSubmit}
+                style={styles.formSection}
+              >
+                <div style={styles.composerRow}>
+                  <div style={styles.composerLeft}>
+                    <div
+                      style={{
+                        ...styles.dropMini,
+                        ...(dragActive ? styles.dropMiniActive : {}),
+                      }}
+                      onClick={() => fileInputRef.current?.click()}
+                      onDragEnter={(e) => {
+                        preventDefaults(e);
+                        setDragActive(true);
+                      }}
+                      onDragOver={preventDefaults}
+                      onDragLeave={(e) => {
+                        preventDefaults(e);
+                        setDragActive(false);
+                      }}
+                      onDrop={handleDrop}
+                    >
+                      {previewUrl ? (
+                        <>
+                          <img
+                            src={previewUrl}
+                            alt="preview"
+                            style={styles.previewThumb}
+                          />
                           <div style={styles.dropMiniLabel}>
                             <span style={styles.dropMiniTitle}>
-                              + Add screenshot
+                              Screenshot added
                             </span>
                             <span style={styles.dropMiniHint}>
-                              Click or drag chart here (.png / .jpg)
+                              Click to replace • drag a new chart here
                             </span>
                           </div>
-                        )}
-
-                        <input
-                          ref={fileInputRef}
-                          type="file"
-                          accept="image/*"
-                          onChange={(e) =>
-                            onChange("file", e.target.files?.[0] || null)
-                          }
-                          style={{ display: "none" }}
-                        />
-                      </div>
-                    </div>
-
-                    <div style={styles.composerRight}>
-                      {/* New: instrument + timeframe */}
-                      <div style={styles.fieldRow}>
-                        <div style={styles.fieldHalf}>
-                          <div style={styles.label}>What were you trading?</div>
-                          <input
-                            type="text"
-                            style={styles.input}
-                            placeholder="e.g. NASDAQ, S&P 500, GBP/USD, XAU/USD"
-                            value={form.instrument}
-                            onChange={(e) =>
-                              onChange("instrument", e.target.value)
-                            }
-                          />
-                        </div>
-                        <div style={styles.fieldHalf}>
-                          <div style={styles.label}>Timeframe</div>
-                          <select
-                            style={styles.select}
-                            value={form.timeframe}
-                            onChange={(e) =>
-                              onChange("timeframe", e.target.value)
-                            }
+                          <button
+                            type="button"
+                            style={styles.miniCloseBtn}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onChange("file", null);
+                            }}
                           >
-                            <option value="">Select timeframe</option>
-                            <option value="1m">1m</option>
-                            <option value="3m">3m</option>
-                            <option value="5m">5m</option>
-                            <option value="15m">15m</option>
-                            <option value="30m">30m</option>
-                            <option value="1H">1H</option>
-                            <option value="2H">2H</option>
-                            <option value="4H">4H</option>
-                            <option value="Daily">Daily</option>
-                          </select>
+                            ×
+                          </button>
+                        </>
+                      ) : (
+                        <div style={styles.dropMiniLabel}>
+                          <span style={styles.dropMiniTitle}>
+                            + Add screenshot
+                          </span>
+                          <span style={styles.dropMiniHint}>
+                            Click or drag chart here (.png / .jpg)
+                          </span>
                         </div>
-                      </div>
+                      )}
 
-                      <div style={styles.label}>
-                        Strategy / thought process — what setup were you taking?
-                      </div>
-                      <textarea
-                        value={form.strategyNotes}
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
                         onChange={(e) =>
-                          onChange("strategyNotes", e.target.value)
+                          onChange("file", e.target.files?.[0] || null)
                         }
-                        placeholder="Explain your idea: HTF bias, BOS/CHoCH, FVG/OB, liquidity grab, session, target, risk plan, management rules..."
-                        required
-                        style={styles.textarea}
+                        style={{ display: "none" }}
                       />
                     </div>
                   </div>
 
-                  <button
-                    type="submit"
-                    disabled={!isValid || submitting}
-                    style={styles.button}
-                  >
-                    {submitting ? "Uploading…" : "Get Feedback"}
-                  </button>
-                </form>
-              </div>
-
-              {error && (
-                <div style={styles.error}>
-                  Error: {error}
-                  {!WEBHOOK_URL && (
-                    <div style={styles.hint}>
-                      Tip: define VITE_N8N_TRADE_FEEDBACK_WEBHOOK in
-                      .env.local and in your deploy env.
+                  <div style={styles.composerRight}>
+                    {/* Instrument + timeframe */}
+                    <div style={styles.fieldRow}>
+                      <div style={styles.fieldHalf}>
+                        <div style={styles.label}>
+                          What were you trading?
+                        </div>
+                        <input
+                          type="text"
+                          style={styles.input}
+                          placeholder="e.g. NASDAQ, S&P 500, GBP/USD, XAU/USD"
+                          value={form.instrument}
+                          onChange={(e) =>
+                            onChange("instrument", e.target.value)
+                          }
+                        />
+                      </div>
+                      <div style={styles.fieldHalf}>
+                        <div style={styles.label}>Timeframe</div>
+                        <select
+                          style={styles.select}
+                          value={form.timeframe}
+                          onChange={(e) =>
+                            onChange("timeframe", e.target.value)
+                          }
+                        >
+                          <option value="">Select timeframe</option>
+                          <option value="1m">1m</option>
+                          <option value="3m">3m</option>
+                          <option value="5m">5m</option>
+                          <option value="15m">15m</option>
+                          <option value="30m">30m</option>
+                          <option value="1H">1H</option>
+                          <option value="2H">2H</option>
+                          <option value="4H">4H</option>
+                          <option value="Daily">Daily</option>
+                        </select>
+                      </div>
                     </div>
-                  )}
-                </div>
-              )}
-            </>
-          ) : (
-            <div style={styles.journalShell}>
-              <div style={styles.journalHeaderRow}>
-                <div>
-                  <div style={styles.journalTitle}>Daily Journal</div>
-                  <div style={styles.journalSub}>
-                    Capture how today felt, what you learned, and how you&apos;ll
-                    improve next session.
+
+                    <div style={styles.label}>
+                      Strategy / thought process — what setup were you taking?
+                    </div>
+                    <textarea
+                      value={form.strategyNotes}
+                      onChange={(e) =>
+                        onChange("strategyNotes", e.target.value)
+                      }
+                      placeholder="Explain your idea: HTF bias, BOS/CHoCH, FVG/OB, liquidity grab, session, target, risk plan, management rules..."
+                      required
+                      style={styles.textarea}
+                    />
                   </div>
                 </div>
-                <div style={styles.journalBadge}>Saved for {day}</div>
+
+                <button
+                  type={hasCompletedTrade ? "button" : "submit"}
+                  disabled={buttonDisabled}
+                  style={styles.button}
+                  onClick={hasCompletedTrade ? handleResetTrade : undefined}
+                >
+                  {primaryButtonLabel}
+                </button>
+
+                {error && (
+                  <div style={styles.error}>
+                    Error: {error}
+                    {!WEBHOOK_URL && (
+                      <div style={styles.hint}>
+                        Tip: define VITE_N8N_TRADE_FEEDBACK_WEBHOOK in
+                        .env.local and in your deploy env.
+                      </div>
+                    )}
+                  </div>
+                )}
+              </form>
+            </div>
+          </div>
+
+          {/* RIGHT: JOURNAL */}
+          <div style={styles.rightCol}>
+            <div style={styles.journalCard}>
+              <div style={styles.journalHeaderRow}>
+                <div>
+                  <div style={styles.journalTitle}>Journal</div>
+                  <div style={styles.journalSub}>
+                    Your personal notes for this day. Saved automatically for
+                    each date you select.
+                  </div>
+                </div>
+                <div style={styles.journalBadge}>Entry for {day}</div>
               </div>
 
-              <textarea
-                style={styles.journalTextarea}
-                value={journalText}
-                onChange={(e) => setJournalText(e.target.value)}
-                placeholder="Prompts: What did I do well today? What tilted me? Did I follow my plan? What is one thing I will do better next session?"
-              />
+              <div>
+                <div style={styles.journalLabel}>Notes</div>
+                <textarea
+                  style={styles.journalTextareaBig}
+                  value={journal.notes}
+                  onChange={(e) =>
+                    setJournal((prev) => ({
+                      ...prev,
+                      notes: e.target.value,
+                    }))
+                  }
+                  placeholder="Text here..."
+                />
+              </div>
+
+              <div>
+                <div style={styles.journalLabel}>
+                  What did you learn today?
+                </div>
+                <textarea
+                  style={styles.journalTextareaSmall}
+                  value={journal.learned}
+                  onChange={(e) =>
+                    setJournal((prev) => ({
+                      ...prev,
+                      learned: e.target.value,
+                    }))
+                  }
+                  placeholder="Key lessons, patterns, or rules you want to remember."
+                />
+              </div>
+
+              <div>
+                <div style={styles.journalLabel}>
+                  What do you need to improve?
+                </div>
+                <textarea
+                  style={styles.journalTextareaSmall}
+                  value={journal.improve}
+                  onChange={(e) =>
+                    setJournal((prev) => ({
+                      ...prev,
+                      improve: e.target.value,
+                    }))
+                  }
+                  placeholder="Risk, discipline, entries, exits, patience, etc."
+                />
+              </div>
 
               <div style={styles.journalHintRow}>
-                <span style={styles.journalHint}>
-                  Auto-saved per day — switch dates above like normal to see
-                  past entries.
+                <span>
+                  Auto-saved per day — switch dates above to see past
+                  entries.
                 </span>
               </div>
             </div>
-          )}
+          </div>
         </div>
       </div>
 
@@ -1401,7 +1584,6 @@ export default function App({
               Basic info for your Trade Coach portal.
             </div>
 
-            <div style={styles.modalRow}></div>
             <div style={styles.modalRow}>
               <div style={styles.modalLabel}>Member ID</div>
               <div style={styles.modalValue}>{member?.memberId || "—"}</div>
@@ -1417,173 +1599,6 @@ export default function App({
           </div>
         </div>
       )}
-    </>
-  );
-}
-
-/* ---------------- CHAT TURN ---------------- */
-
-function ChatTurn({ chat, styles }) {
-  const analysis = chat.analysis ?? {};
-  const {
-    grade,
-    oneLineVerdict,
-    whatWentRight = [],
-    whatWentWrong = [],
-    improvements = [],
-    lessonLearned,
-    confidence,
-  } = analysis;
-
-  const initialImg =
-    normalizeDriveUrl(chat.screenshotUrl) ||
-    chat.localDataUrl ||
-    chat.localPreviewUrl ||
-    null;
-
-  const [imgSrc, setImgSrc] = useState(initialImg);
-
-  useEffect(() => {
-    const next =
-      normalizeDriveUrl(chat.screenshotUrl) ||
-      chat.localDataUrl ||
-      chat.localPreviewUrl ||
-      null;
-    setImgSrc(next);
-  }, [chat.screenshotUrl, chat.localDataUrl, chat.localPreviewUrl]);
-
-  function handleImgError() {
-    if (chat.localDataUrl && imgSrc !== chat.localDataUrl) {
-      setImgSrc(chat.localDataUrl);
-      return;
-    }
-    if (chat.localPreviewUrl && imgSrc !== chat.localPreviewUrl) {
-      setImgSrc(chat.localPreviewUrl);
-      return;
-    }
-    setImgSrc(null);
-  }
-
-  return (
-    <>
-      {/* USER MESSAGE */}
-      <div style={styles.bubbleRow}>
-        <div style={styles.bubbleUser}>
-          <div style={{ fontWeight: 800, marginBottom: 6 }}>You</div>
-
-          {imgSrc && (
-            <img
-              src={imgSrc}
-              onError={handleImgError}
-              alt="uploaded trade"
-              style={{
-                width: "100%",
-                maxWidth: 320,
-                borderRadius: 10,
-                border: "1px solid #243043",
-                marginBottom: 8,
-              }}
-            />
-          )}
-
-          {(chat.instrument || chat.timeframe) && (
-            <div style={styles.smallMeta}>
-              {chat.instrument && <span>{chat.instrument}</span>}
-              {chat.instrument && chat.timeframe && <span> • </span>}
-              {chat.timeframe && <span>{chat.timeframe}</span>}
-            </div>
-          )}
-
-          <div>{chat.userNotes}</div>
-
-          <div style={styles.smallMeta}>
-            {new Date(chat.timestamp).toLocaleString()}
-          </div>
-        </div>
-      </div>
-
-      {/* AI MESSAGE */}
-      <div style={styles.bubbleRow}>
-        <div style={styles.bubbleAI}>
-          <div style={styles.bubbleHeader}>
-            <span>Trade Coach AI</span>
-            {grade && (
-              <span
-                style={{
-                  ...styles.gradePill,
-                  backgroundColor: gradeColor(grade),
-                  color: "#0b0f14",
-                }}
-              >
-                {grade}
-              </span>
-            )}
-            {typeof confidence === "number" && (
-              <span style={{ fontSize: 12, opacity: 0.7 }}>
-                ({Math.round(confidence * 100)}% confident)
-              </span>
-            )}
-          </div>
-
-          {chat.pending ? (
-            <div style={{ opacity: 0.9 }}>Analyzing trade…</div>
-          ) : (
-            <>
-              {oneLineVerdict && (
-                <div style={{ opacity: 0.95 }}>{oneLineVerdict}</div>
-              )}
-
-              {whatWentRight.length > 0 && (
-                <>
-                  <div style={styles.sectionTitle}>What went right</div>
-                  <ul style={styles.ul}>
-                    {whatWentRight.map((x, i) => (
-                      <li key={i}>{x}</li>
-                    ))}
-                  </ul>
-                </>
-              )}
-
-              {whatWentWrong.length > 0 && (
-                <>
-                  <div style={styles.sectionTitle}>What went wrong</div>
-                  <ul style={styles.ul}>
-                    {whatWentWrong.map((x, i) => (
-                      <li key={i}>{x}</li>
-                    ))}
-                  </ul>
-                </>
-              )}
-
-              {improvements.length > 0 && (
-                <>
-                  <div style={styles.sectionTitle}>Improvements</div>
-                  <ul style={styles.ul}>
-                    {improvements.map((x, i) => (
-                      <li key={i}>{x}</li>
-                    ))}
-                  </ul>
-                </>
-              )}
-
-              {lessonLearned && (
-                <>
-                  <div style={styles.sectionTitle}>Lesson learned</div>
-                  <div style={{ opacity: 0.95 }}>{lessonLearned}</div>
-                </>
-              )}
-
-              {(chat.serverTimestamp || chat.timestamp) && (
-                <div style={styles.smallMeta}>
-                  {new Date(
-                    chat.serverTimestamp || chat.timestamp
-                  ).toLocaleString()}
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      </div>
     </>
   );
 }
