@@ -352,7 +352,7 @@ export default function LandingPage({ onEnterApp }) {
       opacity: 0.9,
     },
 
-    // VALUE SECTION (image + copy)
+    // VALUE SECTION (unused now but kept)
     valueRow: {
       display: "flex",
       flexWrap: "wrap",
@@ -663,6 +663,79 @@ export default function LandingPage({ onEnterApp }) {
       marginTop: 6,
       fontSize: 11,
       opacity: 0.8,
+    },
+
+    // AI REPORT PREVIEW
+    previewCard: {
+      marginTop: 20,
+      maxWidth: 480,
+      marginLeft: "auto",
+      marginRight: "auto",
+      borderRadius: 20,
+      background: "#0e1016",
+      border: "1px solid rgba(148,163,184,0.6)",
+      padding: 18,
+      boxShadow: "0 18px 45px rgba(15,23,42,0.9)",
+    },
+    previewHeader: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "flex-start",
+    },
+    previewTitle: {
+      fontSize: 18,
+      fontWeight: 700,
+      color: "#f9fafb",
+    },
+    previewMeta: {
+      fontSize: 12,
+      color: "#9ca3af",
+    },
+    previewMetaSpacer: {
+      marginTop: 2,
+    },
+    previewGradeBadge: {
+      height: 36,
+      width: 36,
+      borderRadius: 999,
+      background: "#facc15",
+      color: "#020617",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      fontWeight: 800,
+      fontSize: 18,
+      boxShadow: "0 10px 30px rgba(0,0,0,0.7)",
+    },
+    previewSections: {
+      marginTop: 18,
+      display: "flex",
+      flexDirection: "column",
+      gap: 12,
+    },
+    previewSectionTitle: {
+      fontSize: 10,
+      textTransform: "uppercase",
+      letterSpacing: 0.16,
+      color: "#cbd5f5",
+    },
+    previewBars: {
+      marginTop: 6,
+      display: "flex",
+      flexDirection: "column",
+      gap: 4,
+    },
+    previewBar: (width) => ({
+      height: 8,
+      borderRadius: 999,
+      background: "rgba(148,163,184,0.25)",
+      width,
+    }),
+    previewFooter: {
+      marginTop: 14,
+      fontSize: 10,
+      color: "#6b7280",
+      textAlign: "right",
     },
   };
 
@@ -1009,65 +1082,75 @@ export default function LandingPage({ onEnterApp }) {
           </div>
         </section>
 
-<div className="w-full max-w-lg mx-auto mt-10 
-    bg-[#0e1016] border border-white/10 rounded-2xl p-6 shadow-xl">
+        {/* AI REPORT PREVIEW SECTION */}
+        <section style={styles.section}>
+          <div style={styles.sectionInner}>
+            <div style={styles.sectionEyebrow}>How your feedback looks</div>
+            <h2 style={styles.sectionTitle}>
+              A clean, structured report for each trade.
+            </h2>
+            <p style={styles.sectionSub}>
+              This is an example layout of the AI report you&apos;ll see for
+              every trade: grade, confidence, and four sections that tell you
+              what went right, what went wrong, what to improve, and the main
+              lesson.
+            </p>
 
-  {/* Header */}
-  <div className="flex items-start justify-between">
-    <div>
-      <h2 className="text-white font-semibold text-xl">Trade Coach AI</h2>
-      <p className="text-slate-400 text-sm">Gold • 5m timeframe</p>
-      <p className="text-slate-400 text-sm mt-1">Confidence: 75%</p>
-    </div>
+            <div style={styles.previewCard}>
+              <div style={styles.previewHeader}>
+                <div>
+                  <div style={styles.previewTitle}>Trade Coach AI</div>
+                  <div style={{ ...styles.previewMeta, ...styles.previewMetaSpacer }}>
+                    Gold Futures · 5m
+                  </div>
+                  <div style={{ ...styles.previewMeta, ...styles.previewMetaSpacer }}>
+                    Confidence: 75%
+                  </div>
+                </div>
+                <div style={styles.previewGradeBadge}>C</div>
+              </div>
 
-    <div className="h-9 w-9 rounded-full bg-yellow-300 text-black 
-        flex items-center justify-center font-bold text-lg shadow">
-      C
-    </div>
-  </div>
+              <div style={styles.previewSections}>
+                <div>
+                  <div style={styles.previewSectionTitle}>What went right</div>
+                  <div style={styles.previewBars}>
+                    <div style={styles.previewBar("80%")} />
+                    <div style={styles.previewBar("60%")} />
+                  </div>
+                </div>
 
-  {/* Sections */}
-  <div className="mt-6 space-y-5">
-    
-    <div>
-      <p className="text-slate-300 text-xs uppercase tracking-wide">What went right</p>
-      <div className="mt-2 space-y-2">
-        <div className="h-2.5 bg-white/10 rounded-md w-5/6"></div>
-        <div className="h-2.5 bg-white/10 rounded-md w-4/6"></div>
-      </div>
-    </div>
+                <div>
+                  <div style={styles.previewSectionTitle}>What went wrong</div>
+                  <div style={styles.previewBars}>
+                    <div style={styles.previewBar("85%")} />
+                    <div style={styles.previewBar("70%")} />
+                    <div style={styles.previewBar("50%")} />
+                  </div>
+                </div>
 
-    <div>
-      <p className="text-slate-300 text-xs uppercase tracking-wide">What went wrong</p>
-      <div className="mt-2 space-y-2">
-        <div className="h-2.5 bg-white/10 rounded-md w-5/6"></div>
-        <div className="h-2.5 bg-white/10 rounded-md w-4/6"></div>
-        <div className="h-2.5 bg-white/10 rounded-md w-3/6"></div>
-      </div>
-    </div>
+                <div>
+                  <div style={styles.previewSectionTitle}>Improvements</div>
+                  <div style={styles.previewBars}>
+                    <div style={styles.previewBar("80%")} />
+                    <div style={styles.previewBar("65%")} />
+                  </div>
+                </div>
 
-    <div>
-      <p className="text-slate-300 text-xs uppercase tracking-wide">Improvements</p>
-      <div className="mt-2 space-y-2">
-        <div className="h-2.5 bg-white/10 rounded-md w-5/6"></div>
-        <div className="h-2.5 bg-white/10 rounded-md w-4/6"></div>
-      </div>
-    </div>
+                <div>
+                  <div style={styles.previewSectionTitle}>Lesson learned</div>
+                  <div style={styles.previewBars}>
+                    <div style={styles.previewBar("75%")} />
+                  </div>
+                </div>
+              </div>
 
-    <div>
-      <p className="text-slate-300 text-xs uppercase tracking-wide">Lesson learned</p>
-      <div className="mt-2 space-y-2">
-        <div className="h-2.5 bg-white/10 rounded-md w-5/6"></div>
-      </div>
-    </div>
-
-  </div>
-
-  <p className="text-slate-500 text-[10px] mt-6 text-right">
-    Example AI trade report preview
-  </p>
-</div>
-
+              <div style={styles.previewFooter}>
+                Example AI trade report preview — your real reports show full
+                text here.
+              </div>
+            </div>
+          </div>
+        </section>
 
         {/* WHAT YOU GET / VS EVERYTHING ELSE */}
         <section style={styles.section}>
@@ -1149,7 +1232,7 @@ export default function LandingPage({ onEnterApp }) {
           </div>
         </section>
 
-        {/* TESTIMONIALS (placeholder copy) */}
+        {/* TESTIMONIALS */}
         <section style={styles.section}>
           <div style={styles.sectionInner}>
             <div style={styles.sectionEyebrow}>Real results</div>
