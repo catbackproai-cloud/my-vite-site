@@ -38,426 +38,518 @@ export default function LandingPage({ onEnterApp }) {
   const [memberPortalId, setMemberPortalId] = useState("");
   const [memberPortalError, setMemberPortalError] = useState("");
 
-  const currentYear = new Date().getFullYear();
-  const isMobile =
-    typeof window !== "undefined" ? window.innerWidth <= 768 : false;
+  const [openFaq, setOpenFaq] = useState(null);
 
   const styles = {
-    // PAGE
     page: {
       minHeight: "100vh",
-      background:
-        "radial-gradient(circle at top, #18253d 0, #05070c 55%, #020308 100%)",
-      color: "#e7ecf2",
-      display: "flex",
-      alignItems: "stretch",
-      justifyContent: "center",
-      padding: "24px 16px 32px",
+      background: "#050507",
+      color: "#f9fafb",
       fontFamily:
         '-apple-system, BlinkMacSystemFont, system-ui, -system-ui, "SF Pro Text", sans-serif',
-      boxSizing: "border-box",
-    },
-    shell: {
-      width: "100%",
-      maxWidth: 1160,
-      display: "flex",
-      flexDirection: "column",
-      gap: 20,
     },
 
-    // HEADER / NAV
-    nav: {
+    // TOP RIBBON + NAV
+    ribbon: {
+      background: "#050507",
+      borderBottom: "1px solid rgba(148, 27, 41, 0.6)",
+      padding: "6px 16px",
+      display: "flex",
+      justifyContent: "center",
+      alignItems: "center",
+      fontSize: 12,
+      color: "#f9fafb",
+    },
+    ribbonInner: {
+      maxWidth: 1100,
+      width: "100%",
       display: "flex",
       justifyContent: "space-between",
+      gap: 12,
       alignItems: "center",
-      padding: "4px 4px 0",
-      marginBottom: 4,
+    },
+    ribbonText: {
+      opacity: 0.85,
+    },
+    ribbonStrong: {
+      fontWeight: 700,
+    },
+    ribbonBtn: {
+      borderRadius: 999,
+      border: "none",
+      padding: "6px 14px",
+      fontSize: 12,
+      fontWeight: 700,
+      cursor: "pointer",
+      background:
+        "linear-gradient(135deg, #f97373, #ef4444, #b91c1c 90%, #7f1d1d)",
+      color: "#fff",
+      boxShadow: "0 10px 30px rgba(0,0,0,0.55)",
+      whiteSpace: "nowrap",
+    },
+
+    nav: {
+      padding: "14px 16px 10px",
+      display: "flex",
+      justifyContent: "center",
+      borderBottom: "1px solid rgba(31,41,55,0.8)",
+      background:
+        "radial-gradient(circle at top, #1a0b0d 0, #050507 55%, #050507 100%)",
+      position: "sticky",
+      top: 0,
+      zIndex: 40,
+      backdropFilter: "blur(18px)",
+    },
+    navInner: {
+      maxWidth: 1100,
+      width: "100%",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: 12,
     },
     logoRow: {
       display: "flex",
       alignItems: "center",
-      gap: 10,
+      gap: 8,
     },
-    logoDot: {
-      width: 26,
-      height: 26,
+    logoMark: {
+      width: 28,
+      height: 28,
       borderRadius: 999,
       background:
-        "conic-gradient(from 210deg, #1b9aaa, #38d5ff, #1b9aaa, #1b9aaa)",
-      boxShadow: "0 0 0 1px rgba(0,0,0,0.7), 0 0 16px rgba(27,154,170,0.7)",
+        "conic-gradient(from 220deg, #f97373, #fecaca, #f97373, #991b1b)",
+      boxShadow: "0 0 0 1px rgba(0,0,0,0.8), 0 0 20px rgba(248,113,113,0.6)",
     },
-    logoTextMain: {
+    logoTitle: {
       fontSize: 16,
-      fontWeight: 900,
-      letterSpacing: 0.4,
+      fontWeight: 800,
+      letterSpacing: 0.1,
     },
     logoSub: {
       fontSize: 11,
-      fontWeight: 500,
       opacity: 0.7,
     },
-    navLinks: {
+    navRight: {
       display: "flex",
-      alignItems: "center",
-      gap: 18,
-      fontSize: 12,
-      opacity: 0.9,
-    },
-    navLink: {
-      cursor: "pointer",
-      opacity: 0.8,
-      borderBottom: "1px solid transparent",
-      paddingBottom: 2,
-      transition: "opacity 0.18s ease, border-color 0.18s ease",
-    },
-    navCTA: {
-      borderRadius: 999,
-      border: "none",
-      background:
-        "linear-gradient(135deg, #1b9aaa, #30d3ff, #1b9aaa 80%, #158593)",
-      padding: "7px 16px",
-      fontSize: 12,
-      fontWeight: 700,
-      cursor: "pointer",
-      color: "#05080c",
-      boxShadow:
-        "0 10px 22px rgba(0,0,0,0.8), 0 0 14px rgba(48,211,255,0.4)",
-      display: "flex",
-      alignItems: "center",
-      gap: 6,
-    },
-
-    // HERO WRAPPER (like Tier11)
-    heroSection: {
-      width: "100%",
-      background: "rgba(7,12,20,0.96)",
-      borderRadius: 26,
-      border: "1px solid rgba(36,48,67,0.9)",
-      boxShadow: "0 32px 90px rgba(0,0,0,0.75)",
-      padding: isMobile ? 18 : 26,
-      display: "flex",
-      flexDirection: isMobile ? "column" : "row",
-      gap: isMobile ? 22 : 30,
-      boxSizing: "border-box",
-    },
-    heroLeft: {
-      flex: 1.4,
-      display: "flex",
-      flexDirection: "column",
-      justifyContent: "center",
-      gap: 14,
-    },
-    heroRight: {
-      flex: 1,
-      background:
-        "linear-gradient(140deg, #05080f 0%, #05080f 55%, #071321 100%)",
-      borderRadius: 20,
-      border: "1px solid #243043",
-      padding: 18,
-      display: "flex",
-      flexDirection: "column",
       gap: 12,
-      fontSize: 13,
-      boxShadow: "0 18px 60px rgba(0,0,0,0.7)",
+      alignItems: "center",
+      fontSize: 12,
     },
-
-    badgeRow: {
-      display: "flex",
-      flexWrap: "wrap",
-      gap: 8,
-      marginBottom: 2,
-    },
-    badge: {
-      fontSize: 11,
+    navPill: {
       padding: "4px 10px",
       borderRadius: 999,
-      border: "1px solid #243043",
-      background: "rgba(5,8,15,0.9)",
-      textTransform: "uppercase",
-      letterSpacing: 0.14,
-      opacity: 0.9,
-    },
-    heroHeadline: {
-      fontSize: isMobile ? 26 : 34,
-      fontWeight: 900,
-      letterSpacing: -0.4,
-      lineHeight: 1.1,
-    },
-    heroAccent: {
-      fontWeight: 900,
-      background:
-        "linear-gradient(120deg, #ffffff, #e3f8ff, #76e4ff, #ffffff 90%)",
-      WebkitBackgroundClip: "text",
-      color: "transparent",
-    },
-    heroSub: {
-      fontSize: 14,
+      border: "1px solid rgba(75,85,99,0.8)",
+      background: "rgba(15,23,42,0.8)",
       opacity: 0.85,
-      maxWidth: 520,
+      whiteSpace: "nowrap",
+    },
+    navLink: {
+      fontSize: 12,
+      opacity: 0.8,
+      cursor: "pointer",
+      borderBottom: "1px solid transparent",
     },
 
-    featureList: {
-      listStyle: "none",
-      padding: 0,
-      margin: "4px 0 10px",
-      fontSize: 13,
+    // GENERAL LAYOUT
+    section: {
+      padding: "40px 16px",
+      display: "flex",
+      justifyContent: "center",
+    },
+    sectionInner: {
+      maxWidth: 1100,
+      width: "100%",
+    },
+
+    // HERO
+    hero: {
+      padding: "56px 16px 46px",
+      background:
+        "radial-gradient(circle at top, #7f1d1d 0%, #1b0b0c 32%, #050507 80%)",
+      display: "flex",
+      justifyContent: "center",
+    },
+    heroInner: {
+      maxWidth: 1100,
+      width: "100%",
       display: "flex",
       flexDirection: "column",
-      gap: 6,
+      alignItems: "center",
+      textAlign: "center",
+      gap: 20,
     },
-    featureItem: {
-      display: "flex",
-      alignItems: "flex-start",
-      gap: 8,
+    heroEyebrow: {
+      fontSize: 12,
+      letterSpacing: 0.16,
+      textTransform: "uppercase",
+      opacity: 0.8,
     },
-    featureBullet: {
-      fontSize: 15,
-      lineHeight: "19px",
-      color: "#1b9aaa",
-      marginTop: 1,
+    heroHeadline: {
+      fontSize: 38,
+      lineHeight: 1.1,
+      fontWeight: 900,
+      maxWidth: 680,
     },
-
-    ctaRow: {
+    heroHighlight: {
+      color: "#fecaca",
+    },
+    heroSub: {
+      maxWidth: 620,
+      fontSize: 14,
+      opacity: 0.86,
+    },
+    heroBtnRow: {
       display: "flex",
       flexWrap: "wrap",
       gap: 10,
-      alignItems: "center",
+      justifyContent: "center",
       marginTop: 6,
     },
-    primaryBtn: {
+    heroPrimaryBtn: {
       borderRadius: 999,
       border: "none",
-      background:
-        "linear-gradient(135deg, #1b9aaa, #30d3ff, #1b9aaa 80%, #158593)",
-      padding: "10px 20px",
+      padding: "11px 22px",
       fontSize: 14,
       fontWeight: 800,
       cursor: "pointer",
-      color: "#05080c",
+      background:
+        "linear-gradient(135deg, #f97373, #ef4444, #b91c1c 90%, #7f1d1d)",
+      color: "#050507",
       boxShadow:
-        "0 12px 30px rgba(0,0,0,0.8), 0 0 20px rgba(48,211,255,0.5)",
+        "0 18px 45px rgba(0,0,0,0.75), 0 0 20px rgba(248,113,113,0.5)",
       display: "flex",
       alignItems: "center",
       gap: 8,
     },
-    ghostBtn: {
+    heroSecondaryBtn: {
       borderRadius: 999,
-      border: "1px solid #243043",
-      background: "transparent",
-      padding: "9px 16px",
+      border: "1px solid rgba(148,163,184,0.9)",
+      padding: "10px 18px",
       fontSize: 13,
+      fontWeight: 600,
       cursor: "pointer",
-      color: "#e7ecf2",
+      background: "rgba(15,23,42,0.9)",
+      color: "#e5e7eb",
       display: "flex",
       alignItems: "center",
       gap: 6,
     },
-    ctaHint: {
+    heroTertiary: {
       fontSize: 11,
-      opacity: 0.7,
-      marginTop: 4,
+      opacity: 0.75,
+      marginTop: 6,
     },
 
-    // RIGHT: PRICING / WHAT YOU GET
-    priceLabel: {
+    // LOGOS STRIP
+    logosRow: {
+      marginTop: 10,
+      padding: "16px 0 4px",
+      borderTop: "1px solid rgba(31,41,55,0.7)",
+      borderBottom: "1px solid rgba(31,41,55,0.7)",
+      display: "flex",
+      flexWrap: "wrap",
+      justifyContent: "center",
+      gap: 16,
+      opacity: 0.8,
+      fontSize: 11,
+    },
+    logoBadge: {
+      padding: "6px 12px",
+      borderRadius: 999,
+      border: "1px solid rgba(55,65,81,0.9)",
+      background:
+        "linear-gradient(135deg, rgba(17,24,39,0.95), rgba(15,23,42,0.95))",
+    },
+
+    // STATS
+    statsGrid: {
+      display: "flex",
+      flexWrap: "wrap",
+      gap: 16,
+      marginTop: 18,
+    },
+    statCard: {
+      flex: "1 1 180px",
+      minWidth: 160,
+      padding: "16px 18px",
+      borderRadius: 18,
+      background:
+        "linear-gradient(135deg, #7f1d1d, #b91c1c, #7f1d1d 90%, #450a0a)",
+      boxShadow: "0 18px 50px rgba(0,0,0,0.7)",
+    },
+    statNumber: {
+      fontSize: 20,
+      fontWeight: 900,
+      marginBottom: 4,
+    },
+    statLabel: {
+      fontSize: 12,
+      opacity: 0.9,
+    },
+
+    // PROBLEMS
+    sectionTitle: {
+      fontSize: 24,
+      fontWeight: 900,
+      marginBottom: 8,
+    },
+    sectionEyebrow: {
+      fontSize: 11,
+      letterSpacing: 0.16,
+      textTransform: "uppercase",
+      opacity: 0.8,
+      marginBottom: 4,
+    },
+    sectionSub: {
+      fontSize: 13,
+      opacity: 0.78,
+      maxWidth: 520,
+    },
+    problemsGrid: {
+      marginTop: 20,
+      display: "flex",
+      flexWrap: "wrap",
+      gap: 14,
+    },
+    problemCard: {
+      flex: "1 1 220px",
+      minWidth: 220,
+      borderRadius: 22,
+      padding: "18px 18px 20px",
+      background:
+        "linear-gradient(135deg, #7f1d1d, #b91c1c, #7f1d1d 90%, #450a0a)",
+      color: "#fef2f2",
+      boxShadow: "0 18px 45px rgba(0,0,0,0.8)",
+    },
+    problemTag: {
+      fontSize: 10,
+      textTransform: "uppercase",
+      letterSpacing: 0.14,
+      padding: "4px 8px",
+      borderRadius: 999,
+      border: "1px solid rgba(254,242,242,0.5)",
+      marginBottom: 10,
+      display: "inline-flex",
+      alignItems: "center",
+      gap: 4,
+    },
+    problemTitle: {
+      fontSize: 15,
+      fontWeight: 800,
+      marginBottom: 8,
+    },
+    problemText: {
+      fontSize: 12,
+      opacity: 0.9,
+    },
+
+    // VALUE SECTION (image + copy)
+    valueRow: {
+      display: "flex",
+      flexWrap: "wrap",
+      gap: 24,
+      alignItems: "stretch",
+      marginTop: 18,
+    },
+    valueImageCard: {
+      flex: "1.2 1 300px",
+      minHeight: 210,
+      borderRadius: 22,
+      background:
+        "radial-gradient(circle at top left, #f97373 0, #111827 50%, #020617 100%)",
+      padding: 18,
+      position: "relative",
+      overflow: "hidden",
+      boxShadow: "0 24px 70px rgba(0,0,0,0.85)",
+    },
+    fakeTable: {
+      position: "absolute",
+      inset: 18,
+      borderRadius: 16,
+      background: "rgba(15,23,42,0.9)",
+      border: "1px solid rgba(148,163,184,0.7)",
+      padding: 10,
+      fontSize: 11,
+      display: "flex",
+      flexDirection: "column",
+      gap: 4,
+    },
+    fakeRow: {
+      display: "flex",
+      justifyContent: "space-between",
+      padding: "4px 6px",
+      borderRadius: 8,
+      background: "rgba(15,23,42,0.8)",
+    },
+    valueCopyCol: {
+      flex: "1 1 260px",
+      display: "flex",
+      flexDirection: "column",
+      gap: 8,
+    },
+    bulletList: {
+      margin: 0,
+      paddingLeft: 16,
+      fontSize: 13,
+      opacity: 0.92,
+    },
+
+    // CHECKLIST / WHAT YOU GET
+    checklistGrid: {
+      marginTop: 18,
+      display: "flex",
+      flexWrap: "wrap",
+      gap: 16,
+    },
+    checklistCol: {
+      flex: "1 1 260px",
+      minWidth: 240,
+      borderRadius: 20,
+      padding: 18,
+      background: "rgba(15,23,42,0.95)",
+      border: "1px solid rgba(31,41,55,0.9)",
+      boxShadow: "0 18px 45px rgba(0,0,0,0.7)",
+    },
+    checklistTitle: {
+      fontSize: 15,
+      fontWeight: 800,
+      marginBottom: 8,
+    },
+    checklistItemRow: {
+      display: "flex",
+      justifyContent: "space-between",
+      fontSize: 12,
+      padding: "8px 10px",
+      borderRadius: 12,
+      background: "rgba(15,23,42,0.9)",
+      border: "1px solid rgba(31,41,55,0.9)",
+      marginBottom: 6,
+    },
+    checklistLabel: {
+      opacity: 0.86,
+    },
+    checklistChecks: {
+      display: "flex",
+      gap: 8,
       fontSize: 11,
       textTransform: "uppercase",
       letterSpacing: 0.14,
-      opacity: 0.7,
     },
-    priceTag: {
-      fontSize: 22,
-      fontWeight: 900,
-      margin: "2px 0 4px",
+    checklistYes: {
+      color: "#4ade80",
     },
-    priceSub: {
-      fontSize: 12,
-      opacity: 0.8,
-      marginBottom: 10,
+    checklistNo: {
+      color: "#fb7185",
     },
-    rightDivider: {
-      height: 1,
-      width: "100%",
-      background: "linear-gradient(90deg, transparent, #243043, transparent)",
-      margin: "6px 0 8px",
-    },
-    miniHeading: {
-      fontSize: 11,
-      textTransform: "uppercase",
-      letterSpacing: 0.16,
-      opacity: 0.75,
-      marginBottom: 4,
-    },
-    checklist: {
-      listStyle: "none",
-      padding: 0,
-      margin: 0,
-      display: "flex",
-      flexDirection: "column",
-      gap: 6,
-    },
-    checkItem: {
-      display: "flex",
-      alignItems: "flex-start",
-      gap: 8,
-    },
-    checkIcon: {
-      fontSize: 13,
-      lineHeight: "18px",
-      color: "#4dd4ff",
-      marginTop: 1,
-    },
-    checkText: {
-      fontSize: 13,
-      opacity: 0.9,
-    },
-    tagRow: {
+
+    // TESTIMONIALS
+    testimonialGrid: {
+      marginTop: 18,
       display: "flex",
       flexWrap: "wrap",
-      gap: 6,
-      marginTop: 6,
+      gap: 16,
     },
-    tagPill: {
-      padding: "3px 8px",
-      borderRadius: 999,
-      border: "1px solid #243043",
-      fontSize: 11,
-      opacity: 0.85,
+    testimonialCard: {
+      flex: "1 1 260px",
+      minWidth: 220,
+      borderRadius: 20,
+      padding: 16,
+      background:
+        "linear-gradient(135deg, #7f1d1d, #b91c1c, #7f1d1d 90%, #450a0a)",
+      boxShadow: "0 18px 45px rgba(0,0,0,0.7)",
+      fontSize: 12,
     },
-    tinyMuted: {
-      fontSize: 11,
-      opacity: 0.7,
-      marginTop: 6,
+    testimonialName: {
+      marginTop: 10,
+      fontWeight: 700,
+      fontSize: 12,
     },
 
-    // LOWER ROW (HOW IT WORKS + COMPARISON)
-    lowerRow: {
-      display: "flex",
-      flexDirection: isMobile ? "column" : "row",
-      gap: 18,
-      marginTop: 6,
-    },
-    lowerCard: {
-      flex: 1,
-      background: "rgba(7,11,18,0.98)",
-      borderRadius: 18,
-      border: "1px solid #161f2b",
-      padding: 16,
-      fontSize: 13,
-      boxShadow: "0 18px 60px rgba(0,0,0,0.55)",
-    },
-    lowerTitle: {
-      fontSize: 13,
-      textTransform: "uppercase",
-      letterSpacing: 0.16,
-      opacity: 0.75,
-      marginBottom: 4,
-    },
-    lowerBig: {
-      fontSize: 17,
-      fontWeight: 700,
-      marginBottom: 8,
-    },
-    stepList: {
-      listStyle: "none",
-      padding: 0,
-      margin: 0,
+    // FAQ
+    faqList: {
+      marginTop: 18,
       display: "flex",
       flexDirection: "column",
-      gap: 6,
-    },
-    stepItem: {
-      display: "flex",
-      alignItems: "flex-start",
       gap: 10,
     },
-    stepBadge: {
-      width: 20,
-      height: 20,
-      borderRadius: 999,
-      border: "1px solid #243043",
-      background: "#05080f",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      fontSize: 11,
-      opacity: 0.85,
-      marginTop: 1,
+    faqItem: {
+      borderRadius: 14,
+      overflow: "hidden",
+      border: "1px solid rgba(55,65,81,0.9)",
+      background:
+        "linear-gradient(135deg, #7f1d1d, #b91c1c, #7f1d1d 90%, #450a0a)",
     },
-    stepText: {
-      fontSize: 13,
-      opacity: 0.9,
-    },
-
-    // COMPARISON CHECKLIST – more polished
-    compareGrid: {
-      display: "flex",
-      flexDirection: "column",
-      gap: 8,
-      marginTop: 8,
-    },
-    compareRow: {
+    faqHeader: {
+      padding: "10px 14px",
       display: "flex",
       justifyContent: "space-between",
-      gap: 10,
-      padding: "8px 10px",
-      borderRadius: 12,
-      border: "1px solid #1c2736",
-      background:
-        "linear-gradient(135deg, rgba(5,8,15,0.96), rgba(12,21,33,0.96))",
       alignItems: "center",
+      cursor: "pointer",
+      fontSize: 13,
+      fontWeight: 600,
     },
-    compareLabelWrap: {
-      maxWidth: "60%",
+    faqIcon: {
+      fontSize: 18,
+      fontWeight: 700,
+      marginLeft: 8,
+    },
+    faqBody: {
+      padding: "0 14px 10px",
       fontSize: 12,
-      opacity: 0.9,
+      background: "rgba(15,23,42,0.92)",
+      borderTop: "1px solid rgba(55,65,81,0.9)",
     },
-    compareChecks: {
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "flex-end",
-      gap: 2,
-      fontSize: 11,
-      textTransform: "uppercase",
-      letterSpacing: 0.12,
-      minWidth: 120,
+
+    // FINAL CTA
+    finalCard: {
+      marginTop: 18,
+      borderRadius: 24,
+      padding: "22px 18px 24px",
+      background: "rgba(15,23,42,0.98)",
+      border: "1px solid rgba(55,65,81,0.9)",
+      textAlign: "center",
+      boxShadow: "0 24px 70px rgba(0,0,0,0.85)",
     },
-    compareYes: {
-      color: "#4de2ff",
-      display: "flex",
-      justifyContent: "flex-end",
-      gap: 4,
+    finalHeadline: {
+      fontSize: 22,
+      fontWeight: 900,
+      marginBottom: 8,
     },
-    compareNo: {
-      color: "#ff9ba8",
-      opacity: 0.9,
-      display: "flex",
-      justifyContent: "flex-end",
-      gap: 4,
+    finalSub: {
+      fontSize: 13,
+      opacity: 0.86,
+      maxWidth: 560,
+      margin: "0 auto 14px",
     },
 
     // FOOTER
     footer: {
-      marginTop: 18,
-      paddingTop: 14,
-      borderTop: "1px solid rgba(21,31,43,0.8)",
+      borderTop: "1px solid rgba(31,41,55,0.9)",
+      padding: "18px 16px 22px",
       display: "flex",
-      flexDirection: isMobile ? "column" : "row",
-      alignItems: isMobile ? "flex-start" : "center",
+      justifyContent: "center",
+      fontSize: 11,
+      color: "#9ca3af",
+    },
+    footerInner: {
+      maxWidth: 1100,
+      width: "100%",
+      display: "flex",
+      flexWrap: "wrap",
       justifyContent: "space-between",
       gap: 10,
-      fontSize: 11,
-      opacity: 0.7,
+      alignItems: "center",
     },
     footerLinks: {
       display: "flex",
+      gap: 14,
       flexWrap: "wrap",
-      gap: 10,
     },
     footerLink: {
       cursor: "pointer",
       textDecoration: "underline",
-      textDecorationThickness: 0.6,
+      textDecorationStyle: "dotted",
     },
 
     // MODALS
@@ -468,20 +560,21 @@ export default function LandingPage({ onEnterApp }) {
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
-      padding: "16px",
+      padding: 16,
       zIndex: 80,
       boxSizing: "border-box",
     },
     modalCard: {
       width: "100%",
       maxWidth: 420,
-      background: "#111823",
-      borderRadius: 16,
-      border: "1px solid #252f40",
+      background: "#111827",
+      borderRadius: 18,
+      border: "1px solid rgba(55,65,81,0.9)",
       boxShadow: "0 24px 70px rgba(0,0,0,0.8)",
       padding: 20,
       fontSize: 13,
       boxSizing: "border-box",
+      color: "#e5e7eb",
     },
     modalTitle: {
       fontSize: 18,
@@ -498,9 +591,9 @@ export default function LandingPage({ onEnterApp }) {
     input: {
       width: "100%",
       borderRadius: 10,
-      border: "1px solid #243043",
-      background: "#05080f",
-      color: "#e7ecf2",
+      border: "1px solid rgba(55,65,81,0.9)",
+      background: "#020617",
+      color: "#e5e7eb",
       padding: "8px 10px",
       fontSize: 13,
       marginBottom: 8,
@@ -514,26 +607,26 @@ export default function LandingPage({ onEnterApp }) {
       fontSize: 13,
       fontWeight: 700,
       background:
-        "linear-gradient(130deg, #1b9aaa, #30d3ff, #1b9aaa 90%, #158593)",
-      color: "#05080c",
+        "linear-gradient(130deg, #f97373, #ef4444, #b91c1c 90%, #7f1d1d)",
+      color: "#050507",
       cursor: "pointer",
       marginTop: 4,
     },
     modalButtonSecondary: {
       width: "100%",
       borderRadius: 10,
-      border: "1px solid #243043",
+      border: "1px solid rgba(55,65,81,0.9)",
       padding: "8px 12px",
       fontSize: 12,
       fontWeight: 500,
       background: "transparent",
-      color: "#e7ecf2",
+      color: "#e5e7eb",
       cursor: "pointer",
       marginTop: 8,
     },
     modalError: {
       fontSize: 11,
-      color: "#ff9ba8",
+      color: "#fecaca",
       marginTop: 4,
       textAlign: "center",
     },
@@ -541,8 +634,8 @@ export default function LandingPage({ onEnterApp }) {
       marginTop: 10,
       padding: 10,
       borderRadius: 10,
-      background: "#05080f",
-      border: "1px dashed #243043",
+      background: "#020617",
+      border: "1px dashed rgba(55,65,81,0.9)",
       fontSize: 12,
       textAlign: "center",
       wordBreak: "break-all",
@@ -639,28 +732,69 @@ export default function LandingPage({ onEnterApp }) {
     openWorkspace();
   }
 
+  const faqs = [
+    {
+      q: "What exactly do I get when I join Max Trade Coach?",
+      a: "You get a private portal where you upload trade screenshots, explain your thought process, and receive structured AI feedback plus a built-in daily journal view for every session.",
+    },
+    {
+      q: "Do I need to be an advanced trader for this to help?",
+      a: "No. The app is built for serious beginners and intermediate traders who want to practice ICT/liquidity concepts with feedback every day.",
+    },
+    {
+      q: "How many trades can I submit?",
+      a: "You can submit as many screenshots and journal entries as you want within your personal workspace.",
+    },
+    {
+      q: "Does the AI understand BOS / CHoCH / FVG / liquidity?",
+      a: "Yes. The prompts and training are built specifically around those concepts so it can talk in your language, not generic indicator spam.",
+    },
+    {
+      q: "Can I cancel later?",
+      a: "Yes. If you don't feel it's helping you grade and improve your trades, you can cancel anytime.",
+    },
+  ];
+
   return (
     <>
       <div style={styles.page}>
-        <div style={styles.shell}>
-          {/* HEADER / NAV */}
-          <div style={styles.nav}>
+        {/* TOP RIBBON */}
+        <div style={styles.ribbon}>
+          <div style={styles.ribbonInner}>
+            <span style={styles.ribbonText}>
+              <span style={styles.ribbonStrong}>Founders beta:</span> lock in
+              early pricing while we refine Max Trade Coach with real traders.
+            </span>
+            <button
+              style={styles.ribbonBtn}
+              onClick={() => {
+                setCheckoutForm({ name: "", email: "" });
+                setCheckoutError("");
+                setMemberId("");
+                setShowCheckout(true);
+              }}
+            >
+              Get instant access
+            </button>
+          </div>
+        </div>
+
+        {/* NAV */}
+        <div style={styles.nav}>
+          <div style={styles.navInner}>
             <div style={styles.logoRow}>
-              <div style={styles.logoDot} />
+              <div style={styles.logoMark} />
               <div>
-                <div style={styles.logoTextMain}>Max Trade Coach</div>
+                <div style={styles.logoTitle}>Max Trade Coach</div>
                 <div style={styles.logoSub}>
-                  AI trade review · daily journal for ICT / liquidity traders
+                  AI trade review · liquidity &amp; ICT focused
                 </div>
               </div>
             </div>
-
-            <div style={styles.navLinks}>
-              <span style={styles.navLink}>Product</span>
-              <span style={styles.navLink}>How it works</span>
-              <span style={styles.navLink}>Pricing</span>
-              <button
-                style={styles.navCTA}
+            <div style={styles.navRight}>
+              <span style={styles.navPill}>Built for screenshot + journal traders</span>
+              <span
+                style={styles.navLink}
                 onClick={() => {
                   let existingId = "";
                   try {
@@ -677,317 +811,455 @@ export default function LandingPage({ onEnterApp }) {
                   setShowMemberPortal(true);
                 }}
               >
-                Member login →
+                Already have a Member ID?
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* HERO */}
+        <section style={styles.hero}>
+          <div style={styles.heroInner}>
+            <div style={styles.heroEyebrow}>Real feedback, not random signals</div>
+            <h1 style={styles.heroHeadline}>
+              Turn every screenshot into{" "}
+              <span style={styles.heroHighlight}>a trade you actually learn
+              from.</span>
+            </h1>
+            <p style={styles.heroSub}>
+              Max Trade Coach is your private workspace for trade screenshots,
+              AI feedback, and a daily journal. Upload your chart, explain your
+              idea, and get a breakdown like a coach is sitting next to you —
+              for NASDAQ, indices, FX, and gold.
+            </p>
+
+            <div style={styles.heroBtnRow}>
+              <button
+                style={styles.heroPrimaryBtn}
+                onClick={() => {
+                  setCheckoutForm({ name: "", email: "" });
+                  setCheckoutError("");
+                  setMemberId("");
+                  setShowCheckout(true);
+                }}
+              >
+                Get instant access to my portal →
+              </button>
+              <button
+                style={styles.heroSecondaryBtn}
+                onClick={() => {
+                  let existingId = "";
+                  try {
+                    const raw = localStorage.getItem(MEMBER_LS_KEY);
+                    if (raw) {
+                      const parsed = JSON.parse(raw);
+                      existingId = parsed.memberId || "";
+                    }
+                  } catch {
+                    // ignore
+                  }
+                  setMemberPortalId(existingId);
+                  setMemberPortalError("");
+                  setShowMemberPortal(true);
+                }}
+              >
+                Enter Member ID
+              </button>
+            </div>
+
+            <div style={styles.heroTertiary}>
+              Your trades stay organized per day — not buried in camera roll
+              folders or Discord chats.
+            </div>
+
+            {/* logos strip */}
+            <div style={styles.logosRow}>
+              <span style={styles.logoBadge}>NASDAQ / S&amp;P / US30</span>
+              <span style={styles.logoBadge}>GBP/USD · EUR/USD · XAU/USD</span>
+              <span style={styles.logoBadge}>Crypto pairs</span>
+              <span style={styles.logoBadge}>ICT / liquidity concepts</span>
+            </div>
+          </div>
+        </section>
+
+        {/* RESULTS / STATS */}
+        <section style={styles.section}>
+          <div style={styles.sectionInner}>
+            <div style={styles.sectionEyebrow}>The results speak for themselves</div>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                gap: 16,
+                flexWrap: "wrap",
+                alignItems: "flex-end",
+              }}
+            >
+              <div>
+                <h2 style={styles.sectionTitle}>
+                  Study your own data like a professional.
+                </h2>
+                <p style={styles.sectionSub}>
+                  Every trade, note, and lesson is saved to your personal
+                  timeline. Stop guessing, stop relying on random calls, and
+                  start reviewing your own execution day by day.
+                </p>
+              </div>
+              <div style={{ fontSize: 12, opacity: 0.75 }}>
+                Traders use Max Trade Coach to{" "}
+                <strong>grade trades, journal daily,</strong> and build rules
+                they actually follow.
+              </div>
+            </div>
+
+            <div style={styles.statsGrid}>
+              <div style={styles.statCard}>
+                <div style={styles.statNumber}>200+</div>
+                <div style={styles.statLabel}>sessions reviewed by AI</div>
+              </div>
+              <div style={styles.statCard}>
+                <div style={styles.statNumber}>100%</div>
+                <div style={styles.statLabel}>
+                  of trades tied to a specific day and journal entry
+                </div>
+              </div>
+              <div style={styles.statCard}>
+                <div style={styles.statNumber}>15+</div>
+                <div style={styles.statLabel}>
+                  common setups handled: BOS, CHoCH, FVG, OB, liquidity sweeps
+                </div>
+              </div>
+              <div style={styles.statCard}>
+                <div style={styles.statNumber}>1</div>
+                <div style={styles.statLabel}>
+                  private workspace that works the same on desktop &amp; mobile
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* HIDDEN PROBLEMS */}
+        <section style={styles.section}>
+          <div style={styles.sectionInner}>
+            <div style={styles.sectionEyebrow}>
+              The hidden problems stopping you from improving faster
+            </div>
+            <h2 style={styles.sectionTitle}>
+              You don&apos;t need more signals — you need structured review.
+            </h2>
+            <p style={styles.sectionSub}>
+              Most traders never build a system for reviewing their trades.
+              Screenshots live in random folders, notes are scattered, and
+              nothing connects back to the exact session they traded.
+            </p>
+
+            <div style={styles.problemsGrid}>
+              <div style={styles.problemCard}>
+                <div style={styles.problemTag}>
+                  <span>●</span>
+                  <span>Problem #1</span>
+                </div>
+                <div style={styles.problemTitle}>
+                  &ldquo;My screenshots are everywhere.&rdquo;
+                </div>
+                <div style={styles.problemText}>
+                  Charts live in your phone photos, Discord, and desktop
+                  folders. You never go back to study them, so the same
+                  mistakes repeat every week.
+                </div>
+              </div>
+
+              <div style={styles.problemCard}>
+                <div style={styles.problemTag}>
+                  <span>●</span>
+                  <span>Problem #2</span>
+                </div>
+                <div style={styles.problemTitle}>
+                  &ldquo;No one actually grades my trades.&rdquo;
+                </div>
+                <div style={styles.problemText}>
+                  You journal sometimes, but there&apos;s no structured
+                  feedback: no grade, no clear list of what went right or wrong,
+                  and no simple &quot;do this next time&quot; plan.
+                </div>
+              </div>
+
+              <div style={styles.problemCard}>
+                <div style={styles.problemTag}>
+                  <span>●</span>
+                  <span>Problem #3</span>
+                </div>
+                <div style={styles.problemTitle}>
+                  &ldquo;Nothing ties back to ICT/liquidity rules.&rdquo;
+                </div>
+                <div style={styles.problemText}>
+                  Generic journaling apps don&apos;t understand BOS / CHoCH /
+                  FVG / liquidity sweeps. You end up translating concepts
+                  instead of getting direct feedback on your setup.
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* REAL SYSTEMS / HOW IT WORKS */}
+        <section style={styles.section}>
+          <div style={styles.sectionInner}>
+            <div style={styles.sectionEyebrow}>Real system, real outcomes</div>
+            <div style={styles.valueRow}>
+              <div style={styles.valueImageCard}>
+                <div style={styles.fakeTable}>
+                  <div style={styles.fakeRow}>
+                    <span>Day</span>
+                    <span>Pair</span>
+                    <span>Grade</span>
+                  </div>
+                  <div style={styles.fakeRow}>
+                    <span>Mon</span>
+                    <span>NAS100</span>
+                    <span>A</span>
+                  </div>
+                  <div style={styles.fakeRow}>
+                    <span>Tue</span>
+                    <span>GBP/USD</span>
+                    <span>B+</span>
+                  </div>
+                  <div style={styles.fakeRow}>
+                    <span>Wed</span>
+                    <span>XAU/USD</span>
+                    <span>C</span>
+                  </div>
+                  <div style={{ marginTop: 6, fontSize: 10, opacity: 0.7 }}>
+                    Every row links to your screenshot, notes, and AI feedback
+                    for that day.
+                  </div>
+                </div>
+              </div>
+
+              <div style={styles.valueCopyCol}>
+                <h2 style={styles.sectionTitle}>
+                  What if you treated every trade like a lesson, not a gamble?
+                </h2>
+                <p style={styles.sectionSub}>
+                  Max Trade Coach gives you a repeatable workflow so you can
+                  review trades in minutes — not scroll through random photos
+                  and half-finished journals.
+                </p>
+                <ul style={styles.bulletList}>
+                  <li>
+                    Upload your screenshot, choose pair &amp; timeframe, and
+                    explain your setup.
+                  </li>
+                  <li>
+                    AI grades your trade, shows what went right/wrong, and
+                    recommends improvements in plain English.
+                  </li>
+                  <li>
+                    Your daily journal sits right next to your trade feedback,
+                    so you connect emotions, rules, and execution.
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* WHAT YOU GET / VS EVERYTHING ELSE */}
+        <section style={styles.section}>
+          <div style={styles.sectionInner}>
+            <div style={styles.sectionEyebrow}>Inside your Max Trade Coach portal</div>
+            <h2 style={styles.sectionTitle}>
+              Everything you need to self-coach trades — in one place.
+            </h2>
+
+            <div style={styles.checklistGrid}>
+              <div style={styles.checklistCol}>
+                <div style={styles.checklistTitle}>What you get</div>
+                <ul style={{ margin: 0, paddingLeft: 16, fontSize: 13 }}>
+                  <li>AI feedback that grades every trade you upload.</li>
+                  <li>
+                    Breakdown of what you executed well vs. what you missed.
+                  </li>
+                  <li>
+                    Clear &quot;next time, do this&quot; suggestions so you
+                    know what to practice.
+                  </li>
+                  <li>
+                    Daily journal section built-in for psychology, discipline,
+                    and rules.
+                  </li>
+                  <li>
+                    Private Member ID workspace tied to your trades — not
+                    anyone else&apos;s.
+                  </li>
+                </ul>
+              </div>
+
+              <div style={styles.checklistCol}>
+                <div style={styles.checklistTitle}>
+                  Max Trade Coach vs everything else
+                </div>
+
+                <div style={styles.checklistItemRow}>
+                  <span style={styles.checklistLabel}>
+                    Actually reviews your trades
+                  </span>
+                  <div style={styles.checklistChecks}>
+                    <span style={styles.checklistYes}>Max: ✓</span>
+                    <span style={styles.checklistNo}>Signals: ✕</span>
+                  </div>
+                </div>
+
+                <div style={styles.checklistItemRow}>
+                  <span style={styles.checklistLabel}>
+                    Structured daily journal attached to screenshots
+                  </span>
+                  <div style={styles.checklistChecks}>
+                    <span style={styles.checklistYes}>Max: ✓</span>
+                    <span style={styles.checklistNo}>Photos app: ✕</span>
+                  </div>
+                </div>
+
+                <div style={styles.checklistItemRow}>
+                  <span style={styles.checklistLabel}>
+                    Understands BOS / CHoCH / FVG / liquidity
+                  </span>
+                  <div style={styles.checklistChecks}>
+                    <span style={styles.checklistYes}>Max: ✓</span>
+                    <span style={styles.checklistNo}>Generic notes: ✕</span>
+                  </div>
+                </div>
+
+                <div style={styles.checklistItemRow}>
+                  <span style={styles.checklistLabel}>
+                    Keeps everything in a single private portal
+                  </span>
+                  <div style={styles.checklistChecks}>
+                    <span style={styles.checklistYes}>Max: ✓</span>
+                    <span style={styles.checklistNo}>Random files: ✕</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* TESTIMONIALS (placeholder copy) */}
+        <section style={styles.section}>
+          <div style={styles.sectionInner}>
+            <div style={styles.sectionEyebrow}>Real results</div>
+            <h2 style={styles.sectionTitle}>
+              See what traders are saying about structured review.
+            </h2>
+            <p style={styles.sectionSub}>
+              These are the kinds of outcomes traders report when they finally
+              stop relying on screenshots alone and start tracking trades with
+              feedback and rules.
+            </p>
+
+            <div style={styles.testimonialGrid}>
+              <div style={styles.testimonialCard}>
+                &ldquo;Instead of staring at random screenshots, I now get a
+                clear grade and a list of mistakes to fix. I&apos;m finally
+                building confidence in my setups.&rdquo;
+                <div style={styles.testimonialName}>— Index &amp; FX trader</div>
+              </div>
+              <div style={styles.testimonialCard}>
+                &ldquo;The daily journal tied to each day forced me to be honest
+                about my rules and emotions. I actually know why I won or lost a
+                trade now.&rdquo;
+                <div style={styles.testimonialName}>— NAS100 day trader</div>
+              </div>
+              <div style={styles.testimonialCard}>
+                &ldquo;The AI speaks in BOS / CHoCH / FVG language, so it feels
+                like someone who actually trades liquidity is reviewing my
+                charts.&rdquo;
+                <div style={styles.testimonialName}>— ICT-focused trader</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* FAQ */}
+        <section style={styles.section}>
+          <div style={styles.sectionInner}>
+            <div style={styles.sectionEyebrow}>FAQs</div>
+            <h2 style={styles.sectionTitle}>
+              Get answers before you start your portal.
+            </h2>
+            <p style={styles.sectionSub}>
+              The most common questions traders ask before getting instant
+              access to Max Trade Coach.
+            </p>
+
+            <div style={styles.faqList}>
+              {faqs.map((item, idx) => {
+                const open = openFaq === idx;
+                return (
+                  <div key={idx} style={styles.faqItem}>
+                    <div
+                      style={styles.faqHeader}
+                      onClick={() =>
+                        setOpenFaq((prev) => (prev === idx ? null : idx))
+                      }
+                    >
+                      <span>{item.q}</span>
+                      <span style={styles.faqIcon}>{open ? "−" : "+"}</span>
+                    </div>
+                    {open && (
+                      <div style={styles.faqBody}>
+                        <p style={{ marginTop: 8, marginBottom: 8 }}>{item.a}</p>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+
+        {/* FINAL CTA */}
+        <section style={styles.section}>
+          <div style={styles.sectionInner}>
+            <div style={styles.finalCard}>
+              <div style={styles.sectionEyebrow}>Ready to start today?</div>
+              <h2 style={styles.finalHeadline}>
+                Start building real trading improvement — one screenshot at a
+                time.
+              </h2>
+              <p style={styles.finalSub}>
+                Get instant access to your Max Trade Coach portal. Upload your
+                next trade, explain your idea, and see how different it feels to
+                get a structured, ICT-aware breakdown instead of a random
+                emoji-filled comment.
+              </p>
+              <button
+                style={styles.heroPrimaryBtn}
+                onClick={() => {
+                  setCheckoutForm({ name: "", email: "" });
+                  setCheckoutError("");
+                  setMemberId("");
+                  setShowCheckout(true);
+                }}
+              >
+                Get instant access to Max Trade Coach →
               </button>
             </div>
           </div>
+        </section>
 
-          {/* HERO SECTION */}
-          <section style={styles.heroSection}>
-            {/* LEFT: TEXT + CTA */}
-            <div style={styles.heroLeft}>
-              <div style={styles.badgeRow}>
-                <span style={styles.badge}>Built for day traders</span>
-                <span style={styles.badge}>Screenshots · feedback · journal</span>
-              </div>
-
-              <h1 style={styles.heroHeadline}>
-                Unlock your trading potential{" "}
-                <span style={styles.heroAccent}>
-                  with a personal AI trade coach.
-                </span>
-              </h1>
-
-              <p style={styles.heroSub}>
-                Max Trade Coach is your private workspace for trade screenshots,
-                AI feedback, and a daily journal. Upload a chart, explain what
-                you were thinking, and get a breakdown like a mentor is sitting
-                next to you.
-              </p>
-
-              <ul style={styles.featureList}>
-                <li style={styles.featureItem}>
-                  <span style={styles.featureBullet}>●</span>
-                  <span>
-                    <strong>Understands Smart Money concepts:</strong> BOS / CHoCH,
-                    FVGs, OBs, liquidity sweeps, sessions, risk and execution —
-                    not random indicator spam.
-                  </span>
-                </li>
-                <li style={styles.featureItem}>
-                  <span style={styles.featureBullet}>●</span>
-                  <span>
-                    <strong>Every session saved to a timeline:</strong> trades +
-                    notes are tied to your date and Member ID so you can review
-                    any session in seconds.
-                  </span>
-                </li>
-                <li style={styles.featureItem}>
-                  <span style={styles.featureBullet}>●</span>
-                  <span>
-                    <strong>Built for self-coached traders:</strong> not a signal
-                    group, not a course — a tool that forces you to think,
-                    journal, and improve.
-                  </span>
-                </li>
-              </ul>
-
-              <div style={styles.ctaRow}>
-                <button
-                  style={styles.primaryBtn}
-                  onClick={() => {
-                    setCheckoutForm({ name: "", email: "" });
-                    setCheckoutError("");
-                    setMemberId("");
-                    setShowCheckout(true);
-                  }}
-                >
-                  Get started → open my portal
-                </button>
-
-                <button
-                  style={styles.ghostBtn}
-                  onClick={() => {
-                    let existingId = "";
-                    try {
-                      const raw = localStorage.getItem(MEMBER_LS_KEY);
-                      if (raw) {
-                        const parsed = JSON.parse(raw);
-                        existingId = parsed.memberId || "";
-                      }
-                    } catch {
-                      // ignore
-                    }
-                    setMemberPortalId(existingId);
-                    setMemberPortalError("");
-                    setShowMemberPortal(true);
-                  }}
-                >
-                  Already have a Member ID?
-                </button>
-              </div>
-
-              <div style={styles.ctaHint}>
-                You get a private portal where screenshots, feedback, and journal
-                entries are saved per day — so you can study your own data, not
-                someone else&apos;s.
-              </div>
-            </div>
-
-            {/* RIGHT: PRICING + WHAT YOU GET + WHY NOT JUST... */}
-            <aside style={styles.heroRight}>
-              <div>
-                <div style={styles.priceLabel}>Membership</div>
-                <div style={styles.priceTag}>$XX / month</div>
-                <div style={styles.priceSub}>
-                  One personal workspace. Unlimited screenshot reviews and daily
-                  journal entries.
-                </div>
-              </div>
-
-              <div style={styles.rightDivider} />
-
-              <div>
-                <div style={styles.miniHeading}>What you get</div>
-                <ul style={styles.checklist}>
-                  <li style={styles.checkItem}>
-                    <span style={styles.checkIcon}>✓</span>
-                    <span style={styles.checkText}>
-                      AI feedback that grades your trade, highlights what you did
-                      well, and calls out execution mistakes.
-                    </span>
-                  </li>
-                  <li style={styles.checkItem}>
-                    <span style={styles.checkIcon}>✓</span>
-                    <span style={styles.checkText}>
-                      Daily journal built-in — track psychology, discipline, and
-                      rules for each session.
-                    </span>
-                  </li>
-                  <li style={styles.checkItem}>
-                    <span style={styles.checkIcon}>✓</span>
-                    <span style={styles.checkText}>
-                      Private Member ID workspace — your trades stay organized,
-                      not lost in your camera roll or Discord.
-                    </span>
-                  </li>
-                </ul>
-
-                <div style={styles.tagRow}>
-                  <span style={styles.tagPill}>NASDAQ · S&amp;P · US30</span>
-                  <span style={styles.tagPill}>GBP/USD · XAU/USD · FX</span>
-                  <span style={styles.tagPill}>Crypto pairs</span>
-                </div>
-              </div>
-
-              <div style={styles.rightDivider} />
-
-              <div>
-                <div style={styles.miniHeading}>Why not just use…</div>
-                <ul style={styles.checklist}>
-                  <li style={styles.checkItem}>
-                    <span style={styles.checkIcon}>✕</span>
-                    <span style={styles.checkText}>
-                      <strong>Random Discord signals:</strong> no context, no
-                      journaling, no accountability.
-                    </span>
-                  </li>
-                  <li style={styles.checkItem}>
-                    <span style={styles.checkIcon}>✕</span>
-                    <span style={styles.checkText}>
-                      <strong>Plain screenshot folders:</strong> zero notes,
-                      zero structure — you never review them.
-                    </span>
-                  </li>
-                  <li style={styles.checkItem}>
-                    <span style={styles.checkIcon}>✕</span>
-                    <span style={styles.checkText}>
-                      <strong>Generic journaling apps:</strong> they don&apos;t
-                      see your chart or understand BOS / FVG / liquidity.
-                    </span>
-                  </li>
-                </ul>
-              </div>
-
-              <div style={styles.tinyMuted}>
-                Max Trade Coach is for traders who actually want to get better —
-                not just hunt the next &quot;alpha call.&quot;
-              </div>
-            </aside>
-          </section>
-
-          {/* LOWER ROW: HOW IT WORKS + COMPARISON */}
-          <section style={styles.lowerRow}>
-            {/* HOW IT WORKS */}
-            <div style={styles.lowerCard}>
-              <div style={styles.lowerTitle}>How Max Trade Coach works</div>
-              <div style={styles.lowerBig}>
-                Four simple steps every time you trade.
-              </div>
-              <ul style={styles.stepList}>
-                <li style={styles.stepItem}>
-                  <div style={styles.stepBadge}>1</div>
-                  <div style={styles.stepText}>
-                    <strong>Upload a screenshot</strong> of the chart you traded
-                    (entry, TP, SL — or the setup you&apos;re considering).
-                  </div>
-                </li>
-                <li style={styles.stepItem}>
-                  <div style={styles.stepBadge}>2</div>
-                  <div style={styles.stepText}>
-                    <strong>Tell the coach what you saw:</strong> pair,
-                    timeframe, session, liquidity sweep, FVG/OB, bias, target,
-                    and risk plan.
-                  </div>
-                </li>
-                <li style={styles.stepItem}>
-                  <div style={styles.stepBadge}>3</div>
-                  <div style={styles.stepText}>
-                    <strong>Get graded feedback:</strong> Max Trade Coach
-                    returns a grade, what went right/wrong, and what to focus on
-                    next time.
-                  </div>
-                </li>
-                <li style={styles.stepItem}>
-                  <div style={styles.stepBadge}>4</div>
-                  <div style={styles.stepText}>
-                    <strong>Journal the day:</strong> log what you learned, where
-                    you tilted, and one improvement for the next session.
-                  </div>
-                </li>
-              </ul>
-            </div>
-
-            {/* COMPARISON CHECKLIST – MORE PROFESSIONAL */}
-            <div style={styles.lowerCard}>
-              <div style={styles.lowerTitle}>Why traders upgrade</div>
-              <div style={styles.lowerBig}>
-                Max Trade Coach vs everything else.
-              </div>
-
-              <div style={styles.compareGrid}>
-                <div style={styles.compareRow}>
-                  <div style={styles.compareLabelWrap}>
-                    Actually reviews <strong>your</strong> trades
-                  </div>
-                  <div style={styles.compareChecks}>
-                    <div style={styles.compareYes}>
-                      <span>Max Trade Coach</span>
-                      <span>✓</span>
-                    </div>
-                    <div style={styles.compareNo}>
-                      <span>Signal groups</span>
-                      <span>✕</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div style={styles.compareRow}>
-                  <div style={styles.compareLabelWrap}>
-                    Structured daily journal attached to screenshots
-                  </div>
-                  <div style={styles.compareChecks}>
-                    <div style={styles.compareYes}>
-                      <span>Max Trade Coach</span>
-                      <span>✓</span>
-                    </div>
-                    <div style={styles.compareNo}>
-                      <span>Photos app</span>
-                      <span>✕</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div style={styles.compareRow}>
-                  <div style={styles.compareLabelWrap}>
-                    Understands BOS / CHoCH / FVG / liquidity concepts
-                  </div>
-                  <div style={styles.compareChecks}>
-                    <div style={styles.compareYes}>
-                      <span>Max Trade Coach</span>
-                      <span>✓</span>
-                    </div>
-                    <div style={styles.compareNo}>
-                      <span>Notion / notes</span>
-                      <span>✕</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div style={styles.compareRow}>
-                  <div style={styles.compareLabelWrap}>
-                    Keeps everything in a single private portal
-                  </div>
-                  <div style={styles.compareChecks}>
-                    <div style={styles.compareYes}>
-                      <span>Max Trade Coach</span>
-                      <span>✓</span>
-                    </div>
-                    <div style={styles.compareNo}>
-                      <span>Random files &amp; chats</span>
-                      <span>✕</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* FOOTER / LEGAL */}
-          <footer style={styles.footer}>
-            <div>
-              © {currentYear} Max Trade Coach. All rights reserved. Nothing on
-              this site is financial advice. Trading involves risk and you can
-              lose money.
-            </div>
+        {/* FOOTER */}
+        <footer style={styles.footer}>
+          <div style={styles.footerInner}>
+            <span>© {new Date().getFullYear()} Max Trade Coach. All rights reserved.</span>
             <div style={styles.footerLinks}>
               <span style={styles.footerLink}>Privacy Policy</span>
               <span style={styles.footerLink}>Terms of Use</span>
-              <span style={styles.footerLink}>Risk Disclosure</span>
-              <span style={styles.footerLink}>Contact</span>
+              <span style={styles.footerLink}>Earnings Disclaimer</span>
             </div>
-          </footer>
-        </div>
+          </div>
+        </footer>
       </div>
 
       {/* CHECKOUT / CREATE MEMBER MODAL */}
