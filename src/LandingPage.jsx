@@ -1009,42 +1009,62 @@ export default function LandingPage({ onEnterApp }) {
           </div>
         </section>
 
-<div className="bg-[#0e1016] border border-white/10 rounded-2xl p-5 w-full max-w-md mx-auto">
+<div className="w-full max-w-lg mx-auto mt-10 
+    bg-[#0e1016] border border-white/10 rounded-2xl p-6 shadow-xl">
+
+  {/* Header */}
   <div className="flex items-start justify-between">
     <div>
-      <h3 className="text-white font-semibold text-lg">Trade Coach AI</h3>
-      <p className="text-slate-400 text-sm">Gold • 5m</p>
+      <h2 className="text-white font-semibold text-xl">Trade Coach AI</h2>
+      <p className="text-slate-400 text-sm">Gold • 5m timeframe</p>
       <p className="text-slate-400 text-sm mt-1">Confidence: 75%</p>
     </div>
-    <div className="text-black bg-yellow-300 rounded-full h-8 w-8 flex items-center justify-center font-bold">
+
+    <div className="h-9 w-9 rounded-full bg-yellow-300 text-black 
+        flex items-center justify-center font-bold text-lg shadow">
       C
     </div>
   </div>
 
-  <div className="mt-4 space-y-3">
+  {/* Sections */}
+  <div className="mt-6 space-y-5">
+    
     <div>
       <p className="text-slate-300 text-xs uppercase tracking-wide">What went right</p>
-      <div className="h-3 bg-white/10 rounded-md mt-1"></div>
+      <div className="mt-2 space-y-2">
+        <div className="h-2.5 bg-white/10 rounded-md w-5/6"></div>
+        <div className="h-2.5 bg-white/10 rounded-md w-4/6"></div>
+      </div>
     </div>
 
     <div>
       <p className="text-slate-300 text-xs uppercase tracking-wide">What went wrong</p>
-      <div className="h-3 bg-white/10 rounded-md mt-1"></div>
+      <div className="mt-2 space-y-2">
+        <div className="h-2.5 bg-white/10 rounded-md w-5/6"></div>
+        <div className="h-2.5 bg-white/10 rounded-md w-4/6"></div>
+        <div className="h-2.5 bg-white/10 rounded-md w-3/6"></div>
+      </div>
     </div>
 
     <div>
       <p className="text-slate-300 text-xs uppercase tracking-wide">Improvements</p>
-      <div className="h-3 bg-white/10 rounded-md mt-1"></div>
+      <div className="mt-2 space-y-2">
+        <div className="h-2.5 bg-white/10 rounded-md w-5/6"></div>
+        <div className="h-2.5 bg-white/10 rounded-md w-4/6"></div>
+      </div>
     </div>
 
     <div>
       <p className="text-slate-300 text-xs uppercase tracking-wide">Lesson learned</p>
-      <div className="h-3 bg-white/10 rounded-md mt-1"></div>
+      <div className="mt-2 space-y-2">
+        <div className="h-2.5 bg-white/10 rounded-md w-5/6"></div>
+      </div>
     </div>
+
   </div>
 
-  <p className="text-slate-500 text-[10px] mt-4 text-right">
-    Example AI trade report
+  <p className="text-slate-500 text-[10px] mt-6 text-right">
+    Example AI trade report preview
   </p>
 </div>
 
