@@ -10,7 +10,6 @@ const WEBHOOK_URL =
   PROD_WEBHOOK;
 
 const MEMBER_LS_KEY = "tc_member_v1";
-const LAST_DAY_KEY = "tradeCoach:lastDayWithData";
 
 
 const gradeColor = (grade) => {
@@ -116,16 +115,14 @@ export default function App({
   // ⭐ header menu + profile modal state
   const [menuOpen, setMenuOpen] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
-  
-// ⭐ DAY + CALENDAR STATE
-const [day, setDay] = useState(() => {
-  try {
-    const saved = localStorage.getItem(LAST_DAY_KEY);
-    return saved || selectedDay; // fallback to today / prop
-  } catch {
-    return selectedDay;
-  }
-}); // internal selected day
+
+  // ⭐ DAY + CALENDAR STATE
+  const [day, setDay] = useState(selectedDay); // internal selected day
+  const [showCalendar, setShowCalendar] = useState(false);
+  const [calendarMonth, setCalendarMonth] = useState(() => {
+    const d = new Date(selectedDay);
+    return { year: d.getFullYear(), month: d.getMonth() }; // 0-index
+  });
 
   // ⭐ JOURNAL STATE (3 fields)
   const [journal, setJournal] = useState({
