@@ -162,6 +162,10 @@ export default function LandingPage({ onEnterApp }) {
     sectionInner: {
       maxWidth: 1100,
       width: "100%",
+      textAlign: "center",
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
     },
 
     // HERO
@@ -271,6 +275,7 @@ export default function LandingPage({ onEnterApp }) {
       flexWrap: "wrap",
       gap: 16,
       marginTop: 18,
+      justifyContent: "center",
     },
     statCard: {
       flex: "1 1 180px",
@@ -317,6 +322,7 @@ export default function LandingPage({ onEnterApp }) {
       display: "flex",
       flexWrap: "wrap",
       gap: 14,
+      justifyContent: "center",
     },
     problemCard: {
       flex: "1 1 220px",
@@ -359,6 +365,7 @@ export default function LandingPage({ onEnterApp }) {
       gap: 24,
       alignItems: "stretch",
       marginTop: 18,
+      justifyContent: "center",
     },
     valueImageCard: {
       flex: "1.2 1 300px",
@@ -401,6 +408,7 @@ export default function LandingPage({ onEnterApp }) {
       paddingLeft: 16,
       fontSize: 13,
       opacity: 0.92,
+      textAlign: "left",
     },
 
     // CHECKLIST / WHAT YOU GET
@@ -409,6 +417,7 @@ export default function LandingPage({ onEnterApp }) {
       display: "flex",
       flexWrap: "wrap",
       gap: 16,
+      justifyContent: "center",
     },
     checklistCol: {
       flex: "1 1 260px",
@@ -418,6 +427,7 @@ export default function LandingPage({ onEnterApp }) {
       background: "rgba(15,23,42,0.97)",
       border: "1px solid rgba(30,64,175,0.8)",
       boxShadow: "0 18px 45px rgba(15,23,42,0.9)",
+      textAlign: "left",
     },
     checklistTitle: {
       fontSize: 15,
@@ -457,6 +467,7 @@ export default function LandingPage({ onEnterApp }) {
       display: "flex",
       flexWrap: "wrap",
       gap: 16,
+      justifyContent: "center",
     },
     testimonialCard: {
       flex: "1 1 260px",
@@ -468,6 +479,7 @@ export default function LandingPage({ onEnterApp }) {
       boxShadow: "0 18px 45px rgba(15,23,42,0.9)",
       border: "1px solid rgba(30,64,175,0.7)",
       fontSize: 12,
+      textAlign: "left",
     },
     testimonialName: {
       marginTop: 10,
@@ -481,6 +493,7 @@ export default function LandingPage({ onEnterApp }) {
       display: "flex",
       flexDirection: "column",
       gap: 10,
+      alignItems: "center",
     },
     faqItem: {
       borderRadius: 14,
@@ -488,6 +501,9 @@ export default function LandingPage({ onEnterApp }) {
       border: "1px solid rgba(30,64,175,0.8)",
       background:
         "linear-gradient(135deg, #0b1120, #0f172a, #0b1120 90%, #020617)",
+      width: "100%",
+      maxWidth: 680,
+      textAlign: "left",
     },
     faqHeader: {
       padding: "10px 14px",
@@ -519,6 +535,9 @@ export default function LandingPage({ onEnterApp }) {
       border: "1px solid rgba(30,64,175,0.9)",
       textAlign: "center",
       boxShadow: "0 24px 70px rgba(15,23,42,0.95)",
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
     },
     finalHeadline: {
       fontSize: 22,
@@ -545,15 +564,16 @@ export default function LandingPage({ onEnterApp }) {
       maxWidth: 1100,
       width: "100%",
       display: "flex",
-      flexWrap: "wrap",
-      justifyContent: "space-between",
-      gap: 10,
+      flexDirection: "column",
       alignItems: "center",
+      gap: 10,
+      textAlign: "center",
     },
     footerLinks: {
       display: "flex",
       gap: 14,
       flexWrap: "wrap",
+      justifyContent: "center",
     },
     footerLink: {
       cursor: "pointer",
@@ -676,6 +696,7 @@ export default function LandingPage({ onEnterApp }) {
       border: "1px solid rgba(148,163,184,0.6)",
       padding: 18,
       boxShadow: "0 18px 45px rgba(15,23,42,0.9)",
+      textAlign: "left",
     },
     previewHeader: {
       display: "flex",
@@ -872,7 +893,9 @@ export default function LandingPage({ onEnterApp }) {
               </div>
             </div>
             <div style={styles.navRight}>
-              <span style={styles.navPill}>Built for screenshot + journal traders</span>
+              <span style={styles.navPill}>
+                Built for screenshot + journal traders
+              </span>
               <span
                 style={styles.navLink}
                 onClick={() => {
@@ -903,12 +926,13 @@ export default function LandingPage({ onEnterApp }) {
             <div style={styles.heroEyebrow}>Real feedback, not random signals</div>
             <h1 style={styles.heroHeadline}>
               Turn every screenshot into{" "}
-              <span style={styles.heroHighlight}>a trade you actually learn
-              from.</span>
+              <span style={styles.heroHighlight}>
+                a trade you actually learn from.
+              </span>
             </h1>
             <p style={styles.heroSub}>
-              MaxTradeAI is your private workspace for trade screenshots,
-              AI feedback, and a daily journal. Upload your chart, explain your
+              MaxTradeAI is your private workspace for trade screenshots, AI
+              feedback, and a daily journal. Upload your chart, explain your
               idea, and get a breakdown like a coach is sitting next to you —
               for NASDAQ, indices, FX, and gold.
             </p>
@@ -965,14 +989,15 @@ export default function LandingPage({ onEnterApp }) {
         {/* RESULTS / STATS */}
         <section style={styles.section}>
           <div style={styles.sectionInner}>
-            <div style={styles.sectionEyebrow}>The results speak for themselves</div>
+            <div style={styles.sectionEyebrow}>
+              The results speak for themselves
+            </div>
             <div
               style={{
                 display: "flex",
-                justifyContent: "space-between",
-                gap: 16,
-                flexWrap: "wrap",
-                alignItems: "flex-end",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: 12,
               }}
             >
               <div>
@@ -985,7 +1010,7 @@ export default function LandingPage({ onEnterApp }) {
                   start reviewing your own execution day by day.
                 </p>
               </div>
-              <div style={{ fontSize: 12, opacity: 0.75 }}>
+              <div style={{ fontSize: 12, opacity: 0.75, maxWidth: 520 }}>
                 Traders use MaxTradeAI to{" "}
                 <strong>grade trades, journal daily,</strong> and build rules
                 they actually follow — for a one-time $39.
@@ -1006,15 +1031,13 @@ export default function LandingPage({ onEnterApp }) {
               <div style={styles.statCard}>
                 <div style={styles.statNumber}>ICT, TJR, SMC</div>
                 <div style={styles.statLabel}>
-                  common setups and strategies understood: BOS, CHoCH, 
-                  FVG, OB, liquidity sweeps
+                  common setups and strategies understood: BOS, CHoCH, FVG, OB,
+                  liquidity sweeps
                 </div>
               </div>
               <div style={styles.statCard}>
                 <div style={styles.statNumber}>Unlimited</div>
-                <div style={styles.statLabel}>
-                  Trade submissions daily
-                </div>
+                <div style={styles.statLabel}>Trade submissions daily</div>
               </div>
             </div>
           </div>
@@ -1045,8 +1068,8 @@ export default function LandingPage({ onEnterApp }) {
                   &ldquo;I don't know why my trades keep failing.&rdquo;
                 </div>
                 <div style={styles.problemText}>
-                  MaxTradeAI will serve as your mentor, being an 
-                  extra set of eyes on your moves in the charts.
+                  MaxTradeAI will serve as your mentor, being an extra set of
+                  eyes on your moves in the charts.
                 </div>
               </div>
 
@@ -1056,10 +1079,11 @@ export default function LandingPage({ onEnterApp }) {
                   <span>Problem #2</span>
                 </div>
                 <div style={styles.problemTitle}>
-                  &ldquo;I keep forgetting what happened with my past trades.&rdquo;
+                  &ldquo;I keep forgetting what happened with my past
+                  trades.&rdquo;
                 </div>
                 <div style={styles.problemText}>
-                  Your journal in MaxTradeAI saves daily, allowing you to go 
+                  Your journal in MaxTradeAI saves daily, allowing you to go
                   back and forth between dates to view your progress.
                 </div>
               </div>
@@ -1089,21 +1113,25 @@ export default function LandingPage({ onEnterApp }) {
             <h2 style={styles.sectionTitle}>
               A clean, structured report for each trade.
             </h2>
-            <p style={styles.sectionSub}>
-              This is an example layout of the AI report you&apos;ll see for
-              every trade: grade, confidence, and four sections that tell you
-              what went right, what went wrong, what to improve, and the main
-              lesson.
-            </p>
 
             <div style={styles.previewCard}>
               <div style={styles.previewHeader}>
                 <div>
                   <div style={styles.previewTitle}>Trade Coach AI</div>
-                  <div style={{ ...styles.previewMeta, ...styles.previewMetaSpacer }}>
+                  <div
+                    style={{
+                      ...styles.previewMeta,
+                      ...styles.previewMetaSpacer,
+                    }}
+                  >
                     Gold Futures · 5m
                   </div>
-                  <div style={{ ...styles.previewMeta, ...styles.previewMetaSpacer }}>
+                  <div
+                    style={{
+                      ...styles.previewMeta,
+                      ...styles.previewMetaSpacer,
+                    }}
+                  >
                     Confidence: 75%
                   </div>
                 </div>
@@ -1184,9 +1212,7 @@ export default function LandingPage({ onEnterApp }) {
               </div>
 
               <div style={styles.checklistCol}>
-                <div style={styles.checklistTitle}>
-                  MaxTradeAI
-                </div>
+                <div style={styles.checklistTitle}>MaxTradeAI</div>
 
                 <div style={styles.checklistItemRow}>
                   <span style={styles.checklistLabel}>
@@ -1247,15 +1273,15 @@ export default function LandingPage({ onEnterApp }) {
 
             <div style={styles.testimonialGrid}>
               <div style={styles.testimonialCard}>
-                &ldquo;Instead of having no clue why my stop loss was hit, I now get a
-                clear grade and a list of mistakes to fix. I&apos;m finally
-                building confidence in my setups.&rdquo;
+                &ldquo;Instead of having no clue why my stop loss was hit, I
+                now get a clear grade and a list of mistakes to fix. I&apos;m
+                finally building confidence in my setups.&rdquo;
                 <div style={styles.testimonialName}>— Index &amp; FX trader</div>
               </div>
               <div style={styles.testimonialCard}>
-                &ldquo;The daily journal tied to each day forced me to be honest
-                about my rules and emotions. I actually know why I won or lost a
-                trade now.&rdquo;
+                &ldquo;The daily journal tied to each day forced me to be
+                honest about my rules and emotions. I actually know why I won or
+                lost a trade now.&rdquo;
                 <div style={styles.testimonialName}>— NAS100 day trader</div>
               </div>
               <div style={styles.testimonialCard}>
@@ -1296,7 +1322,9 @@ export default function LandingPage({ onEnterApp }) {
                     </div>
                     {open && (
                       <div style={styles.faqBody}>
-                        <p style={{ marginTop: 8, marginBottom: 8 }}>{item.a}</p>
+                        <p style={{ marginTop: 8, marginBottom: 8 }}>
+                          {item.a}
+                        </p>
                       </div>
                     )}
                   </div>
@@ -1340,7 +1368,9 @@ export default function LandingPage({ onEnterApp }) {
         {/* FOOTER */}
         <footer style={styles.footer}>
           <div style={styles.footerInner}>
-            <span>© {new Date().getFullYear()} MaxTradeAI. All rights reserved.</span>
+            <span>
+              © {new Date().getFullYear()} MaxTradeAI. All rights reserved.
+            </span>
             <div style={styles.footerLinks}>
               <span style={styles.footerLink}>Privacy Policy</span>
               <span style={styles.footerLink}>Terms of Use</span>
