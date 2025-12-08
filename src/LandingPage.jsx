@@ -1009,67 +1009,45 @@ export default function LandingPage({ onEnterApp }) {
           </div>
         </section>
 
-        {/* REAL SYSTEMS / HOW IT WORKS */}
-        <section style={styles.section}>
-          <div style={styles.sectionInner}>
-            <div style={styles.sectionEyebrow}>Real system, real outcomes</div>
-            <div style={styles.valueRow}>
-              <div style={styles.valueImageCard}>
-                <div style={styles.fakeTable}>
-                  <div style={styles.fakeRow}>
-                    <span>Day</span>
-                    <span>Pair</span>
-                    <span>Grade</span>
-                  </div>
-                  <div style={styles.fakeRow}>
-                    <span>Mon</span>
-                    <span>NAS100</span>
-                    <span>A</span>
-                  </div>
-                  <div style={styles.fakeRow}>
-                    <span>Tue</span>
-                    <span>GBP/USD</span>
-                    <span>B+</span>
-                  </div>
-                  <div style={styles.fakeRow}>
-                    <span>Wed</span>
-                    <span>XAU/USD</span>
-                    <span>C</span>
-                  </div>
-                  <div style={{ marginTop: 6, fontSize: 10, opacity: 0.7 }}>
-                    Every row links to your screenshot, notes, and AI feedback
-                    for that day.
-                  </div>
-                </div>
-              </div>
+<div className="bg-[#0e1016] border border-white/10 rounded-2xl p-5 w-full max-w-md mx-auto">
+  <div className="flex items-start justify-between">
+    <div>
+      <h3 className="text-white font-semibold text-lg">Trade Coach AI</h3>
+      <p className="text-slate-400 text-sm">Gold • 5m</p>
+      <p className="text-slate-400 text-sm mt-1">Confidence: 75%</p>
+    </div>
+    <div className="text-black bg-yellow-300 rounded-full h-8 w-8 flex items-center justify-center font-bold">
+      C
+    </div>
+  </div>
 
-              <div style={styles.valueCopyCol}>
-                <h2 style={styles.sectionTitle}>
-                  What if you treated every trade like a lesson, not a gamble?
-                </h2>
-                <p style={styles.sectionSub}>
-                  MaxTradeAI gives you a repeatable workflow so you can
-                  review trades in minutes — not scroll through random photos
-                  and half-finished journals.
-                </p>
-                <ul style={styles.bulletList}>
-                  <li>
-                    Upload your screenshot, choose pair &amp; timeframe, and
-                    explain your setup.
-                  </li>
-                  <li>
-                    AI grades your trade, shows what went right/wrong, and
-                    recommends improvements in plain English.
-                  </li>
-                  <li>
-                    Your daily journal sits right next to your trade feedback,
-                    so you connect emotions, rules, and execution.
-                  </li>
-                </ul>
-              </div>
-            </div>
-          </div>
-        </section>
+  <div className="mt-4 space-y-3">
+    <div>
+      <p className="text-slate-300 text-xs uppercase tracking-wide">What went right</p>
+      <div className="h-3 bg-white/10 rounded-md mt-1"></div>
+    </div>
+
+    <div>
+      <p className="text-slate-300 text-xs uppercase tracking-wide">What went wrong</p>
+      <div className="h-3 bg-white/10 rounded-md mt-1"></div>
+    </div>
+
+    <div>
+      <p className="text-slate-300 text-xs uppercase tracking-wide">Improvements</p>
+      <div className="h-3 bg-white/10 rounded-md mt-1"></div>
+    </div>
+
+    <div>
+      <p className="text-slate-300 text-xs uppercase tracking-wide">Lesson learned</p>
+      <div className="h-3 bg-white/10 rounded-md mt-1"></div>
+    </div>
+  </div>
+
+  <p className="text-slate-500 text-[10px] mt-4 text-right">
+    Example AI trade report
+  </p>
+</div>
+
 
         {/* WHAT YOU GET / VS EVERYTHING ELSE */}
         <section style={styles.section}>
