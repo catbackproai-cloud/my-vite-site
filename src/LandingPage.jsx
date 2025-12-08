@@ -38,94 +38,120 @@ export default function LandingPage({ onEnterApp }) {
   const [memberPortalId, setMemberPortalId] = useState("");
   const [memberPortalError, setMemberPortalError] = useState("");
 
+  const currentYear = new Date().getFullYear();
+  const isMobile =
+    typeof window !== "undefined" ? window.innerWidth <= 768 : false;
+
   const styles = {
+    // PAGE
     page: {
       minHeight: "100vh",
       background:
-        "radial-gradient(circle at top, #162238 0, #05070c 55%, #020308 100%)",
+        "radial-gradient(circle at top, #18253d 0, #05070c 55%, #020308 100%)",
       color: "#e7ecf2",
       display: "flex",
       alignItems: "stretch",
       justifyContent: "center",
-      padding: "32px 16px 40px",
+      padding: "24px 16px 32px",
       fontFamily:
         '-apple-system, BlinkMacSystemFont, system-ui, -system-ui, "SF Pro Text", sans-serif',
       boxSizing: "border-box",
     },
     shell: {
       width: "100%",
-      maxWidth: 1120,
+      maxWidth: 1160,
       display: "flex",
       flexDirection: "column",
-      gap: 18,
+      gap: 20,
     },
 
-    // NAV
+    // HEADER / NAV
     nav: {
       display: "flex",
       justifyContent: "space-between",
       alignItems: "center",
-      padding: "4px 8px 0",
+      padding: "4px 4px 0",
       marginBottom: 4,
     },
     logoRow: {
       display: "flex",
       alignItems: "center",
-      gap: 8,
-      fontSize: 14,
-      fontWeight: 800,
-      letterSpacing: 0.4,
+      gap: 10,
     },
     logoDot: {
-      width: 22,
-      height: 22,
+      width: 26,
+      height: 26,
       borderRadius: 999,
       background:
         "conic-gradient(from 210deg, #1b9aaa, #38d5ff, #1b9aaa, #1b9aaa)",
-      boxShadow: "0 0 0 1px rgba(0,0,0,0.7), 0 0 16px rgba(27,154,170,0.65)",
+      boxShadow: "0 0 0 1px rgba(0,0,0,0.7), 0 0 16px rgba(27,154,170,0.7)",
+    },
+    logoTextMain: {
+      fontSize: 16,
+      fontWeight: 900,
+      letterSpacing: 0.4,
     },
     logoSub: {
       fontSize: 11,
       fontWeight: 500,
       opacity: 0.7,
     },
-    navRight: {
+    navLinks: {
       display: "flex",
-      gap: 10,
       alignItems: "center",
+      gap: 18,
       fontSize: 12,
-      opacity: 0.85,
+      opacity: 0.9,
     },
-    badgeTiny: {
-      padding: "3px 8px",
+    navLink: {
+      cursor: "pointer",
+      opacity: 0.8,
+      borderBottom: "1px solid transparent",
+      paddingBottom: 2,
+      transition: "opacity 0.18s ease, border-color 0.18s ease",
+    },
+    navCTA: {
       borderRadius: 999,
-      border: "1px solid #243043",
-      background: "rgba(7,12,20,0.7)",
+      border: "none",
+      background:
+        "linear-gradient(135deg, #1b9aaa, #30d3ff, #1b9aaa 80%, #158593)",
+      padding: "7px 16px",
+      fontSize: 12,
+      fontWeight: 700,
+      cursor: "pointer",
+      color: "#05080c",
+      boxShadow:
+        "0 10px 22px rgba(0,0,0,0.8), 0 0 14px rgba(48,211,255,0.4)",
+      display: "flex",
+      alignItems: "center",
+      gap: 6,
     },
 
-    // HERO CARD
-    heroCard: {
+    // HERO WRAPPER (like Tier11)
+    heroSection: {
       width: "100%",
       background: "rgba(7,12,20,0.96)",
-      borderRadius: 22,
+      borderRadius: 26,
       border: "1px solid rgba(36,48,67,0.9)",
       boxShadow: "0 32px 90px rgba(0,0,0,0.75)",
-      padding: "26px 26px 22px",
-      display: "grid",
-      gridTemplateColumns: "minmax(0, 1.55fr) minmax(0, 1.1fr)",
-      gap: 26,
+      padding: isMobile ? 18 : 26,
+      display: "flex",
+      flexDirection: isMobile ? "column" : "row",
+      gap: isMobile ? 22 : 30,
       boxSizing: "border-box",
     },
     heroLeft: {
+      flex: 1.4,
       display: "flex",
       flexDirection: "column",
-      gap: 14,
       justifyContent: "center",
+      gap: 14,
     },
     heroRight: {
+      flex: 1,
       background:
         "linear-gradient(140deg, #05080f 0%, #05080f 55%, #071321 100%)",
-      borderRadius: 18,
+      borderRadius: 20,
       border: "1px solid #243043",
       padding: 18,
       display: "flex",
@@ -137,9 +163,9 @@ export default function LandingPage({ onEnterApp }) {
 
     badgeRow: {
       display: "flex",
-      gap: 8,
-      marginBottom: 4,
       flexWrap: "wrap",
+      gap: 8,
+      marginBottom: 2,
     },
     badge: {
       fontSize: 11,
@@ -148,49 +174,47 @@ export default function LandingPage({ onEnterApp }) {
       border: "1px solid #243043",
       background: "rgba(5,8,15,0.9)",
       textTransform: "uppercase",
-      letterSpacing: 0.12,
+      letterSpacing: 0.14,
       opacity: 0.9,
     },
-
-    title: {
-      fontSize: 34,
+    heroHeadline: {
+      fontSize: isMobile ? 26 : 34,
       fontWeight: 900,
-      letterSpacing: -0.5,
-      marginBottom: 4,
+      letterSpacing: -0.4,
+      lineHeight: 1.1,
     },
-    titleAccent: {
+    heroAccent: {
       fontWeight: 900,
       background:
         "linear-gradient(120deg, #ffffff, #e3f8ff, #76e4ff, #ffffff 90%)",
       WebkitBackgroundClip: "text",
       color: "transparent",
     },
-    sub: {
+    heroSub: {
       fontSize: 14,
-      opacity: 0.83,
-      maxWidth: 460,
-      marginBottom: 6,
+      opacity: 0.85,
+      maxWidth: 520,
     },
 
     featureList: {
       listStyle: "none",
       padding: 0,
-      margin: "4px 0 12px",
+      margin: "4px 0 10px",
       fontSize: 13,
-      opacity: 0.9,
       display: "flex",
       flexDirection: "column",
       gap: 6,
     },
     featureItem: {
       display: "flex",
-      gap: 8,
       alignItems: "flex-start",
+      gap: 8,
     },
-    featureDot: {
+    featureBullet: {
       fontSize: 15,
       lineHeight: "19px",
       color: "#1b9aaa",
+      marginTop: 1,
     },
 
     ctaRow: {
@@ -215,7 +239,6 @@ export default function LandingPage({ onEnterApp }) {
       display: "flex",
       alignItems: "center",
       gap: 8,
-      borderImage: "linear-gradient(120deg,#46d6ff,#1b9aaa) 1",
     },
     ghostBtn: {
       borderRadius: 999,
@@ -235,17 +258,17 @@ export default function LandingPage({ onEnterApp }) {
       marginTop: 4,
     },
 
-    // RIGHT: PRICING / VALUE
-    priceTag: {
-      fontSize: 22,
-      fontWeight: 900,
-      marginBottom: 4,
-    },
+    // RIGHT: PRICING / WHAT YOU GET
     priceLabel: {
       fontSize: 11,
       textTransform: "uppercase",
-      letterSpacing: 0.12,
+      letterSpacing: 0.14,
       opacity: 0.7,
+    },
+    priceTag: {
+      fontSize: 22,
+      fontWeight: 900,
+      margin: "2px 0 4px",
     },
     priceSub: {
       fontSize: 12,
@@ -256,13 +279,13 @@ export default function LandingPage({ onEnterApp }) {
       height: 1,
       width: "100%",
       background: "linear-gradient(90deg, transparent, #243043, transparent)",
-      margin: "4px 0 6px",
+      margin: "6px 0 8px",
     },
     miniHeading: {
       fontSize: 11,
       textTransform: "uppercase",
-      letterSpacing: 0.14,
-      opacity: 0.7,
+      letterSpacing: 0.16,
+      opacity: 0.75,
       marginBottom: 4,
     },
     checklist: {
@@ -281,22 +304,18 @@ export default function LandingPage({ onEnterApp }) {
     checkIcon: {
       fontSize: 13,
       lineHeight: "18px",
-      color: "#1b9aaa",
+      color: "#4dd4ff",
+      marginTop: 1,
     },
     checkText: {
       fontSize: 13,
       opacity: 0.9,
     },
-    tinyMuted: {
-      fontSize: 11,
-      opacity: 0.7,
-      marginTop: 8,
-    },
     tagRow: {
       display: "flex",
       flexWrap: "wrap",
       gap: 6,
-      marginTop: 4,
+      marginTop: 6,
     },
     tagPill: {
       padding: "3px 8px",
@@ -305,15 +324,21 @@ export default function LandingPage({ onEnterApp }) {
       fontSize: 11,
       opacity: 0.85,
     },
+    tinyMuted: {
+      fontSize: 11,
+      opacity: 0.7,
+      marginTop: 6,
+    },
 
-    // HOW IT WORKS / COMPARISON
+    // LOWER ROW (HOW IT WORKS + COMPARISON)
     lowerRow: {
-      display: "grid",
-      gridTemplateColumns: "minmax(0, 1.5fr) minmax(0, 1.1fr)",
-      gap: 16,
+      display: "flex",
+      flexDirection: isMobile ? "column" : "row",
+      gap: 18,
       marginTop: 6,
     },
     lowerCard: {
+      flex: 1,
       background: "rgba(7,11,18,0.98)",
       borderRadius: 18,
       border: "1px solid #161f2b",
@@ -326,10 +351,10 @@ export default function LandingPage({ onEnterApp }) {
       textTransform: "uppercase",
       letterSpacing: 0.16,
       opacity: 0.75,
-      marginBottom: 6,
+      marginBottom: 4,
     },
     lowerBig: {
-      fontSize: 16,
+      fontSize: 17,
       fontWeight: 700,
       marginBottom: 8,
     },
@@ -343,8 +368,8 @@ export default function LandingPage({ onEnterApp }) {
     },
     stepItem: {
       display: "flex",
-      gap: 10,
       alignItems: "flex-start",
+      gap: 10,
     },
     stepBadge: {
       width: 20,
@@ -357,46 +382,85 @@ export default function LandingPage({ onEnterApp }) {
       justifyContent: "center",
       fontSize: 11,
       opacity: 0.85,
+      marginTop: 1,
     },
     stepText: {
       fontSize: 13,
       opacity: 0.9,
     },
 
+    // COMPARISON CHECKLIST – more polished
     compareGrid: {
-      display: "grid",
-      gridTemplateColumns: "minmax(0, 1fr)",
-      gap: 6,
-      marginTop: 6,
+      display: "flex",
+      flexDirection: "column",
+      gap: 8,
+      marginTop: 8,
     },
     compareRow: {
       display: "flex",
       justifyContent: "space-between",
-      gap: 8,
-      fontSize: 12,
+      gap: 10,
       padding: "8px 10px",
       borderRadius: 12,
-      border: "1px solid #151f2b",
-      background: "#05080f",
+      border: "1px solid #1c2736",
+      background:
+        "linear-gradient(135deg, rgba(5,8,15,0.96), rgba(12,21,33,0.96))",
+      alignItems: "center",
     },
-    compareLabel: {
-      opacity: 0.8,
+    compareLabelWrap: {
+      maxWidth: "60%",
+      fontSize: 12,
+      opacity: 0.9,
     },
     compareChecks: {
       display: "flex",
-      gap: 10,
+      flexDirection: "column",
+      alignItems: "flex-end",
+      gap: 2,
       fontSize: 11,
       textTransform: "uppercase",
       letterSpacing: 0.12,
+      minWidth: 120,
     },
     compareYes: {
-      color: "#3ad1ff",
+      color: "#4de2ff",
+      display: "flex",
+      justifyContent: "flex-end",
+      gap: 4,
     },
     compareNo: {
       color: "#ff9ba8",
       opacity: 0.9,
+      display: "flex",
+      justifyContent: "flex-end",
+      gap: 4,
     },
 
+    // FOOTER
+    footer: {
+      marginTop: 18,
+      paddingTop: 14,
+      borderTop: "1px solid rgba(21,31,43,0.8)",
+      display: "flex",
+      flexDirection: isMobile ? "column" : "row",
+      alignItems: isMobile ? "flex-start" : "center",
+      justifyContent: "space-between",
+      gap: 10,
+      fontSize: 11,
+      opacity: 0.7,
+    },
+    footerLinks: {
+      display: "flex",
+      flexWrap: "wrap",
+      gap: 10,
+    },
+    footerLink: {
+      cursor: "pointer",
+      textDecoration: "underline",
+      textDecorationThickness: 0.6,
+    },
+
+    // MODALS
     overlay: {
       position: "fixed",
       inset: 0,
@@ -579,64 +643,91 @@ export default function LandingPage({ onEnterApp }) {
     <>
       <div style={styles.page}>
         <div style={styles.shell}>
-          {/* NAV */}
+          {/* HEADER / NAV */}
           <div style={styles.nav}>
             <div style={styles.logoRow}>
               <div style={styles.logoDot} />
               <div>
-                <div>Max Trade Coach</div>
-                <div style={styles.logoSub}>AI trade review · daily journal</div>
+                <div style={styles.logoTextMain}>Max Trade Coach</div>
+                <div style={styles.logoSub}>
+                  AI trade review · daily journal for ICT / liquidity traders
+                </div>
               </div>
             </div>
-            <div style={styles.navRight}>
-              <span style={styles.badgeTiny}>Built for ICT / liquidity traders</span>
+
+            <div style={styles.navLinks}>
+              <span style={styles.navLink}>Product</span>
+              <span style={styles.navLink}>How it works</span>
+              <span style={styles.navLink}>Pricing</span>
+              <button
+                style={styles.navCTA}
+                onClick={() => {
+                  let existingId = "";
+                  try {
+                    const raw = localStorage.getItem(MEMBER_LS_KEY);
+                    if (raw) {
+                      const parsed = JSON.parse(raw);
+                      existingId = parsed.memberId || "";
+                    }
+                  } catch {
+                    // ignore
+                  }
+                  setMemberPortalId(existingId);
+                  setMemberPortalError("");
+                  setShowMemberPortal(true);
+                }}
+              >
+                Member login →
+              </button>
             </div>
           </div>
 
-          {/* HERO */}
-          <div style={styles.heroCard}>
-            {/* LEFT: STORY + CTA */}
+          {/* HERO SECTION */}
+          <section style={styles.heroSection}>
+            {/* LEFT: TEXT + CTA */}
             <div style={styles.heroLeft}>
               <div style={styles.badgeRow}>
-                <span style={styles.badge}>Personal trade coach</span>
-                <span style={styles.badge}>Screenshot → feedback → plan</span>
+                <span style={styles.badge}>Built for day traders</span>
+                <span style={styles.badge}>Screenshots · feedback · journal</span>
               </div>
 
-              <h1 style={styles.title}>
-                Turn every chart into a{" "}
-                <span style={styles.titleAccent}>trading lesson.</span>
+              <h1 style={styles.heroHeadline}>
+                Unlock your trading potential{" "}
+                <span style={styles.heroAccent}>
+                  with a personal AI trade coach.
+                </span>
               </h1>
 
-              <p style={styles.sub}>
+              <p style={styles.heroSub}>
                 Max Trade Coach is your private workspace for trade screenshots,
                 AI feedback, and a daily journal. Upload a chart, explain what
-                you were thinking, and get a breakdown like a coach is sitting
+                you were thinking, and get a breakdown like a mentor is sitting
                 next to you.
               </p>
 
               <ul style={styles.featureList}>
                 <li style={styles.featureItem}>
-                  <span style={styles.featureDot}>●</span>
+                  <span style={styles.featureBullet}>●</span>
                   <span>
-                    <strong>AI that speaks your language:</strong> BOS/CHoCH,
-                    FVGs, OBs, liquidity sweeps, sessions, risk, and execution
-                    — not random indicator spam.
+                    <strong>Understands Smart Money concepts:</strong> BOS / CHoCH,
+                    FVGs, OBs, liquidity sweeps, sessions, risk and execution —
+                    not random indicator spam.
                   </span>
                 </li>
                 <li style={styles.featureItem}>
-                  <span style={styles.featureDot}>●</span>
+                  <span style={styles.featureBullet}>●</span>
                   <span>
-                    <strong>Every day saved to a timeline:</strong> trades +
+                    <strong>Every session saved to a timeline:</strong> trades +
                     notes are tied to your date and Member ID so you can review
                     any session in seconds.
                   </span>
                 </li>
                 <li style={styles.featureItem}>
-                  <span style={styles.featureDot}>●</span>
+                  <span style={styles.featureBullet}>●</span>
                   <span>
-                    <strong>Built for self-coached traders:</strong> not a
-                    signal group, not a course — a tool that forces you to
-                    think, journal, and improve.
+                    <strong>Built for self-coached traders:</strong> not a signal
+                    group, not a course — a tool that forces you to think,
+                    journal, and improve.
                   </span>
                 </li>
               </ul>
@@ -677,19 +768,19 @@ export default function LandingPage({ onEnterApp }) {
               </div>
 
               <div style={styles.ctaHint}>
-                You get a private portal where screenshots, feedback, and
-                journal entries are saved per day — so you can study your own
-                data, not someone else&apos;s.
+                You get a private portal where screenshots, feedback, and journal
+                entries are saved per day — so you can study your own data, not
+                someone else&apos;s.
               </div>
             </div>
 
-            {/* RIGHT: VALUE / PRICING / WHY IT’S BETTER */}
-            <div style={styles.heroRight}>
+            {/* RIGHT: PRICING + WHAT YOU GET + WHY NOT JUST... */}
+            <aside style={styles.heroRight}>
               <div>
-                <div style={styles.priceLabel}>Max Trade Coach</div>
+                <div style={styles.priceLabel}>Membership</div>
                 <div style={styles.priceTag}>$XX / month</div>
                 <div style={styles.priceSub}>
-                  One personal workspace. Unlimited screenshot reviews and
+                  One personal workspace. Unlimited screenshot reviews and daily
                   journal entries.
                 </div>
               </div>
@@ -702,8 +793,8 @@ export default function LandingPage({ onEnterApp }) {
                   <li style={styles.checkItem}>
                     <span style={styles.checkIcon}>✓</span>
                     <span style={styles.checkText}>
-                      AI feedback that grades your trade, highlights what you
-                      did well, and calls out execution mistakes.
+                      AI feedback that grades your trade, highlights what you did
+                      well, and calls out execution mistakes.
                     </span>
                   </li>
                   <li style={styles.checkItem}>
@@ -723,7 +814,7 @@ export default function LandingPage({ onEnterApp }) {
                 </ul>
 
                 <div style={styles.tagRow}>
-                  <span style={styles.tagPill}>NASDAQ / S&amp;P / US30</span>
+                  <span style={styles.tagPill}>NASDAQ · S&amp;P · US30</span>
                   <span style={styles.tagPill}>GBP/USD · XAU/USD · FX</span>
                   <span style={styles.tagPill}>Crypto pairs</span>
                 </div>
@@ -745,7 +836,7 @@ export default function LandingPage({ onEnterApp }) {
                     <span style={styles.checkIcon}>✕</span>
                     <span style={styles.checkText}>
                       <strong>Plain screenshot folders:</strong> zero notes,
-                      zero structure, you never review them.
+                      zero structure — you never review them.
                     </span>
                   </li>
                   <li style={styles.checkItem}>
@@ -759,14 +850,14 @@ export default function LandingPage({ onEnterApp }) {
               </div>
 
               <div style={styles.tinyMuted}>
-                Max Trade Coach is built for traders who actually want to get
-                better — not just hunt the next &quot;alpha call.&quot;
+                Max Trade Coach is for traders who actually want to get better —
+                not just hunt the next &quot;alpha call.&quot;
               </div>
-            </div>
-          </div>
+            </aside>
+          </section>
 
-          {/* LOWER ROW: HOW IT WORKS + COMPARISON CHECKLIST */}
-          <div style={styles.lowerRow}>
+          {/* LOWER ROW: HOW IT WORKS + COMPARISON */}
+          <section style={styles.lowerRow}>
             {/* HOW IT WORKS */}
             <div style={styles.lowerCard}>
               <div style={styles.lowerTitle}>How Max Trade Coach works</div>
@@ -800,14 +891,14 @@ export default function LandingPage({ onEnterApp }) {
                 <li style={styles.stepItem}>
                   <div style={styles.stepBadge}>4</div>
                   <div style={styles.stepText}>
-                    <strong>Journal the day:</strong> log what you learned,
-                    where you tilted, and one improvement for the next session.
+                    <strong>Journal the day:</strong> log what you learned, where
+                    you tilted, and one improvement for the next session.
                   </div>
                 </li>
               </ul>
             </div>
 
-            {/* COMPARISON CHECKLIST */}
+            {/* COMPARISON CHECKLIST – MORE PROFESSIONAL */}
             <div style={styles.lowerCard}>
               <div style={styles.lowerTitle}>Why traders upgrade</div>
               <div style={styles.lowerBig}>
@@ -816,47 +907,86 @@ export default function LandingPage({ onEnterApp }) {
 
               <div style={styles.compareGrid}>
                 <div style={styles.compareRow}>
-                  <span style={styles.compareLabel}>
+                  <div style={styles.compareLabelWrap}>
                     Actually reviews <strong>your</strong> trades
-                  </span>
+                  </div>
                   <div style={styles.compareChecks}>
-                    <span style={styles.compareYes}>Max: ✓</span>
-                    <span style={styles.compareNo}>Signals: ✕</span>
+                    <div style={styles.compareYes}>
+                      <span>Max Trade Coach</span>
+                      <span>✓</span>
+                    </div>
+                    <div style={styles.compareNo}>
+                      <span>Signal groups</span>
+                      <span>✕</span>
+                    </div>
                   </div>
                 </div>
 
                 <div style={styles.compareRow}>
-                  <span style={styles.compareLabel}>
+                  <div style={styles.compareLabelWrap}>
                     Structured daily journal attached to screenshots
-                  </span>
+                  </div>
                   <div style={styles.compareChecks}>
-                    <span style={styles.compareYes}>Max: ✓</span>
-                    <span style={styles.compareNo}>Photos app: ✕</span>
+                    <div style={styles.compareYes}>
+                      <span>Max Trade Coach</span>
+                      <span>✓</span>
+                    </div>
+                    <div style={styles.compareNo}>
+                      <span>Photos app</span>
+                      <span>✕</span>
+                    </div>
                   </div>
                 </div>
 
                 <div style={styles.compareRow}>
-                  <span style={styles.compareLabel}>
-                    Understands BOS / CHoCH / FVG / liquidity
-                  </span>
+                  <div style={styles.compareLabelWrap}>
+                    Understands BOS / CHoCH / FVG / liquidity concepts
+                  </div>
                   <div style={styles.compareChecks}>
-                    <span style={styles.compareYes}>Max: ✓</span>
-                    <span style={styles.compareNo}>Notion / notes: ✕</span>
+                    <div style={styles.compareYes}>
+                      <span>Max Trade Coach</span>
+                      <span>✓</span>
+                    </div>
+                    <div style={styles.compareNo}>
+                      <span>Notion / notes</span>
+                      <span>✕</span>
+                    </div>
                   </div>
                 </div>
 
                 <div style={styles.compareRow}>
-                  <span style={styles.compareLabel}>
+                  <div style={styles.compareLabelWrap}>
                     Keeps everything in a single private portal
-                  </span>
+                  </div>
                   <div style={styles.compareChecks}>
-                    <span style={styles.compareYes}>Max: ✓</span>
-                    <span style={styles.compareNo}>Random files: ✕</span>
+                    <div style={styles.compareYes}>
+                      <span>Max Trade Coach</span>
+                      <span>✓</span>
+                    </div>
+                    <div style={styles.compareNo}>
+                      <span>Random files &amp; chats</span>
+                      <span>✕</span>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
+          </section>
+
+          {/* FOOTER / LEGAL */}
+          <footer style={styles.footer}>
+            <div>
+              © {currentYear} Max Trade Coach. All rights reserved. Nothing on
+              this site is financial advice. Trading involves risk and you can
+              lose money.
+            </div>
+            <div style={styles.footerLinks}>
+              <span style={styles.footerLink}>Privacy Policy</span>
+              <span style={styles.footerLink}>Terms of Use</span>
+              <span style={styles.footerLink}>Risk Disclosure</span>
+              <span style={styles.footerLink}>Contact</span>
+            </div>
+          </footer>
         </div>
       </div>
 
