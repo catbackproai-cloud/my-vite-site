@@ -10,7 +10,7 @@ const WEBHOOK_URL =
   PROD_WEBHOOK;
 
 const MEMBER_LS_KEY = "tc_member_v1";
-
+const LAST_DAY_KEY = "tradeCoach:lastDayWithData";
 
 const gradeColor = (grade) => {
   switch (grade) {
@@ -30,6 +30,7 @@ const gradeColor = (grade) => {
 };
 
 function todayStr() {
+  // LOCAL date, not UTC, so no “tomorrow” bug
   const d = new Date();
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
@@ -84,7 +85,7 @@ function safeSaveChats(key, chats) {
 }
 
 export default function App({
-  selectedDay = new Date().toISOString().slice(0, 10),
+  selectedDay = todayStr(), // ✅ use LOCAL today as default
 }) {
   const navigate = useNavigate();
 
@@ -112,15 +113,25 @@ export default function App({
     }
   });
 
+  // initial day = last day with data (if any) else selectedDay
+  const initialDay = (() => {
+    try {
+      const saved = localStorage.getItem(LAST_DAY_KEY);
+      return saved || selectedDay;
+    } catch {
+      return selectedDay;
+    }
+  })();
+
   // ⭐ header menu + profile modal state
   const [menuOpen, setMenuOpen] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
 
   // ⭐ DAY + CALENDAR STATE
-  const [day, setDay] = useState(selectedDay); // internal selected day
+  const [day, setDay] = useState(initialDay); // internal selected day
   const [showCalendar, setShowCalendar] = useState(false);
   const [calendarMonth, setCalendarMonth] = useState(() => {
-    const d = new Date(selectedDay);
+    const d = parseLocalDateFromIso(initialDay);
     return { year: d.getFullYear(), month: d.getMonth() }; // 0-index
   });
 
@@ -229,7 +240,6 @@ export default function App({
       padding: "80px 16px 24px", // top padding to clear fixed header
       boxSizing: "border-box",
     },
-    
 
     // 🔹 GLOBAL FIXED HEADER
     siteHeader: {
@@ -622,28 +632,34 @@ export default function App({
       outline: "none",
       boxSizing: "border-box",
     },
+
+    // wrapper + select + arrow so it matches text field with a custom caret
+    selectWrapper: {
+      position: "relative",
+      width: "100%",
+    },
     select: {
       width: "100%",
       background: "#0d121a",
       border: "1px solid #243043",
       borderRadius: 10,
       color: "#e7ecf2",
-      padding: "8px 10px",
+      padding: "8px 28px 8px 10px", // extra right padding for arrow
       fontSize: 13,
       outline: "none",
       boxSizing: "border-box",
       appearance: "none",
-  WebkitAppearance: "none",
-  MozAppearance: "none",
-  selectArrow: {
-  position: "absolute",
-  right: 10,
-  top: "50%",
-  transform: "translateY(-50%)",
-  fontSize: 10,
-  pointerEvents: "none",
-  opacity: 0.7,
-},
+      WebkitAppearance: "none",
+      MozAppearance: "none",
+    },
+    selectArrow: {
+      position: "absolute",
+      right: 10,
+      top: "50%",
+      transform: "translateY(-50%)",
+      fontSize: 10,
+      pointerEvents: "none",
+      opacity: 0.7,
     },
 
     textarea: {
@@ -851,10 +867,18 @@ export default function App({
     }
   }, [day]);
 
-  // Persist chats per day
+  // Persist chats per day + mark last day with data
   useEffect(() => {
     const key = `tradeChats:${day}`;
     safeSaveChats(key, chats);
+
+    if (chats && chats.length > 0) {
+      try {
+        localStorage.setItem(LAST_DAY_KEY, day);
+      } catch {
+        // ignore
+      }
+    }
   }, [chats, day]);
 
   // 🔹 Load journal per day (v2 object, fallback to legacy string)
@@ -890,11 +914,20 @@ export default function App({
     }
   }, [day]);
 
-  // 🔹 Persist journal per day
+  // 🔹 Persist journal per day + mark last day with data
   useEffect(() => {
     try {
       const keyV2 = `tradeJournalV2:${day}`;
       localStorage.setItem(keyV2, JSON.stringify(journal));
+
+      const hasJournal =
+        (journal.notes || "").trim() ||
+        (journal.learned || "").trim() ||
+        (journal.improve || "").trim();
+
+      if (hasJournal) {
+        localStorage.setItem(LAST_DAY_KEY, day);
+      }
     } catch {
       // ignore
     }
@@ -1455,24 +1488,27 @@ export default function App({
                       </div>
                       <div style={styles.fieldHalf}>
                         <div style={styles.label}>Timeframe</div>
-                        <select
-                          style={styles.select}
-                          value={form.timeframe}
-                          onChange={(e) =>
-                            onChange("timeframe", e.target.value)
-                          }
-                        >
-                          <option value="">Select timeframe</option>
-                          <option value="1m">1m</option>
-                          <option value="3m">3m</option>
-                          <option value="5m">5m</option>
-                          <option value="15m">15m</option>
-                          <option value="30m">30m</option>
-                          <option value="1H">1H</option>
-                          <option value="2H">2H</option>
-                          <option value="4H">4H</option>
-                          <option value="Daily">Daily</option>
-                        </select>
+                        <div style={styles.selectWrapper}>
+                          <select
+                            style={styles.select}
+                            value={form.timeframe}
+                            onChange={(e) =>
+                              onChange("timeframe", e.target.value)
+                            }
+                          >
+                            <option value="">Select timeframe</option>
+                            <option value="1m">1m</option>
+                            <option value="3m">3m</option>
+                            <option value="5m">5m</option>
+                            <option value="15m">15m</option>
+                            <option value="30m">30m</option>
+                            <option value="1H">1H</option>
+                            <option value="2H">2H</option>
+                            <option value="4H">4H</option>
+                            <option value="Daily">Daily</option>
+                          </select>
+                          <span style={styles.selectArrow}>▾</span>
+                        </div>
                       </div>
                     </div>
 
@@ -1580,8 +1616,7 @@ export default function App({
 
               <div style={styles.journalHintRow}>
                 <span>
-                  Auto-saved per day — switch dates above to see past
-                  entries.
+                  Auto-saved per day — switch dates above to see past entries.
                 </span>
               </div>
             </div>
