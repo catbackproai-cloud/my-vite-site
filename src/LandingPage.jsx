@@ -744,7 +744,7 @@ export default function LandingPage({ onEnterApp }) {
 
   const faqs = [
     {
-      q: "What exactly do I get when I join Max Trade Coach?",
+      q: "What exactly do I get when I join MaxTradeAI?",
       a: "You get a private portal where you upload trade screenshots, explain your thought process, and receive structured AI feedback plus a built-in daily journal view for every session.",
     },
     {
@@ -759,10 +759,6 @@ export default function LandingPage({ onEnterApp }) {
       q: "Does the AI understand BOS / CHoCH / FVG / liquidity?",
       a: "Yes. The prompts and training are built specifically around those concepts so it can talk in your language, not generic indicator spam.",
     },
-    {
-      q: "Can I cancel later?",
-      a: "Yes. If you don't feel it's helping you grade and improve your trades, you can cancel anytime. Founders get locked-in access for a one-time $39.",
-    },
   ];
 
   return (
@@ -773,7 +769,7 @@ export default function LandingPage({ onEnterApp }) {
           <div style={styles.ribbonInner}>
             <span style={styles.ribbonText}>
               <span style={styles.ribbonStrong}>Founders beta · $39 one-time:</span>{" "}
-              lock in early access while we refine Max Trade Coach with real
+              lock in early access while we refine MaxTradeAI with real
               traders.
             </span>
             <button
@@ -796,7 +792,7 @@ export default function LandingPage({ onEnterApp }) {
             <div style={styles.logoRow}>
               <div style={styles.logoMark} />
               <div>
-                <div style={styles.logoTitle}>Max Trade Coach</div>
+                <div style={styles.logoTitle}>MaxTradeAI</div>
                 <div style={styles.logoSub}>
                   AI trade review · liquidity &amp; ICT focused
                 </div>
@@ -838,7 +834,7 @@ export default function LandingPage({ onEnterApp }) {
               from.</span>
             </h1>
             <p style={styles.heroSub}>
-              Max Trade Coach is your private workspace for trade screenshots,
+              MaxTradeAI is your private workspace for trade screenshots,
               AI feedback, and a daily journal. Upload your chart, explain your
               idea, and get a breakdown like a coach is sitting next to you —
               for NASDAQ, indices, FX, and gold.
@@ -917,7 +913,7 @@ export default function LandingPage({ onEnterApp }) {
                 </p>
               </div>
               <div style={{ fontSize: 12, opacity: 0.75 }}>
-                Traders use Max Trade Coach to{" "}
+                Traders use MaxTradeAI to{" "}
                 <strong>grade trades, journal daily,</strong> and build rules
                 they actually follow — for a one-time $39.
               </div>
@@ -929,21 +925,22 @@ export default function LandingPage({ onEnterApp }) {
                 <div style={styles.statLabel}>sessions reviewed by AI</div>
               </div>
               <div style={styles.statCard}>
-                <div style={styles.statNumber}>100%</div>
+                <div style={styles.statNumber}>A-F</div>
                 <div style={styles.statLabel}>
-                  of trades tied to a specific day and journal entry
+                  grade scale for each trade you submit
                 </div>
               </div>
               <div style={styles.statCard}>
-                <div style={styles.statNumber}>15+</div>
+                <div style={styles.statNumber}>ICT, TJR, SMC</div>
                 <div style={styles.statLabel}>
-                  common setups handled: BOS, CHoCH, FVG, OB, liquidity sweeps
+                  common setups and strategies understood: BOS, CHoCH, 
+                  FVG, OB, liquidity sweeps
                 </div>
               </div>
               <div style={styles.statCard}>
-                <div style={styles.statNumber}>1</div>
+                <div style={styles.statNumber}>Unlimited</div>
                 <div style={styles.statLabel}>
-                  private workspace that works the same on desktop &amp; mobile
+                  Trade submissions daily
                 </div>
               </div>
             </div>
@@ -972,12 +969,11 @@ export default function LandingPage({ onEnterApp }) {
                   <span>Problem #1</span>
                 </div>
                 <div style={styles.problemTitle}>
-                  &ldquo;My screenshots are everywhere.&rdquo;
+                  &ldquo;I don't know why my trades keep failing.&rdquo;
                 </div>
                 <div style={styles.problemText}>
-                  Charts live in your phone photos, Discord, and desktop
-                  folders. You never go back to study them, so the same
-                  mistakes repeat every week.
+                  MaxTradeAI will serve as your mentor, being an 
+                  extra set of eyes on your moves in the charts.
                 </div>
               </div>
 
@@ -987,12 +983,11 @@ export default function LandingPage({ onEnterApp }) {
                   <span>Problem #2</span>
                 </div>
                 <div style={styles.problemTitle}>
-                  &ldquo;No one actually grades my trades.&rdquo;
+                  &ldquo;I keep forgetting what happened with my past trades.&rdquo;
                 </div>
                 <div style={styles.problemText}>
-                  You journal sometimes, but there&apos;s no structured
-                  feedback: no grade, no clear list of what went right or wrong,
-                  and no simple &quot;do this next time&quot; plan.
+                  Your journal in MaxTradeAI saves daily, allowing you to go 
+                  back and forth between dates to view your progress.
                 </div>
               </div>
 
@@ -1053,7 +1048,7 @@ export default function LandingPage({ onEnterApp }) {
                   What if you treated every trade like a lesson, not a gamble?
                 </h2>
                 <p style={styles.sectionSub}>
-                  Max Trade Coach gives you a repeatable workflow so you can
+                  MaxTradeAI gives you a repeatable workflow so you can
                   review trades in minutes — not scroll through random photos
                   and half-finished journals.
                 </p>
@@ -1079,7 +1074,7 @@ export default function LandingPage({ onEnterApp }) {
         {/* WHAT YOU GET / VS EVERYTHING ELSE */}
         <section style={styles.section}>
           <div style={styles.sectionInner}>
-            <div style={styles.sectionEyebrow}>Inside your Max Trade Coach portal</div>
+            <div style={styles.sectionEyebrow}>Inside your MaxTradeAI portal</div>
             <h2 style={styles.sectionTitle}>
               Everything you need to self-coach trades — in one place.
             </h2>
@@ -1109,7 +1104,7 @@ export default function LandingPage({ onEnterApp }) {
 
               <div style={styles.checklistCol}>
                 <div style={styles.checklistTitle}>
-                  Max Trade Coach vs everything else
+                  MaxTradeAI
                 </div>
 
                 <div style={styles.checklistItemRow}>
@@ -1117,18 +1112,18 @@ export default function LandingPage({ onEnterApp }) {
                     Actually reviews your trades
                   </span>
                   <div style={styles.checklistChecks}>
-                    <span style={styles.checklistYes}>Max: ✓</span>
-                    <span style={styles.checklistNo}>Signals: ✕</span>
+                    <span style={styles.checklistYes}>MaxTrade: ✓</span>
+                    <span style={styles.checklistNo}>TradingView: ✕</span>
                   </div>
                 </div>
 
                 <div style={styles.checklistItemRow}>
                   <span style={styles.checklistLabel}>
-                    Structured daily journal attached to screenshots
+                    Structured daily journal to log your daily progress
                   </span>
                   <div style={styles.checklistChecks}>
-                    <span style={styles.checklistYes}>Max: ✓</span>
-                    <span style={styles.checklistNo}>Photos app: ✕</span>
+                    <span style={styles.checklistYes}>MaxTrade: ✓</span>
+                    <span style={styles.checklistNo}>Other AI: ✕</span>
                   </div>
                 </div>
 
@@ -1137,8 +1132,8 @@ export default function LandingPage({ onEnterApp }) {
                     Understands BOS / CHoCH / FVG / liquidity
                   </span>
                   <div style={styles.checklistChecks}>
-                    <span style={styles.checklistYes}>Max: ✓</span>
-                    <span style={styles.checklistNo}>Generic notes: ✕</span>
+                    <span style={styles.checklistYes}>MaxTrade: ✓</span>
+                    <span style={styles.checklistNo}>Basic AI: ✕</span>
                   </div>
                 </div>
 
@@ -1147,8 +1142,8 @@ export default function LandingPage({ onEnterApp }) {
                     Keeps everything in a single private portal
                   </span>
                   <div style={styles.checklistChecks}>
-                    <span style={styles.checklistYes}>Max: ✓</span>
-                    <span style={styles.checklistNo}>Random files: ✕</span>
+                    <span style={styles.checklistYes}>MaxTrade: ✓</span>
+                    <span style={styles.checklistNo}>Others: ✕</span>
                   </div>
                 </div>
               </div>
@@ -1171,7 +1166,7 @@ export default function LandingPage({ onEnterApp }) {
 
             <div style={styles.testimonialGrid}>
               <div style={styles.testimonialCard}>
-                &ldquo;Instead of staring at random screenshots, I now get a
+                &ldquo;Instead of having no clue why my stop loss was hit, I now get a
                 clear grade and a list of mistakes to fix. I&apos;m finally
                 building confidence in my setups.&rdquo;
                 <div style={styles.testimonialName}>— Index &amp; FX trader</div>
@@ -1201,7 +1196,7 @@ export default function LandingPage({ onEnterApp }) {
             </h2>
             <p style={styles.sectionSub}>
               The most common questions traders ask before getting instant
-              access to Max Trade Coach.
+              access to MaxTradeAI.
             </p>
 
             <div style={styles.faqList}>
@@ -1240,7 +1235,7 @@ export default function LandingPage({ onEnterApp }) {
                 time.
               </h2>
               <p style={styles.finalSub}>
-                Get instant access to your Max Trade Coach portal for a one-time{" "}
+                Get instant access to your MaxTradeAI portal for a one-time{" "}
                 <strong>$39 founders price</strong>. Upload your next trade,
                 explain your idea, and see how different it feels to get a
                 structured, ICT-aware breakdown instead of a random emoji-filled
@@ -1255,7 +1250,7 @@ export default function LandingPage({ onEnterApp }) {
                   setShowCheckout(true);
                 }}
               >
-                Get Max Trade Coach for $39 →
+                Get MaxTradeAI for $39 →
               </button>
             </div>
           </div>
@@ -1264,7 +1259,7 @@ export default function LandingPage({ onEnterApp }) {
         {/* FOOTER */}
         <footer style={styles.footer}>
           <div style={styles.footerInner}>
-            <span>© {new Date().getFullYear()} Max Trade Coach. All rights reserved.</span>
+            <span>© {new Date().getFullYear()} MaxTradeAI. All rights reserved.</span>
             <div style={styles.footerLinks}>
               <span style={styles.footerLink}>Privacy Policy</span>
               <span style={styles.footerLink}>Terms of Use</span>
@@ -1278,7 +1273,7 @@ export default function LandingPage({ onEnterApp }) {
       {showCheckout && (
         <div style={styles.overlay}>
           <div style={styles.modalCard}>
-            <div style={styles.modalTitle}>Create your Max Trade Coach ID</div>
+            <div style={styles.modalTitle}>Create your MaxTradeAI ID</div>
             <div style={styles.modalText}>
               Enter your details and continue to payment. This is a{" "}
               <strong>one-time $39</strong> founders price for access to your
