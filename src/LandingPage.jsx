@@ -43,16 +43,16 @@ export default function LandingPage({ onEnterApp }) {
   const styles = {
     page: {
       minHeight: "100vh",
-      background: "#050507",
-      color: "#f9fafb",
+      background: "#020617",
+      color: "#e5e7eb",
       fontFamily:
         '-apple-system, BlinkMacSystemFont, system-ui, -system-ui, "SF Pro Text", sans-serif',
     },
 
     // TOP RIBBON + NAV
     ribbon: {
-      background: "#050507",
-      borderBottom: "1px solid rgba(148, 27, 41, 0.6)",
+      background: "#020617",
+      borderBottom: "1px solid rgba(34,211,238,0.35)",
       padding: "6px 16px",
       display: "flex",
       justifyContent: "center",
@@ -73,6 +73,7 @@ export default function LandingPage({ onEnterApp }) {
     },
     ribbonStrong: {
       fontWeight: 700,
+      color: "#22d3ee",
     },
     ribbonBtn: {
       borderRadius: 999,
@@ -82,9 +83,9 @@ export default function LandingPage({ onEnterApp }) {
       fontWeight: 700,
       cursor: "pointer",
       background:
-        "linear-gradient(135deg, #f97373, #ef4444, #b91c1c 90%, #7f1d1d)",
-      color: "#fff",
-      boxShadow: "0 10px 30px rgba(0,0,0,0.55)",
+        "linear-gradient(135deg, #22d3ee, #0ea5e9, #0369a1 90%, #0f172a)",
+      color: "#020617",
+      boxShadow: "0 10px 30px rgba(15,23,42,0.85)",
       whiteSpace: "nowrap",
     },
 
@@ -92,9 +93,9 @@ export default function LandingPage({ onEnterApp }) {
       padding: "14px 16px 10px",
       display: "flex",
       justifyContent: "center",
-      borderBottom: "1px solid rgba(31,41,55,0.8)",
+      borderBottom: "1px solid rgba(15,23,42,0.9)",
       background:
-        "radial-gradient(circle at top, #1a0b0d 0, #050507 55%, #050507 100%)",
+        "radial-gradient(circle at top, #0f172a 0, #020617 55%, #020617 100%)",
       position: "sticky",
       top: 0,
       zIndex: 40,
@@ -118,8 +119,9 @@ export default function LandingPage({ onEnterApp }) {
       height: 28,
       borderRadius: 999,
       background:
-        "conic-gradient(from 220deg, #f97373, #fecaca, #f97373, #991b1b)",
-      boxShadow: "0 0 0 1px rgba(0,0,0,0.8), 0 0 20px rgba(248,113,113,0.6)",
+        "conic-gradient(from 220deg, #22d3ee, #a5f3fc, #22d3ee, #0f172a)",
+      boxShadow:
+        "0 0 0 1px rgba(15,23,42,0.9), 0 0 20px rgba(34,211,238,0.55)",
     },
     logoTitle: {
       fontSize: 16,
@@ -139,9 +141,9 @@ export default function LandingPage({ onEnterApp }) {
     navPill: {
       padding: "4px 10px",
       borderRadius: 999,
-      border: "1px solid rgba(75,85,99,0.8)",
-      background: "rgba(15,23,42,0.8)",
-      opacity: 0.85,
+      border: "1px solid rgba(51,65,85,0.9)",
+      background: "rgba(15,23,42,0.9)",
+      opacity: 0.9,
       whiteSpace: "nowrap",
     },
     navLink: {
@@ -166,7 +168,7 @@ export default function LandingPage({ onEnterApp }) {
     hero: {
       padding: "56px 16px 46px",
       background:
-        "radial-gradient(circle at top, #7f1d1d 0%, #1b0b0c 32%, #050507 80%)",
+        "radial-gradient(circle at top, #0f172a 0%, #020617 45%, #020617 100%)",
       display: "flex",
       justifyContent: "center",
     },
@@ -184,6 +186,7 @@ export default function LandingPage({ onEnterApp }) {
       letterSpacing: 0.16,
       textTransform: "uppercase",
       opacity: 0.8,
+      color: "#38bdf8",
     },
     heroHeadline: {
       fontSize: 38,
@@ -192,7 +195,7 @@ export default function LandingPage({ onEnterApp }) {
       maxWidth: 680,
     },
     heroHighlight: {
-      color: "#fecaca",
+      color: "#22d3ee",
     },
     heroSub: {
       maxWidth: 620,
@@ -214,10 +217,10 @@ export default function LandingPage({ onEnterApp }) {
       fontWeight: 800,
       cursor: "pointer",
       background:
-        "linear-gradient(135deg, #f97373, #ef4444, #b91c1c 90%, #7f1d1d)",
-      color: "#050507",
+        "linear-gradient(135deg, #22d3ee, #0ea5e9, #0284c7 90%, #0f172a)",
+      color: "#020617",
       boxShadow:
-        "0 18px 45px rgba(0,0,0,0.75), 0 0 20px rgba(248,113,113,0.5)",
+        "0 18px 45px rgba(15,23,42,0.9), 0 0 20px rgba(34,211,238,0.55)",
       display: "flex",
       alignItems: "center",
       gap: 8,
@@ -229,7 +232,7 @@ export default function LandingPage({ onEnterApp }) {
       fontSize: 13,
       fontWeight: 600,
       cursor: "pointer",
-      background: "rgba(15,23,42,0.9)",
+      background: "rgba(15,23,42,0.95)",
       color: "#e5e7eb",
       display: "flex",
       alignItems: "center",
@@ -245,21 +248,21 @@ export default function LandingPage({ onEnterApp }) {
     logosRow: {
       marginTop: 10,
       padding: "16px 0 4px",
-      borderTop: "1px solid rgba(31,41,55,0.7)",
-      borderBottom: "1px solid rgba(31,41,55,0.7)",
+      borderTop: "1px solid rgba(15,23,42,0.9)",
+      borderBottom: "1px solid rgba(15,23,42,0.9)",
       display: "flex",
       flexWrap: "wrap",
       justifyContent: "center",
       gap: 16,
-      opacity: 0.8,
+      opacity: 0.85,
       fontSize: 11,
     },
     logoBadge: {
       padding: "6px 12px",
       borderRadius: 999,
-      border: "1px solid rgba(55,65,81,0.9)",
+      border: "1px solid rgba(51,65,85,0.9)",
       background:
-        "linear-gradient(135deg, rgba(17,24,39,0.95), rgba(15,23,42,0.95))",
+        "linear-gradient(135deg, rgba(15,23,42,0.95), rgba(8,47,73,0.95))",
     },
 
     // STATS
@@ -275,8 +278,8 @@ export default function LandingPage({ onEnterApp }) {
       padding: "16px 18px",
       borderRadius: 18,
       background:
-        "linear-gradient(135deg, #7f1d1d, #b91c1c, #7f1d1d 90%, #450a0a)",
-      boxShadow: "0 18px 50px rgba(0,0,0,0.7)",
+        "linear-gradient(135deg, #0f766e, #0284c7, #0f766e 90%, #0b1120)",
+      boxShadow: "0 18px 50px rgba(15,23,42,0.9)",
     },
     statNumber: {
       fontSize: 20,
@@ -288,7 +291,7 @@ export default function LandingPage({ onEnterApp }) {
       opacity: 0.9,
     },
 
-    // PROBLEMS
+    // TITLES
     sectionTitle: {
       fontSize: 24,
       fontWeight: 900,
@@ -299,6 +302,7 @@ export default function LandingPage({ onEnterApp }) {
       letterSpacing: 0.16,
       textTransform: "uppercase",
       opacity: 0.8,
+      color: "#38bdf8",
       marginBottom: 4,
     },
     sectionSub: {
@@ -306,6 +310,8 @@ export default function LandingPage({ onEnterApp }) {
       opacity: 0.78,
       maxWidth: 520,
     },
+
+    // PROBLEMS
     problemsGrid: {
       marginTop: 20,
       display: "flex",
@@ -318,9 +324,10 @@ export default function LandingPage({ onEnterApp }) {
       borderRadius: 22,
       padding: "18px 18px 20px",
       background:
-        "linear-gradient(135deg, #7f1d1d, #b91c1c, #7f1d1d 90%, #450a0a)",
-      color: "#fef2f2",
-      boxShadow: "0 18px 45px rgba(0,0,0,0.8)",
+        "linear-gradient(135deg, #0b1120, #0f172a, #0b1120 90%, #020617)",
+      color: "#e5e7eb",
+      boxShadow: "0 18px 45px rgba(15,23,42,0.9)",
+      border: "1px solid rgba(30,64,175,0.7)",
     },
     problemTag: {
       fontSize: 10,
@@ -328,11 +335,12 @@ export default function LandingPage({ onEnterApp }) {
       letterSpacing: 0.14,
       padding: "4px 8px",
       borderRadius: 999,
-      border: "1px solid rgba(254,242,242,0.5)",
+      border: "1px solid rgba(148,163,184,0.7)",
       marginBottom: 10,
       display: "inline-flex",
       alignItems: "center",
       gap: 4,
+      background: "rgba(15,23,42,0.9)",
     },
     problemTitle: {
       fontSize: 15,
@@ -357,18 +365,18 @@ export default function LandingPage({ onEnterApp }) {
       minHeight: 210,
       borderRadius: 22,
       background:
-        "radial-gradient(circle at top left, #f97373 0, #111827 50%, #020617 100%)",
+        "radial-gradient(circle at top left, #22d3ee 0, #0f172a 50%, #020617 100%)",
       padding: 18,
       position: "relative",
       overflow: "hidden",
-      boxShadow: "0 24px 70px rgba(0,0,0,0.85)",
+      boxShadow: "0 24px 70px rgba(15,23,42,0.95)",
     },
     fakeTable: {
       position: "absolute",
       inset: 18,
       borderRadius: 16,
-      background: "rgba(15,23,42,0.9)",
-      border: "1px solid rgba(148,163,184,0.7)",
+      background: "rgba(15,23,42,0.96)",
+      border: "1px solid rgba(148,163,184,0.8)",
       padding: 10,
       fontSize: 11,
       display: "flex",
@@ -380,7 +388,7 @@ export default function LandingPage({ onEnterApp }) {
       justifyContent: "space-between",
       padding: "4px 6px",
       borderRadius: 8,
-      background: "rgba(15,23,42,0.8)",
+      background: "rgba(15,23,42,0.95)",
     },
     valueCopyCol: {
       flex: "1 1 260px",
@@ -407,9 +415,9 @@ export default function LandingPage({ onEnterApp }) {
       minWidth: 240,
       borderRadius: 20,
       padding: 18,
-      background: "rgba(15,23,42,0.95)",
-      border: "1px solid rgba(31,41,55,0.9)",
-      boxShadow: "0 18px 45px rgba(0,0,0,0.7)",
+      background: "rgba(15,23,42,0.97)",
+      border: "1px solid rgba(30,64,175,0.8)",
+      boxShadow: "0 18px 45px rgba(15,23,42,0.9)",
     },
     checklistTitle: {
       fontSize: 15,
@@ -422,8 +430,8 @@ export default function LandingPage({ onEnterApp }) {
       fontSize: 12,
       padding: "8px 10px",
       borderRadius: 12,
-      background: "rgba(15,23,42,0.9)",
-      border: "1px solid rgba(31,41,55,0.9)",
+      background: "rgba(15,23,42,0.96)",
+      border: "1px solid rgba(30,64,175,0.8)",
       marginBottom: 6,
     },
     checklistLabel: {
@@ -437,7 +445,7 @@ export default function LandingPage({ onEnterApp }) {
       letterSpacing: 0.14,
     },
     checklistYes: {
-      color: "#4ade80",
+      color: "#22c55e",
     },
     checklistNo: {
       color: "#fb7185",
@@ -456,8 +464,9 @@ export default function LandingPage({ onEnterApp }) {
       borderRadius: 20,
       padding: 16,
       background:
-        "linear-gradient(135deg, #7f1d1d, #b91c1c, #7f1d1d 90%, #450a0a)",
-      boxShadow: "0 18px 45px rgba(0,0,0,0.7)",
+        "linear-gradient(135deg, #0b1120, #0f172a, #0b1120 90%, #020617)",
+      boxShadow: "0 18px 45px rgba(15,23,42,0.9)",
+      border: "1px solid rgba(30,64,175,0.7)",
       fontSize: 12,
     },
     testimonialName: {
@@ -476,9 +485,9 @@ export default function LandingPage({ onEnterApp }) {
     faqItem: {
       borderRadius: 14,
       overflow: "hidden",
-      border: "1px solid rgba(55,65,81,0.9)",
+      border: "1px solid rgba(30,64,175,0.8)",
       background:
-        "linear-gradient(135deg, #7f1d1d, #b91c1c, #7f1d1d 90%, #450a0a)",
+        "linear-gradient(135deg, #0b1120, #0f172a, #0b1120 90%, #020617)",
     },
     faqHeader: {
       padding: "10px 14px",
@@ -497,8 +506,8 @@ export default function LandingPage({ onEnterApp }) {
     faqBody: {
       padding: "0 14px 10px",
       fontSize: 12,
-      background: "rgba(15,23,42,0.92)",
-      borderTop: "1px solid rgba(55,65,81,0.9)",
+      background: "rgba(15,23,42,0.96)",
+      borderTop: "1px solid rgba(30,64,175,0.7)",
     },
 
     // FINAL CTA
@@ -507,9 +516,9 @@ export default function LandingPage({ onEnterApp }) {
       borderRadius: 24,
       padding: "22px 18px 24px",
       background: "rgba(15,23,42,0.98)",
-      border: "1px solid rgba(55,65,81,0.9)",
+      border: "1px solid rgba(30,64,175,0.9)",
       textAlign: "center",
-      boxShadow: "0 24px 70px rgba(0,0,0,0.85)",
+      boxShadow: "0 24px 70px rgba(15,23,42,0.95)",
     },
     finalHeadline: {
       fontSize: 22,
@@ -525,7 +534,7 @@ export default function LandingPage({ onEnterApp }) {
 
     // FOOTER
     footer: {
-      borderTop: "1px solid rgba(31,41,55,0.9)",
+      borderTop: "1px solid rgba(15,23,42,0.9)",
       padding: "18px 16px 22px",
       display: "flex",
       justifyContent: "center",
@@ -567,10 +576,10 @@ export default function LandingPage({ onEnterApp }) {
     modalCard: {
       width: "100%",
       maxWidth: 420,
-      background: "#111827",
+      background: "#020617",
       borderRadius: 18,
-      border: "1px solid rgba(55,65,81,0.9)",
-      boxShadow: "0 24px 70px rgba(0,0,0,0.8)",
+      border: "1px solid rgba(30,64,175,0.9)",
+      boxShadow: "0 24px 70px rgba(15,23,42,0.95)",
       padding: 20,
       fontSize: 13,
       boxSizing: "border-box",
@@ -591,7 +600,7 @@ export default function LandingPage({ onEnterApp }) {
     input: {
       width: "100%",
       borderRadius: 10,
-      border: "1px solid rgba(55,65,81,0.9)",
+      border: "1px solid rgba(30,64,175,0.9)",
       background: "#020617",
       color: "#e5e7eb",
       padding: "8px 10px",
@@ -607,15 +616,15 @@ export default function LandingPage({ onEnterApp }) {
       fontSize: 13,
       fontWeight: 700,
       background:
-        "linear-gradient(130deg, #f97373, #ef4444, #b91c1c 90%, #7f1d1d)",
-      color: "#050507",
+        "linear-gradient(130deg, #22d3ee, #0ea5e9, #0284c7 90%, #0f172a)",
+      color: "#020617",
       cursor: "pointer",
       marginTop: 4,
     },
     modalButtonSecondary: {
       width: "100%",
       borderRadius: 10,
-      border: "1px solid rgba(55,65,81,0.9)",
+      border: "1px solid rgba(30,64,175,0.9)",
       padding: "8px 12px",
       fontSize: 12,
       fontWeight: 500,
@@ -635,7 +644,7 @@ export default function LandingPage({ onEnterApp }) {
       padding: 10,
       borderRadius: 10,
       background: "#020617",
-      border: "1px dashed rgba(55,65,81,0.9)",
+      border: "1px dashed rgba(30,64,175,0.9)",
       fontSize: 12,
       textAlign: "center",
       wordBreak: "break-all",
@@ -648,6 +657,7 @@ export default function LandingPage({ onEnterApp }) {
     idValue: {
       fontFamily: "monospace",
       fontSize: 13,
+      color: "#22d3ee",
     },
     idHint: {
       marginTop: 6,
@@ -751,7 +761,7 @@ export default function LandingPage({ onEnterApp }) {
     },
     {
       q: "Can I cancel later?",
-      a: "Yes. If you don't feel it's helping you grade and improve your trades, you can cancel anytime.",
+      a: "Yes. If you don't feel it's helping you grade and improve your trades, you can cancel anytime. Founders get locked-in access for a one-time $39.",
     },
   ];
 
@@ -762,8 +772,9 @@ export default function LandingPage({ onEnterApp }) {
         <div style={styles.ribbon}>
           <div style={styles.ribbonInner}>
             <span style={styles.ribbonText}>
-              <span style={styles.ribbonStrong}>Founders beta:</span> lock in
-              early pricing while we refine Max Trade Coach with real traders.
+              <span style={styles.ribbonStrong}>Founders beta · $39 one-time:</span>{" "}
+              lock in early access while we refine Max Trade Coach with real
+              traders.
             </span>
             <button
               style={styles.ribbonBtn}
@@ -774,7 +785,7 @@ export default function LandingPage({ onEnterApp }) {
                 setShowCheckout(true);
               }}
             >
-              Get instant access
+              Get access for $39
             </button>
           </div>
         </div>
@@ -843,7 +854,7 @@ export default function LandingPage({ onEnterApp }) {
                   setShowCheckout(true);
                 }}
               >
-                Get instant access to my portal →
+                Get instant access for $39 →
               </button>
               <button
                 style={styles.heroSecondaryBtn}
@@ -868,8 +879,8 @@ export default function LandingPage({ onEnterApp }) {
             </div>
 
             <div style={styles.heroTertiary}>
-              Your trades stay organized per day — not buried in camera roll
-              folders or Discord chats.
+              One-time $39 founders access. Your trades stay organized per day —
+              not buried in camera roll folders or Discord chats.
             </div>
 
             {/* logos strip */}
@@ -908,7 +919,7 @@ export default function LandingPage({ onEnterApp }) {
               <div style={{ fontSize: 12, opacity: 0.75 }}>
                 Traders use Max Trade Coach to{" "}
                 <strong>grade trades, journal daily,</strong> and build rules
-                they actually follow.
+                they actually follow — for a one-time $39.
               </div>
             </div>
 
@@ -1229,10 +1240,11 @@ export default function LandingPage({ onEnterApp }) {
                 time.
               </h2>
               <p style={styles.finalSub}>
-                Get instant access to your Max Trade Coach portal. Upload your
-                next trade, explain your idea, and see how different it feels to
-                get a structured, ICT-aware breakdown instead of a random
-                emoji-filled comment.
+                Get instant access to your Max Trade Coach portal for a one-time{" "}
+                <strong>$39 founders price</strong>. Upload your next trade,
+                explain your idea, and see how different it feels to get a
+                structured, ICT-aware breakdown instead of a random emoji-filled
+                comment.
               </p>
               <button
                 style={styles.heroPrimaryBtn}
@@ -1243,7 +1255,7 @@ export default function LandingPage({ onEnterApp }) {
                   setShowCheckout(true);
                 }}
               >
-                Get instant access to Max Trade Coach →
+                Get Max Trade Coach for $39 →
               </button>
             </div>
           </div>
@@ -1268,8 +1280,9 @@ export default function LandingPage({ onEnterApp }) {
           <div style={styles.modalCard}>
             <div style={styles.modalTitle}>Create your Max Trade Coach ID</div>
             <div style={styles.modalText}>
-              Enter your details and continue to payment. After purchase,
-              you&apos;ll receive a Member ID that unlocks your private portal.
+              Enter your details and continue to payment. This is a{" "}
+              <strong>one-time $39</strong> founders price for access to your
+              portal.
             </div>
 
             <form onSubmit={handleCheckoutSubmit}>
@@ -1309,7 +1322,7 @@ export default function LandingPage({ onEnterApp }) {
               >
                 {checkoutLoading
                   ? "Processing…"
-                  : "Pay with Stripe & generate Member ID"}
+                  : "Pay $39 with Stripe & generate Member ID"}
               </button>
             </form>
 
