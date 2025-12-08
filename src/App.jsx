@@ -634,6 +634,15 @@ export default function App({
       appearance: "none",
   WebkitAppearance: "none",
   MozAppearance: "none",
+  selectArrow: {
+  position: "absolute",
+  right: 10,
+  top: "50%",
+  transform: "translateY(-50%)",
+  fontSize: 10,
+  pointerEvents: "none",
+  opacity: 0.7,
+},
     },
 
     textarea: {
