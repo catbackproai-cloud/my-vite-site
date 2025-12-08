@@ -228,6 +228,7 @@ export default function App({
       padding: "80px 16px 24px", // top padding to clear fixed header
       boxSizing: "border-box",
     },
+    
 
     // 🔹 GLOBAL FIXED HEADER
     siteHeader: {
@@ -630,6 +631,9 @@ export default function App({
       fontSize: 13,
       outline: "none",
       boxSizing: "border-box",
+      appearance: "none",
+  WebkitAppearance: "none",
+  MozAppearance: "none",
     },
 
     textarea: {
