@@ -1084,15 +1084,16 @@ export default function App({
   }
 
   function handleLogout() {
-    try {
-      localStorage.removeItem(MEMBER_LS_KEY);
-    } catch {
-      // ignore
-    }
-    setMember(null);
-    setMenuOpen(false);
-    navigate("/"); // back to landing page
+  try {
+    localStorage.removeItem(MEMBER_LS_KEY);
+    localStorage.removeItem("tc_member_id"); // legacy cleanup
+  } catch {
+    // ignore
   }
+  setMember(null);
+  setMenuOpen(false);
+  navigate("/"); // back to landing page
+}
 
   /* ---------------- RENDER ---------------- */
 

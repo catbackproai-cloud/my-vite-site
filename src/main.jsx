@@ -5,26 +5,50 @@ import App from "./App.jsx"; // your Trade Coach portal
 import LandingPage from "./LandingPage.jsx"; // marketing + signup
 import "./index.css";
 
-const MEMBER_KEY = "tc_member_id";
+// 🔑 SINGLE SOURCE OF TRUTH FOR MEMBER STORAGE
+const MEMBER_LS_KEY = "tc_member_v1";
+
+// Helper to read member from localStorage (JSON or legacy string)
+function loadMemberFromStorage() {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const raw = window.localStorage.getItem(MEMBER_LS_KEY);
+    if (!raw) return null;
+
+    // New format: JSON object
+    try {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === "object") {
+        return parsed;
+      }
+    } catch {
+      // Ignore and fall through to legacy string case
+    }
+
+    // Legacy: stored as plain memberId string
+    return { memberId: raw };
+  } catch {
+    return null;
+  }
+}
 
 // -------- Workspace Guard --------
 function WorkspaceGuard() {
   const navigate = useNavigate();
 
-  // Pull stored member ID from localStorage
-  const memberId = window.localStorage.getItem(MEMBER_KEY);
+  const [member] = React.useState(() => loadMemberFromStorage());
 
-  // If missing -> redirect to landing page
   React.useEffect(() => {
-    if (!memberId) {
+    if (!member || !member.memberId) {
       navigate("/", { replace: true });
     }
-  }, [memberId, navigate]);
+  }, [member, navigate]);
 
   // While redirecting, render nothing
-  if (!memberId) return null;
+  if (!member || !member.memberId) return null;
 
-  // User is authenticated → show the Trade Coach app
+  // User is "authenticated" → show the Trade Coach app
   return <App />;
 }
 
