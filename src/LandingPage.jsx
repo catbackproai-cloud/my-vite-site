@@ -40,6 +40,11 @@ export default function LandingPage({ onEnterApp }) {
 
   const [openFaq, setOpenFaq] = useState(null);
 
+  // NEW: legal modals
+  const [showPrivacy, setShowPrivacy] = useState(false);
+  const [showTerms, setShowTerms] = useState(false);
+  const [showDisclaimer, setShowDisclaimer] = useState(false);
+
   const styles = {
     page: {
       minHeight: "100vh",
@@ -51,7 +56,7 @@ export default function LandingPage({ onEnterApp }) {
       flexDirection: "column",
       width: "100%",
       maxWidth: "100%",
-      overflowX: "hidden", // 🔒 kill sideways scroll on mobile
+      overflowX: "hidden",
     },
 
     // TOP RIBBON + NAV
@@ -710,6 +715,23 @@ export default function LandingPage({ onEnterApp }) {
       color: "#6b7280",
       textAlign: "right",
     },
+
+    // NEW: legal modal body
+    legalBody: {
+      maxHeight: "60vh",
+      overflowY: "auto",
+      fontSize: 12,
+      lineHeight: 1.5,
+      textAlign: "left",
+      marginTop: 8,
+      paddingRight: 4,
+    },
+    legalHeading: {
+      fontWeight: 700,
+      marginTop: 8,
+      marginBottom: 4,
+      fontSize: 13,
+    },
   };
 
   function openWorkspace() {
@@ -814,7 +836,9 @@ export default function LandingPage({ onEnterApp }) {
         <div style={styles.ribbon}>
           <div style={styles.ribbonInner}>
             <span style={styles.ribbonText}>
-              <span style={styles.ribbonStrong}>Founders beta · $39 one-time:</span>{" "}
+              <span style={styles.ribbonStrong}>
+                Founders beta · $39 one-time:
+              </span>{" "}
               lock in early access while we refine MaxTradeAI with real traders.
             </span>
             <button
@@ -887,6 +911,22 @@ export default function LandingPage({ onEnterApp }) {
               idea, and get a breakdown like a coach is sitting next to you —
               for NASDAQ, indices, FX, and gold.
             </p>
+
+            {/* NEW: visible disclaimer under hero */}
+            <div
+              style={{
+                fontSize: 11,
+                opacity: 0.7,
+                maxWidth: 640,
+                marginTop: 6,
+              }}
+            >
+              <strong>Important:</strong> MaxTradeAI is for educational and
+              informational purposes only. It does not provide financial or
+              investment advice. AI-generated feedback can be inaccurate or
+              incomplete, and you are fully responsible for your own trading
+              decisions.
+            </div>
 
             <div style={styles.heroBtnRow}>
               <button
@@ -1086,7 +1126,7 @@ export default function LandingPage({ onEnterApp }) {
                     Confidence: 75%
                   </div>
                 </div>
-                <div style={styles.previewGradeBadge}>Graded A-F</div>
+                <div style={styles.previewGradeBadge}>A-F</div>
               </div>
 
               <div style={styles.previewSections}>
@@ -1312,6 +1352,20 @@ export default function LandingPage({ onEnterApp }) {
               >
                 Get MaxTradeAI for $39 →
               </button>
+
+              {/* brief legal note under final CTA */}
+              <div
+                style={{
+                  fontSize: 11,
+                  opacity: 0.7,
+                  maxWidth: 520,
+                  marginTop: 10,
+                }}
+              >
+                MaxTradeAI does not guarantee profits or specific outcomes. AI
+                feedback is fallible and may miss or misinterpret information
+                you provide. Always use your own judgment and risk management.
+              </div>
             </div>
           </div>
         </section>
@@ -1323,9 +1377,36 @@ export default function LandingPage({ onEnterApp }) {
               © {new Date().getFullYear()} MaxTradeAI. All rights reserved.
             </span>
             <div style={styles.footerLinks}>
-              <span style={styles.footerLink}>Privacy Policy</span>
-              <span style={styles.footerLink}>Terms of Use</span>
-              <span style={styles.footerLink}>Earnings Disclaimer</span>
+              <span
+                style={styles.footerLink}
+                onClick={() => setShowPrivacy(true)}
+              >
+                Privacy Policy
+              </span>
+              <span
+                style={styles.footerLink}
+                onClick={() => setShowTerms(true)}
+              >
+                Terms of Use
+              </span>
+              <span
+                style={styles.footerLink}
+                onClick={() => setShowDisclaimer(true)}
+              >
+                Disclaimer
+              </span>
+            </div>
+            <div
+              style={{
+                fontSize: 11,
+                opacity: 0.7,
+                maxWidth: 700,
+                marginTop: 4,
+              }}
+            >
+              Educational use only. Nothing on this site or in the app is
+              financial advice. AI-generated feedback can be inaccurate or
+              incomplete, and you are responsible for any trades you place.
             </div>
           </div>
         </footer>
@@ -1340,6 +1421,13 @@ export default function LandingPage({ onEnterApp }) {
               Enter your details and continue to payment. This is a{" "}
               <strong>one-time $39</strong> founders price for access to your
               portal.
+              <br />
+              <br />
+              <span style={{ fontSize: 11, opacity: 0.8 }}>
+                By continuing, you acknowledge that MaxTradeAI is for
+                educational use only, that AI can make mistakes, and that you
+                are fully responsible for your own trading decisions.
+              </span>
             </div>
 
             <form onSubmit={handleCheckoutSubmit}>
@@ -1450,6 +1538,194 @@ export default function LandingPage({ onEnterApp }) {
               onClick={() => setShowMemberPortal(false)}
             >
               Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* PRIVACY POLICY MODAL */}
+      {showPrivacy && (
+        <div style={styles.overlay}>
+          <div style={styles.modalCard}>
+            <div style={styles.modalTitle}>Privacy Policy</div>
+            <div style={styles.modalText}>
+              How MaxTradeAI handles your information.
+            </div>
+            <div style={styles.legalBody}>
+              <div style={styles.legalHeading}>1. Information You Provide</div>
+              <p>
+                When you use MaxTradeAI, you may upload screenshots, enter
+                notes, and provide basic details like your name and email. This
+                information is used to generate AI feedback and maintain your
+                personal workspace.
+              </p>
+
+              <div style={styles.legalHeading}>2. How We Use Your Data</div>
+              <p>
+                We use your data to operate and improve the app, generate
+                educational feedback on your trades, and keep your journal and
+                trade history organized. We do not sell your personal data.
+              </p>
+
+              <div style={styles.legalHeading}>3. AI & Third-Party Services</div>
+              <p>
+                Your charts and notes may be processed by third-party AI
+                providers solely for the purpose of generating feedback. We take
+                reasonable steps to protect this data, but no system is 100%
+                secure.
+              </p>
+
+              <div style={styles.legalHeading}>4. Storage & Security</div>
+              <p>
+                Some information may be stored locally in your browser or on our
+                servers. We aim to use reasonable security measures, but you
+                should avoid uploading highly sensitive personal or financial
+                account information.
+              </p>
+
+              <div style={styles.legalHeading}>5. Your Choices</div>
+              <p>
+                You can stop using the app at any time. If you&apos;d like your
+                data removed from our systems, you can contact us and we will
+                make reasonable efforts to delete it, where technically and
+                legally possible.
+              </p>
+
+              <div style={styles.legalHeading}>6. Changes to This Policy</div>
+              <p>
+                We may update this Privacy Policy over time. If we make material
+                changes, we&apos;ll update the effective date and may provide
+                a brief notice in the app.
+              </p>
+            </div>
+            <button
+              type="button"
+              style={styles.modalButtonSecondary}
+              onClick={() => setShowPrivacy(false)}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* TERMS OF USE MODAL */}
+      {showTerms && (
+        <div style={styles.overlay}>
+          <div style={styles.modalCard}>
+            <div style={styles.modalTitle}>Terms of Use</div>
+            <div style={styles.modalText}>
+              Please read this before relying on MaxTradeAI.
+            </div>
+            <div style={styles.legalBody}>
+              <div style={styles.legalHeading}>1. Educational Purpose Only</div>
+              <p>
+                MaxTradeAI is provided for educational and informational
+                purposes only. It does not provide financial, investment, legal,
+                tax, or professional advice of any kind.
+              </p>
+
+              <div style={styles.legalHeading}>2. No Financial Advice</div>
+              <p>
+                Nothing generated by the app should be interpreted as a
+                recommendation to buy, sell, or hold any security, currency, or
+                financial instrument. You are solely responsible for any trades
+                you choose to place.
+              </p>
+
+              <div style={styles.legalHeading}>3. AI-Generated Content</div>
+              <p>
+                Feedback in MaxTradeAI is generated using AI models based on the
+                screenshots and notes you provide. AI can misunderstand charts,
+                miss important details, or generate inaccurate or incomplete
+                information. You should never treat AI feedback as guaranteed
+                truth.
+              </p>
+
+              <div style={styles.legalHeading}>4. User Responsibility</div>
+              <p>
+                By using this app, you agree that you are responsible for:
+                providing accurate information, managing your own risk, and
+                verifying any ideas before acting on them. You trade at your own
+                risk.
+              </p>
+
+              <div style={styles.legalHeading}>5. Limitation of Liability</div>
+              <p>
+                To the fullest extent permitted by law, MaxTradeAI and its
+                operators are not liable for any direct, indirect, incidental,
+                or consequential losses or damages arising from your use of the
+                app, including trading losses, missed opportunities, or emotional
+                stress.
+              </p>
+
+              <div style={styles.legalHeading}>6. No Warranties</div>
+              <p>
+                The app is provided &quot;as is&quot; and &quot;as available&quot;
+                without warranties of any kind, whether express or implied.
+              </p>
+
+              <div style={styles.legalHeading}>7. Changes to Terms</div>
+              <p>
+                We may update these Terms of Use over time. Continued use of the
+                app after changes means you accept the updated terms.
+              </p>
+            </div>
+            <button
+              type="button"
+              style={styles.modalButtonSecondary}
+              onClick={() => setShowTerms(false)}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* DISCLAIMER MODAL */}
+      {showDisclaimer && (
+        <div style={styles.overlay}>
+          <div style={styles.modalCard}>
+            <div style={styles.modalTitle}>Disclaimer</div>
+            <div style={styles.modalText}>
+              AI can be wrong. Trading always involves risk.
+            </div>
+            <div style={styles.legalBody}>
+              <div style={styles.legalHeading}>1. No Guarantees</div>
+              <p>
+                MaxTradeAI cannot guarantee accuracy of any AI-generated
+                feedback, nor can it guarantee profits, improvement, or specific
+                outcomes. All trading involves risk, and you may lose money.
+              </p>
+
+              <div style={styles.legalHeading}>2. AI Limitations</div>
+              <p>
+                Even with detailed notes and clear screenshots, AI can
+                misinterpret context, miss key points, or provide feedback that
+                you disagree with. Treat AI feedback as an extra opinion, not a
+                signal service or rulebook.
+              </p>
+
+              <div style={styles.legalHeading}>3. Your Decisions</div>
+              <p>
+                Any trades you place are your decisions and your responsibility.
+                You should always use your own judgment, risk management, and,
+                where appropriate, consult a qualified financial professional.
+              </p>
+
+              <div style={styles.legalHeading}>4. Educational Framing</div>
+              <p>
+                Think of MaxTradeAI like a practice tool or training partner.
+                Its role is to help you reflect on your process, not to tell you
+                exactly what to do in the markets.
+              </p>
+            </div>
+            <button
+              type="button"
+              style={styles.modalButtonSecondary}
+              onClick={() => setShowDisclaimer(false)}
+            >
+              Close
             </button>
           </div>
         </div>
