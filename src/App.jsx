@@ -1168,7 +1168,7 @@ export default function App({
               URL.revokeObjectURL(c.localPreviewUrl);
             } catch {}
           }
-
+console.log("TradeCoach response:", data);
           return {
             ...c,
             pending: false,
@@ -1450,9 +1450,13 @@ export default function App({
                   <div>
                     <div style={styles.coachTitle}>Trade Coach</div>
                     <div style={styles.coachSub}>
-                      Upload chart → choose pair & timeframe → explain your idea
-                      → AI feedback.
-                    </div>
+  Upload chart → choose pair & timeframe → explain your idea → AI feedback.
+  <br />
+  <strong>
+    The more detail you give (bias, liquidity, session, entry, stop, target,
+    emotions), the more accurate your AI feedback will be.
+  </strong>
+</div>
                   </div>
                   <div style={styles.dayBadge}>Day: {day}</div>
                 </div>

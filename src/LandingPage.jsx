@@ -1086,7 +1086,7 @@ export default function LandingPage({ onEnterApp }) {
                     Confidence: 75%
                   </div>
                 </div>
-                <div style={styles.previewGradeBadge}>C</div>
+                <div style={styles.previewGradeBadge}>Graded A-F</div>
               </div>
 
               <div style={styles.previewSections}>
