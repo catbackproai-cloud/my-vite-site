@@ -1124,7 +1124,7 @@ export default function App({
     <>
       {/* 🔹 GLOBAL HEADER (fixed, very top of site) */}
       <div style={styles.siteHeader}>
-        <div style={styles.siteHeaderTitle}>Trade Coach Portal</div>
+        <div style={styles.siteHeaderTitle}>Trade Coach</div>
         <div style={styles.siteHeaderActions}>
           <span>Personal workspace</span>
           <button
@@ -1631,7 +1631,7 @@ export default function App({
           <div style={styles.modalCard}>
             <div style={styles.modalTitle}>Profile</div>
             <div style={styles.modalText}>
-              Basic info for your Trade Coach portal.
+              Basic info for your Trade Coach.
             </div>
 
             <div style={styles.modalRow}>
