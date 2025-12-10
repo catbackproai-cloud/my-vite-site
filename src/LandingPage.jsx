@@ -33,6 +33,7 @@ export default function LandingPage({ onEnterApp }) {
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [checkoutError, setCheckoutError] = useState("");
   const [memberId, setMemberId] = useState("");
+  const [checkoutAgreed, setCheckoutAgreed] = useState(false);
 
   const [showMemberPortal, setShowMemberPortal] = useState(false);
   const [memberPortalId, setMemberPortalId] = useState("");
@@ -40,7 +41,7 @@ export default function LandingPage({ onEnterApp }) {
 
   const [openFaq, setOpenFaq] = useState(null);
 
-  // NEW: legal modals
+  // legal modals
   const [showPrivacy, setShowPrivacy] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
   const [showDisclaimer, setShowDisclaimer] = useState(false);
@@ -716,7 +717,7 @@ export default function LandingPage({ onEnterApp }) {
       textAlign: "right",
     },
 
-    // NEW: legal modal body
+    // Legal modal body
     legalBody: {
       maxHeight: "60vh",
       overflowY: "auto",
@@ -732,6 +733,30 @@ export default function LandingPage({ onEnterApp }) {
       marginBottom: 4,
       fontSize: 13,
     },
+
+    // Terms checkbox
+    checkboxRow: {
+      display: "flex",
+      alignItems: "flex-start",
+      gap: 8,
+      marginTop: 6,
+      marginBottom: 4,
+      fontSize: 11,
+      lineHeight: 1.4,
+      textAlign: "left",
+    },
+    checkboxInput: {
+      marginTop: 2,
+    },
+    checkboxLabel: {
+      opacity: 0.9,
+    },
+    checkboxLink: {
+      color: "#22d3ee",
+      textDecoration: "underline",
+      textDecorationStyle: "dotted",
+      cursor: "pointer",
+    },
   };
 
   function openWorkspace() {
@@ -745,6 +770,15 @@ export default function LandingPage({ onEnterApp }) {
   async function handleCheckoutSubmit(e) {
     e.preventDefault();
     setCheckoutError("");
+
+    // enforce terms / privacy agreement
+    if (!checkoutAgreed) {
+      setCheckoutError(
+        "Please confirm that you've read and agree to the Terms of Use and Privacy Policy before continuing."
+      );
+      return;
+    }
+
     setCheckoutLoading(true);
 
     try {
@@ -847,6 +881,7 @@ export default function LandingPage({ onEnterApp }) {
                 setCheckoutForm({ name: "", email: "" });
                 setCheckoutError("");
                 setMemberId("");
+                setCheckoutAgreed(false);
                 setShowCheckout(true);
               }}
             >
@@ -912,7 +947,7 @@ export default function LandingPage({ onEnterApp }) {
               for NASDAQ, indices, FX, and gold.
             </p>
 
-            {/* NEW: visible disclaimer under hero */}
+            {/* disclaimer under hero */}
             <div
               style={{
                 fontSize: 11,
@@ -935,6 +970,7 @@ export default function LandingPage({ onEnterApp }) {
                   setCheckoutForm({ name: "", email: "" });
                   setCheckoutError("");
                   setMemberId("");
+                  setCheckoutAgreed(false);
                   setShowCheckout(true);
                 }}
               >
@@ -1347,6 +1383,7 @@ export default function LandingPage({ onEnterApp }) {
                   setCheckoutForm({ name: "", email: "" });
                   setCheckoutError("");
                   setMemberId("");
+                  setCheckoutAgreed(false);
                   setShowCheckout(true);
                 }}
               >
@@ -1451,6 +1488,40 @@ export default function LandingPage({ onEnterApp }) {
                 style={styles.input}
                 required
               />
+
+              {/* Terms / Privacy checkbox */}
+              <label style={styles.checkboxRow}>
+                <input
+                  type="checkbox"
+                  style={styles.checkboxInput}
+                  checked={checkoutAgreed}
+                  onChange={(e) => setCheckoutAgreed(e.target.checked)}
+                />
+                <span style={styles.checkboxLabel}>
+                  I have read and agree to the{" "}
+                  <span
+                    style={styles.checkboxLink}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      setShowTerms(true);
+                    }}
+                  >
+                    Terms of Use
+                  </span>{" "}
+                  and{" "}
+                  <span
+                    style={styles.checkboxLink}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      setShowPrivacy(true);
+                    }}
+                  >
+                    Privacy Policy
+                  </span>
+                  , and I understand that MaxTradeAI is educational only and not
+                  financial advice.
+                </span>
+              </label>
 
               {checkoutError && (
                 <div style={styles.modalError}>{checkoutError}</div>
