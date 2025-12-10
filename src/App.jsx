@@ -1299,7 +1299,7 @@ export default function App({
     <>
       {/* 🔹 GLOBAL HEADER (fixed, very top of site) */}
       <div style={styles.siteHeader}>
-        <div style={styles.siteHeaderTitle}>MaxTradeAI Portal</div>
+        <div style={styles.siteHeaderTitle}>MaxTradeAI</div>
         <div style={styles.siteHeaderActions}>
           <span style={styles.workspaceTag}>Personal workspace</span>
           <button
