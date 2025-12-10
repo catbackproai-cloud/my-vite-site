@@ -47,6 +47,11 @@ export default function LandingPage({ onEnterApp }) {
       color: "#e5e7eb",
       fontFamily:
         '-apple-system, BlinkMacSystemFont, system-ui, -system-ui, "SF Pro Text", sans-serif',
+      display: "flex",
+      flexDirection: "column",
+      width: "100%",
+      maxWidth: "100%",
+      overflowX: "hidden", // 🔒 kill sideways scroll on mobile
     },
 
     // TOP RIBBON + NAV
@@ -356,59 +361,6 @@ export default function LandingPage({ onEnterApp }) {
     problemText: {
       fontSize: 12,
       opacity: 0.9,
-    },
-
-    // VALUE SECTION (unused now but kept)
-    valueRow: {
-      display: "flex",
-      flexWrap: "wrap",
-      gap: 24,
-      alignItems: "stretch",
-      marginTop: 18,
-      justifyContent: "center",
-    },
-    valueImageCard: {
-      flex: "1.2 1 300px",
-      minHeight: 210,
-      borderRadius: 22,
-      background:
-        "radial-gradient(circle at top left, #22d3ee 0, #0f172a 50%, #020617 100%)",
-      padding: 18,
-      position: "relative",
-      overflow: "hidden",
-      boxShadow: "0 24px 70px rgba(15,23,42,0.95)",
-    },
-    fakeTable: {
-      position: "absolute",
-      inset: 18,
-      borderRadius: 16,
-      background: "rgba(15,23,42,0.96)",
-      border: "1px solid rgba(148,163,184,0.8)",
-      padding: 10,
-      fontSize: 11,
-      display: "flex",
-      flexDirection: "column",
-      gap: 4,
-    },
-    fakeRow: {
-      display: "flex",
-      justifyContent: "space-between",
-      padding: "4px 6px",
-      borderRadius: 8,
-      background: "rgba(15,23,42,0.95)",
-    },
-    valueCopyCol: {
-      flex: "1 1 260px",
-      display: "flex",
-      flexDirection: "column",
-      gap: 8,
-    },
-    bulletList: {
-      margin: 0,
-      paddingLeft: 16,
-      fontSize: 13,
-      opacity: 0.92,
-      textAlign: "left",
     },
 
     // CHECKLIST / WHAT YOU GET
@@ -863,8 +815,7 @@ export default function LandingPage({ onEnterApp }) {
           <div style={styles.ribbonInner}>
             <span style={styles.ribbonText}>
               <span style={styles.ribbonStrong}>Founders beta · $39 one-time:</span>{" "}
-              lock in early access while we refine MaxTradeAI with real
-              traders.
+              lock in early access while we refine MaxTradeAI with real traders.
             </span>
             <button
               style={styles.ribbonBtn}
