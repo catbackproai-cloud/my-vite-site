@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-const CREATE_MEMBER_WEBHOOK =
-  import.meta.env?.VITE_N8N_TRADECOACH_CREATE_MEMBER ||
-  "https://jacobtf007.app.n8n.cloud/webhook/tradecoach_create_member";
+const CREATE_CHECKOUT_WEBHOOK =
+  import.meta.env?.VITE_N8N_TRADECOACH_CREATE_CHECKOUT ||
+  "https://jacobtf007.app.n8n.cloud/webhook/tradecoach_create_checkout";
 
 const MEMBER_LS_KEY = "tc_member_v1";
 
@@ -767,63 +767,65 @@ export default function LandingPage({ onEnterApp }) {
     }
   }
 
-  async function handleCheckoutSubmit(e) {
-    e.preventDefault();
-    setCheckoutError("");
+async function handleCheckoutSubmit(e) {
+  e.preventDefault();
+  setCheckoutError("");
 
-    // enforce terms / privacy agreement
-    if (!checkoutAgreed) {
-      setCheckoutError(
-        "Please confirm that you've read and agree to the Terms of Use and Privacy Policy before continuing."
-      );
-      return;
-    }
-
-    setCheckoutLoading(true);
-
-    try {
-      if (!checkoutForm.name || !checkoutForm.email) {
-        throw new Error("Please enter your name and email.");
-      }
-
-      const res = await fetch(CREATE_MEMBER_WEBHOOK, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: checkoutForm.name,
-          email: checkoutForm.email,
-        }),
-      });
-
-      if (!res.ok) {
-        const text = await res.text();
-        console.error("Create member failed:", res.status, text);
-        throw new Error("Could not create your member ID. Try again.");
-      }
-
-      const data = await res.json();
-      const generatedId = data.memberId;
-
-      if (!generatedId) {
-        throw new Error("Server did not return a member ID.");
-      }
-
-      setMemberId(generatedId);
-
-      saveMemberToLocal({
-        memberId: generatedId,
-        email: data.email || checkoutForm.email,
-        name: data.name || checkoutForm.name,
-        plan: data.plan || "personal",
-        createdAt: data.createdAt || new Date().toISOString(),
-      });
-    } catch (err) {
-      console.error(err);
-      setCheckoutError(err?.message || "Something went wrong.");
-    } finally {
-      setCheckoutLoading(false);
-    }
+  // enforce terms / privacy agreement
+  if (!checkoutAgreed) {
+    setCheckoutError(
+      "Please confirm that you've read and agree to the Terms of Use and Privacy Policy before continuing."
+    );
+    return;
   }
+
+  if (!checkoutForm.name || !checkoutForm.email) {
+    setCheckoutError("Please enter your name and email.");
+    return;
+  }
+
+  setCheckoutLoading(true);
+
+  try {
+    const res = await fetch(CREATE_CHECKOUT_WEBHOOK, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: checkoutForm.name,
+        email: checkoutForm.email,
+        plan: "personal",
+      }),
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      console.error("Create checkout failed:", res.status, text);
+      throw new Error("Could not start Stripe checkout. Try again.");
+    }
+
+    const data = await res.json();
+
+    if (!data?.url) {
+      console.error("No checkout URL returned:", data);
+      throw new Error("No Stripe checkout URL returned from server.");
+    }
+
+    // (Optional) stash what we know locally for later
+    saveMemberToLocal({
+      email: checkoutForm.email,
+      name: checkoutForm.name,
+      plan: "personal",
+    });
+
+    // 🚀 send user to Stripe Checkout
+    window.location.href = data.url;
+  } catch (err) {
+    console.error(err);
+    setCheckoutError(err?.message || "Something went wrong.");
+  } finally {
+    setCheckoutLoading(false);
+  }
+}
 
   function handleMemberPortalSubmit(e) {
     e.preventDefault();
