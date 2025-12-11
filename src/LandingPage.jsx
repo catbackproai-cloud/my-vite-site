@@ -1,8 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
-const STRIPE_CHECKOUT_URL =
-  import.meta.env?.VITE_STRIPE_CHECKOUT_URL ||
+const STRIPE_PAYMENT_URL =
   "https://buy.stripe.com/00w6oH17pgLR9yc9O0gQE00";
 
 const MEMBER_LS_KEY = "tc_member_v1";
@@ -32,6 +31,7 @@ export default function LandingPage({ onEnterApp }) {
   const [checkoutForm, setCheckoutForm] = useState({ name: "", email: "" });
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [checkoutError, setCheckoutError] = useState("");
+  const [memberId, setMemberId] = useState("");
   const [checkoutAgreed, setCheckoutAgreed] = useState(false);
 
   const [showMemberPortal, setShowMemberPortal] = useState(false);
@@ -44,6 +44,20 @@ export default function LandingPage({ onEnterApp }) {
   const [showPrivacy, setShowPrivacy] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
   const [showDisclaimer, setShowDisclaimer] = useState(false);
+
+  // show success banner if coming back from Stripe redirect
+  const [checkoutSuccess, setCheckoutSuccess] = useState(false);
+
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("checkout") === "success") {
+        setCheckoutSuccess(true);
+      }
+    } catch (err) {
+      console.error("Failed to parse query params", err);
+    }
+  }, []);
 
   const styles = {
     page: {
@@ -783,28 +797,21 @@ export default function LandingPage({ onEnterApp }) {
       return;
     }
 
-    setCheckoutLoading(true);
-
     try {
-      // Save basic info locally so you can use it after payment
+      setCheckoutLoading(true);
+
+      // stash name/email locally so you can prefill later if needed
       saveMemberToLocal({
         email: checkoutForm.email,
         name: checkoutForm.name,
         plan: "personal",
       });
 
-      // Optional: prefill email for Stripe Payment Link
-      const url = `${STRIPE_CHECKOUT_URL}?prefilled_email=${encodeURIComponent(
-        checkoutForm.email
-      )}`;
-
-      // 🚀 send user to Stripe Checkout
-      window.location.href = url;
+      // 🚀 send user directly to Stripe Payment Link
+      window.location.href = STRIPE_PAYMENT_URL;
     } catch (err) {
       console.error(err);
-      setCheckoutError(
-        err?.message || "Something went wrong while redirecting to Stripe."
-      );
+      setCheckoutError("Something went wrong redirecting to Stripe.");
     } finally {
       setCheckoutLoading(false);
     }
@@ -865,6 +872,7 @@ export default function LandingPage({ onEnterApp }) {
               onClick={() => {
                 setCheckoutForm({ name: "", email: "" });
                 setCheckoutError("");
+                setMemberId("");
                 setCheckoutAgreed(false);
                 setShowCheckout(true);
               }}
@@ -914,6 +922,23 @@ export default function LandingPage({ onEnterApp }) {
           </div>
         </div>
 
+        {/* SUCCESS BANNER AFTER STRIPE REDIRECT */}
+        {checkoutSuccess && (
+          <div
+            style={{
+              background: "#022c22",
+              borderBottom: "1px solid #16a34a",
+              color: "#bbf7d0",
+              padding: "10px 16px",
+              textAlign: "center",
+              fontSize: 12,
+            }}
+          >
+            Payment confirmed ✅ Check your email for your MaxTradeAI Member ID,
+            then click &quot;Enter Member ID&quot; to open your portal.
+          </div>
+        )}
+
         {/* HERO */}
         <section style={styles.hero}>
           <div style={styles.heroInner}>
@@ -953,6 +978,7 @@ export default function LandingPage({ onEnterApp }) {
                 onClick={() => {
                   setCheckoutForm({ name: "", email: "" });
                   setCheckoutError("");
+                  setMemberId("");
                   setCheckoutAgreed(false);
                   setShowCheckout(true);
                 }}
@@ -1365,6 +1391,7 @@ export default function LandingPage({ onEnterApp }) {
                 onClick={() => {
                   setCheckoutForm({ name: "", email: "" });
                   setCheckoutError("");
+                  setMemberId("");
                   setCheckoutAgreed(false);
                   setShowCheckout(true);
                 }}
@@ -1431,7 +1458,7 @@ export default function LandingPage({ onEnterApp }) {
         </footer>
       </div>
 
-      {/* CHECKOUT MODAL */}
+      {/* CHECKOUT / CREATE MEMBER MODAL */}
       {showCheckout && (
         <div style={styles.overlay}>
           <div style={styles.modalCard}>
@@ -1519,10 +1546,31 @@ export default function LandingPage({ onEnterApp }) {
                 }}
               >
                 {checkoutLoading
-                  ? "Redirecting to Stripe…"
-                  : "Pay $39 with Stripe"}
+                  ? "Processing…"
+                  : "Pay $39 with Stripe & generate Member ID"}
               </button>
             </form>
+
+            {memberId && (
+              <div style={styles.idBox}>
+                <span style={styles.idLabel}>Your Member ID:</span>
+                <span style={styles.idValue}>{memberId}</span>
+                <div style={styles.idHint}>
+                  Save this somewhere safe — you&apos;ll use it to log into Max
+                  Trade Coach on any device.
+                </div>
+                <button
+                  type="button"
+                  style={{
+                    ...styles.modalButtonPrimary,
+                    marginTop: 10,
+                  }}
+                  onClick={openWorkspace}
+                >
+                  I saved it → go to my portal
+                </button>
+              </div>
+            )}
 
             <button
               type="button"
