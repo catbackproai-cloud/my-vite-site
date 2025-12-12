@@ -811,23 +811,40 @@ export default function LandingPage({ onEnterApp }) {
         name: checkoutForm.name,
         plan: "personal",
       });
+// 🔥 send name + email to n8n so it can append to Google Sheet
+try {
+  const payload = {
+    name: (checkoutForm?.name || "").trim(),
+    email: (checkoutForm?.email || "").trim(),
+  };
 
-      // 🔥 send name + email to n8n so it can append to Google Sheet
-      try {
-        await fetch(SIGNUP_WEBHOOK_URL, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            name: checkoutForm.name,
-            email: checkoutForm.email,
-          }),
-        });
-      } catch (err) {
-        console.error("Failed to send signup to n8n", err);
-        // we DON'T block Stripe redirect on this – just log it
-      }
+  // don't send empty values
+  if (payload.name && payload.email) {
+    const res = await fetch(SIGNUP_WEBHOOK_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    // helpful debug (does NOT block redirect)
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      console.warn("Signup webhook returned non-200:", res.status, text);
+    } else {
+      // if your respond node returns {success:true}, this will show it
+      const data = await res.json().catch(() => null);
+      console.log("Signup webhook success:", data);
+    }
+  } else {
+    console.warn("Signup webhook skipped: missing name/email", payload);
+  }
+} catch (err) {
+  console.error("Failed to send signup to n8n", err);
+  // we DON'T block Stripe redirect on this – just log it
+}
 
       // 🚀 send user directly to Stripe Payment Link (unchanged)
       window.location.href = STRIPE_PAYMENT_URL;
