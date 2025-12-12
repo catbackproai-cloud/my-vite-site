@@ -4,11 +4,6 @@ import { useNavigate } from "react-router-dom";
 const STRIPE_PAYMENT_URL =
   "https://buy.stripe.com/5kQ7sL6rJeDJaCg5xKgQE01";
 
-// 🔗 n8n signup webhook – Vite env first, hard-coded fallback second
-const SIGNUP_WEBHOOK_URL =
-  import.meta.env?.VITE_N8N_TRADECOACH_SIGNUP ||
-  "https://jacobtf007.app.n8n.cloud/webhook/tradecoach_signup";
-
 const MEMBER_LS_KEY = "tc_member_v1";
 
 function saveMemberToLocal(partial) {
@@ -33,7 +28,6 @@ export default function LandingPage({ onEnterApp }) {
   const navigate = useNavigate();
 
   const [showCheckout, setShowCheckout] = useState(false);
-  const [checkoutForm, setCheckoutForm] = useState({ name: "", email: "" });
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [checkoutError, setCheckoutError] = useState("");
   const [memberId, setMemberId] = useState("");
@@ -593,17 +587,6 @@ export default function LandingPage({ onEnterApp }) {
       marginBottom: 12,
       textAlign: "center",
     },
-    input: {
-      width: "100%",
-      borderRadius: 10,
-      border: "1px solid rgba(30,64,175,0.9)",
-      background: "#020617",
-      color: "#e5e7eb",
-      padding: "8px 10px",
-      fontSize: 13,
-      marginBottom: 8,
-      boxSizing: "border-box",
-    },
     modalButtonPrimary: {
       width: "100%",
       borderRadius: 10,
@@ -789,7 +772,6 @@ export default function LandingPage({ onEnterApp }) {
     e.preventDefault();
     setCheckoutError("");
 
-    // enforce terms / privacy agreement
     if (!checkoutAgreed) {
       setCheckoutError(
         "Please confirm that you've read and agree to the Terms of Use and Privacy Policy before continuing."
@@ -797,56 +779,15 @@ export default function LandingPage({ onEnterApp }) {
       return;
     }
 
-    if (!checkoutForm.name || !checkoutForm.email) {
-      setCheckoutError("Please enter your name and email.");
-      return;
-    }
-
     try {
       setCheckoutLoading(true);
 
-      // stash name/email locally so you can prefill later if needed
+      // OPTIONAL: keep any prior local member info, but do not collect name/email here anymore
       saveMemberToLocal({
-        email: checkoutForm.email,
-        name: checkoutForm.name,
         plan: "personal",
       });
-// 🔥 send name + email to n8n so it can append to Google Sheet
-try {
-  const payload = {
-    name: (checkoutForm?.name || "").trim(),
-    email: (checkoutForm?.email || "").trim(),
-  };
 
-  // don't send empty values
-  if (payload.name && payload.email) {
-    const res = await fetch(SIGNUP_WEBHOOK_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Accept": "application/json",
-      },
-      body: JSON.stringify(payload),
-    });
-
-    // helpful debug (does NOT block redirect)
-    if (!res.ok) {
-      const text = await res.text().catch(() => "");
-      console.warn("Signup webhook returned non-200:", res.status, text);
-    } else {
-      // if your respond node returns {success:true}, this will show it
-      const data = await res.json().catch(() => null);
-      console.log("Signup webhook success:", data);
-    }
-  } else {
-    console.warn("Signup webhook skipped: missing name/email", payload);
-  }
-} catch (err) {
-  console.error("Failed to send signup to n8n", err);
-  // we DON'T block Stripe redirect on this – just log it
-}
-
-      // 🚀 send user directly to Stripe Payment Link (unchanged)
+      // 🚀 send user directly to Stripe Payment Link
       window.location.href = STRIPE_PAYMENT_URL;
     } catch (err) {
       console.error(err);
@@ -909,7 +850,6 @@ try {
             <button
               style={styles.ribbonBtn}
               onClick={() => {
-                setCheckoutForm({ name: "", email: "" });
                 setCheckoutError("");
                 setMemberId("");
                 setCheckoutAgreed(false);
@@ -981,7 +921,9 @@ try {
         {/* HERO */}
         <section style={styles.hero}>
           <div style={styles.heroInner}>
-            <div style={styles.heroEyebrow}>Real feedback, not random signals</div>
+            <div style={styles.heroEyebrow}>
+              Real feedback, not random signals
+            </div>
             <h1 style={styles.heroHeadline}>
               Turn every screenshot into{" "}
               <span style={styles.heroHighlight}>
@@ -1015,7 +957,6 @@ try {
               <button
                 style={styles.heroPrimaryBtn}
                 onClick={() => {
-                  setCheckoutForm({ name: "", email: "" });
                   setCheckoutError("");
                   setMemberId("");
                   setCheckoutAgreed(false);
@@ -1258,7 +1199,9 @@ try {
         {/* WHAT YOU GET / VS EVERYTHING ELSE */}
         <section style={styles.section}>
           <div style={styles.sectionInner}>
-            <div style={styles.sectionEyebrow}>Inside your MaxTradeAI portal</div>
+            <div style={styles.sectionEyebrow}>
+              Inside your MaxTradeAI portal
+            </div>
             <h2 style={styles.sectionTitle}>
               Everything you need to self-coach trades — in one place.
             </h2>
@@ -1348,15 +1291,15 @@ try {
 
             <div style={styles.testimonialGrid}>
               <div style={styles.testimonialCard}>
-                &ldquo;Instead of having no clue why my stop loss was hit, I
-                now get a clear grade and a list of mistakes to fix. I&apos;m
+                &ldquo;Instead of having no clue why my stop loss was hit, I now
+                get a clear grade and a list of mistakes to fix. I&apos;m
                 finally building confidence in my setups.&rdquo;
                 <div style={styles.testimonialName}>— Index &amp; FX trader</div>
               </div>
               <div style={styles.testimonialCard}>
-                &ldquo;The daily journal tied to each day forced me to be
-                honest about my rules and emotions. I actually know why I won or
-                lost a trade now.&rdquo;
+                &ldquo;The daily journal tied to each day forced me to be honest
+                about my rules and emotions. I actually know why I won or lost a
+                trade now.&rdquo;
                 <div style={styles.testimonialName}>— NAS100 day trader</div>
               </div>
               <div style={styles.testimonialCard}>
@@ -1428,7 +1371,6 @@ try {
               <button
                 style={styles.heroPrimaryBtn}
                 onClick={() => {
-                  setCheckoutForm({ name: "", email: "" });
                   setCheckoutError("");
                   setMemberId("");
                   setCheckoutAgreed(false);
@@ -1501,10 +1443,10 @@ try {
       {showCheckout && (
         <div style={styles.overlay}>
           <div style={styles.modalCard}>
-            <div style={styles.modalTitle}>Create your MaxTradeAI ID</div>
+            <div style={styles.modalTitle}>Continue to Stripe</div>
             <div style={styles.modalText}>
-              Enter your details and continue to payment. This is a{" "}
-              <strong>one-time $39</strong> founders price for access to your
+              You&apos;ll enter your details directly in Stripe Checkout. This is
+              a <strong>one-time $39</strong> founders price for access to your
               portal.
               <br />
               <br />
@@ -1516,27 +1458,6 @@ try {
             </div>
 
             <form onSubmit={handleCheckoutSubmit}>
-              <input
-                type="text"
-                placeholder="Name"
-                value={checkoutForm.name}
-                onChange={(e) =>
-                  setCheckoutForm((f) => ({ ...f, name: e.target.value }))
-                }
-                style={styles.input}
-                required
-              />
-              <input
-                type="email"
-                placeholder="Email"
-                value={checkoutForm.email}
-                onChange={(e) =>
-                  setCheckoutForm((f) => ({ ...f, email: e.target.value }))
-                }
-                style={styles.input}
-                required
-              />
-
               {/* Terms / Privacy checkbox */}
               <label style={styles.checkboxRow}>
                 <input
@@ -1584,9 +1505,7 @@ try {
                   cursor: checkoutLoading ? "default" : "pointer",
                 }}
               >
-                {checkoutLoading
-                  ? "Processing…"
-                  : "Pay $39 with Stripe & generate Member ID"}
+                {checkoutLoading ? "Redirecting…" : "Pay $39 with Stripe →"}
               </button>
             </form>
 
@@ -1638,7 +1557,17 @@ try {
                 placeholder="Member ID (e.g. MTC-ABC123)"
                 value={memberPortalId}
                 onChange={(e) => setMemberPortalId(e.target.value)}
-                style={styles.input}
+                style={{
+                  width: "100%",
+                  borderRadius: 10,
+                  border: "1px solid rgba(30,64,175,0.9)",
+                  background: "#020617",
+                  color: "#e5e7eb",
+                  padding: "8px 10px",
+                  fontSize: 13,
+                  marginBottom: 8,
+                  boxSizing: "border-box",
+                }}
                 required
               />
 
