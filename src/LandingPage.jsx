@@ -4,6 +4,11 @@ import { useNavigate } from "react-router-dom";
 const STRIPE_PAYMENT_URL =
   "https://buy.stripe.com/5kQ7sL6rJeDJaCg5xKgQE01";
 
+// 🔗 n8n signup webhook – Vite env first, hard-coded fallback second
+const SIGNUP_WEBHOOK_URL =
+  import.meta.env?.VITE_N8N_TRADECOACH_SIGNUP ||
+  "https://jacobtf007.app.n8n.cloud/webhook/tradecoach_signup";
+
 const MEMBER_LS_KEY = "tc_member_v1";
 
 function saveMemberToLocal(partial) {
@@ -807,7 +812,24 @@ export default function LandingPage({ onEnterApp }) {
         plan: "personal",
       });
 
-      // 🚀 send user directly to Stripe Payment Link
+      // 🔥 send name + email to n8n so it can append to Google Sheet
+      try {
+        await fetch(SIGNUP_WEBHOOK_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            name: checkoutForm.name,
+            email: checkoutForm.email,
+          }),
+        });
+      } catch (err) {
+        console.error("Failed to send signup to n8n", err);
+        // we DON'T block Stripe redirect on this – just log it
+      }
+
+      // 🚀 send user directly to Stripe Payment Link (unchanged)
       window.location.href = STRIPE_PAYMENT_URL;
     } catch (err) {
       console.error(err);
