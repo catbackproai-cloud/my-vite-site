@@ -1392,6 +1392,8 @@ export default function LandingPage({ onEnterApp }) {
                 MaxTradeAI does not guarantee profits or specific outcomes. AI
                 feedback is fallible and may miss or misinterpret information
                 you provide. Always use your own judgment and risk management.
+
+                Contact Us: orbitalbiz1@gmail.com
               </div>
             </div>
           </div>
