@@ -12,8 +12,8 @@ const WEBHOOK_URL =
 const MEMBER_LS_KEY = "tc_member_v1";
 const LAST_DAY_KEY = "tradeCoach:lastDayWithData";
 
-// ⭐ NEW: P&L Calendar storage (manual entry)
-const PNL_KEY = "mtai_pnl_v1";
+// ⭐ P&L Calendar storage (manual entry)
+const PNL_KEY = "mtai_pnl_v2"; // bumped key to avoid old R-based entries clashing
 
 const CYAN = "#22d3ee";
 const CYAN_SOFT = "#38bdf8";
@@ -21,22 +21,21 @@ const CYAN_SOFT = "#38bdf8";
 const gradeColor = (grade) => {
   switch (grade) {
     case "A":
-      return "#22c55e"; // green
+      return "#22c55e";
     case "B":
-      return "#4ade80"; // soft green
+      return "#4ade80";
     case "C":
-      return "#facc15"; // yellow
+      return "#facc15";
     case "D":
-      return "#fb923c"; // orange
+      return "#fb923c";
     case "F":
-      return "#f97373"; // red
+      return "#f97373";
     default:
-      return "#9ca3af"; // gray if missing
+      return "#9ca3af";
   }
 };
 
 function todayStr() {
-  // LOCAL date, not UTC, so no “tomorrow” bug
   const d = new Date();
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
@@ -46,12 +45,11 @@ function todayStr() {
 
 function parseLocalDateFromIso(iso) {
   const [y, m, d] = iso.split("-").map(Number);
-  return new Date(y, m - 1, d); // local midnight, no timezone shift
+  return new Date(y, m - 1, d);
 }
 
 /* ---------------- HELPERS ---------------- */
 
-// Convert image file -> base64 data url (persists across reload)
 function fileToDataUrl(file) {
   return new Promise((resolve, reject) => {
     if (!file) return resolve(null);
@@ -62,27 +60,19 @@ function fileToDataUrl(file) {
   });
 }
 
-// Make Drive links reliably render as <img src="">
 function normalizeDriveUrl(url) {
   if (!url) return null;
-
   if (url.includes("drive.google.com/uc?id=")) return url;
-
   const m = url.match(/drive\.google\.com\/file\/d\/([^/]+)/);
   if (m?.[1]) return `https://drive.google.com/uc?id=${m[1]}`;
-
   return url;
 }
 
-// ✅ Safe localStorage write: NEVER drop chats, only strip heavy image data
 function safeSaveChats(key, chats) {
   try {
-    const leanChats = chats.map(
-      ({ localPreviewUrl, localDataUrl, ...rest }) => ({
-        ...rest,
-      })
-    );
-
+    const leanChats = chats.map(({ localPreviewUrl, localDataUrl, ...rest }) => ({
+      ...rest,
+    }));
     localStorage.setItem(key, JSON.stringify(leanChats));
     localStorage.setItem("lastTradeChats", JSON.stringify(leanChats));
   } catch (e) {
@@ -100,28 +90,39 @@ function safeParseJSON(raw, fallback) {
 }
 
 function toMonthKey(iso) {
-  // "YYYY-MM"
-  return (iso || "").slice(0, 7);
+  return (iso || "").slice(0, 7); // "YYYY-MM"
 }
 
-function fmtSigned(n) {
+function clampSymbol(s) {
+  const v = String(s || "").trim();
+  if (!v) return "";
+  return v.slice(0, 14).toUpperCase(); // keep it clean + consistent
+}
+
+const moneyFmt = new Intl.NumberFormat(undefined, {
+  style: "currency",
+  currency: "USD",
+  maximumFractionDigits: 2,
+});
+
+function fmtMoneySigned(n) {
   if (typeof n !== "number" || Number.isNaN(n)) return "—";
-  const s = n > 0 ? `+${n}` : `${n}`;
-  return s;
+  const abs = Math.abs(n);
+  const base = moneyFmt.format(abs);
+  return n > 0 ? `+${base}` : n < 0 ? `-${base}` : moneyFmt.format(0);
 }
 
-export default function App({
-  selectedDay = todayStr(), // ✅ use LOCAL today as default
-}) {
+function fmtRR(n) {
+  if (typeof n !== "number" || Number.isNaN(n)) return "—";
+  return `${Number(n.toFixed(2))}R`;
+}
+
+export default function App({ selectedDay = todayStr() }) {
   const navigate = useNavigate();
 
-  // ⭐ NEW: “pages” (sidebar)
-  const PAGES = {
-    AI: "ai",
-    PNL: "pnl",
-  };
+  // ⭐ Pages (sidebar)
+  const PAGES = { AI: "ai", PNL: "pnl" };
   const [activePage, setActivePage] = useState(PAGES.AI);
-  const [navOpen, setNavOpen] = useState(false); // for mobile sidebar toggle
 
   const [form, setForm] = useState({
     strategyNotes: "",
@@ -162,47 +163,43 @@ export default function App({
   const [showProfile, setShowProfile] = useState(false);
 
   // ⭐ DAY + CALENDAR STATE (AI page)
-  const [day, setDay] = useState(initialDay); // internal selected day
+  const [day, setDay] = useState(initialDay);
   const [showCalendar, setShowCalendar] = useState(false);
   const [calendarMonth, setCalendarMonth] = useState(() => {
     const d = parseLocalDateFromIso(initialDay);
-    return { year: d.getFullYear(), month: d.getMonth() }; // 0-index
+    return { year: d.getFullYear(), month: d.getMonth() };
   });
 
-  // ⭐ JOURNAL STATE (3 fields)
-  const [journal, setJournal] = useState({
-    notes: "",
-    learned: "",
-    improve: "",
-  });
+  // ⭐ JOURNAL STATE
+  const [journal, setJournal] = useState({ notes: "", learned: "", improve: "" });
 
-  // ⭐ P&L CALENDAR STATE
+  // ⭐ P&L CALENDAR STATE (manual)
   const [pnlMonth, setPnlMonth] = useState(() => {
     const d = parseLocalDateFromIso(todayStr());
     return { year: d.getFullYear(), month: d.getMonth() };
   });
+
   const [pnl, setPnl] = useState(() => {
-    const raw = typeof window !== "undefined" ? localStorage.getItem(PNL_KEY) : null;
-    // shape: { "YYYY-MM-DD": { r: number, note: string } }
+    const raw =
+      typeof window !== "undefined" ? localStorage.getItem(PNL_KEY) : null;
+    // shape: { "YYYY-MM-DD": { symbol: string, pnl: number, rr: number } }
     return safeParseJSON(raw, {});
   });
+
   const [pnlModalOpen, setPnlModalOpen] = useState(false);
   const [pnlEditingIso, setPnlEditingIso] = useState(null);
-  const [pnlEditR, setPnlEditR] = useState("");
-  const [pnlEditNote, setPnlEditNote] = useState("");
+  const [pnlEditSymbol, setPnlEditSymbol] = useState("");
+  const [pnlEditPnl, setPnlEditPnl] = useState("");
+  const [pnlEditRR, setPnlEditRR] = useState("");
 
   const todayIso = todayStr();
 
   const isValid = useMemo(
     () =>
-      !!form.strategyNotes &&
-      !!form.file &&
-      !!form.timeframe &&
-      !!form.instrument,
+      !!form.strategyNotes && !!form.file && !!form.timeframe && !!form.instrument,
     [form]
   );
 
-  // latest trade for this day (we only SHOW this one)
   const lastChat = chats.length ? chats[chats.length - 1] : null;
   const isPending = !!lastChat?.pending;
   const hasCompletedTrade = !!(lastChat && !lastChat.pending);
@@ -214,11 +211,11 @@ export default function App({
   function buildMonthWeeks(monthState) {
     const { year, month } = monthState;
     const first = new Date(year, month, 1);
-    const startDow = first.getDay(); // 0-6, Sun-Sat
+    const startDow = first.getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
 
     const weeks = [];
-    let currentDay = 1 - startDow; // may start negative for leading blanks
+    let currentDay = 1 - startDow;
 
     for (let w = 0; w < 6; w++) {
       const week = [];
@@ -244,10 +241,7 @@ export default function App({
     calendarMonth.year,
     calendarMonth.month,
     1
-  ).toLocaleDateString(undefined, {
-    month: "long",
-    year: "numeric",
-  });
+  ).toLocaleDateString(undefined, { month: "long", year: "numeric" });
 
   // P&L month calendar
   const pnlWeeks = buildMonthWeeks(pnlMonth);
@@ -258,12 +252,7 @@ export default function App({
 
   const formattedDayLabel = parseLocalDateFromIso(day).toLocaleDateString(
     undefined,
-    {
-      weekday: "long",
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    }
+    { weekday: "long", month: "short", day: "numeric", year: "numeric" }
   );
 
   function goToPrevMonth() {
@@ -272,14 +261,12 @@ export default function App({
       return { year: d.getFullYear(), month: d.getMonth() };
     });
   }
-
   function goToNextMonth() {
     setCalendarMonth((prev) => {
       const d = new Date(prev.year, prev.month + 1, 1);
       return { year: d.getFullYear(), month: d.getMonth() };
     });
   }
-
   function handlePickDate(iso) {
     setDay(iso);
     setShowCalendar(false);
@@ -303,23 +290,30 @@ export default function App({
   function openPnlModal(iso) {
     const existing = pnl?.[iso];
     setPnlEditingIso(iso);
-    setPnlEditR(
-      typeof existing?.r === "number" && !Number.isNaN(existing.r)
-        ? String(existing.r)
+    setPnlEditSymbol(existing?.symbol || "");
+    setPnlEditPnl(
+      typeof existing?.pnl === "number" && Number.isFinite(existing.pnl)
+        ? String(existing.pnl)
         : ""
     );
-    setPnlEditNote(existing?.note || "");
+    setPnlEditRR(
+      typeof existing?.rr === "number" && Number.isFinite(existing.rr)
+        ? String(existing.rr)
+        : ""
+    );
     setPnlModalOpen(true);
   }
 
   function savePnlEntry() {
     if (!pnlEditingIso) return;
 
-    const rTrim = (pnlEditR || "").trim();
-    const noteTrim = (pnlEditNote || "").trim();
+    const sym = clampSymbol(pnlEditSymbol);
 
-    // If both empty -> delete entry
-    if (!rTrim && !noteTrim) {
+    const pnlTrim = (pnlEditPnl || "").trim();
+    const rrTrim = (pnlEditRR || "").trim();
+
+    // If all empty -> delete day
+    if (!sym && !pnlTrim && !rrTrim) {
       setPnl((prev) => {
         const copy = { ...(prev || {}) };
         delete copy[pnlEditingIso];
@@ -329,19 +323,26 @@ export default function App({
       return;
     }
 
-    const rNum = rTrim === "" ? null : Number(rTrim);
+    const pnlNum = pnlTrim === "" ? null : Number(pnlTrim);
+    const rrNum = rrTrim === "" ? null : Number(rrTrim);
 
-    // If r provided but not a number -> ignore save
-    if (rTrim !== "" && (Number.isNaN(rNum) || !Number.isFinite(rNum))) {
-      // simple inline “guard” (no extra UI)
+    // Guard invalid numbers (just don't save)
+    if (
+      (pnlTrim !== "" && (!Number.isFinite(pnlNum) || Number.isNaN(pnlNum))) ||
+      (rrTrim !== "" && (!Number.isFinite(rrNum) || Number.isNaN(rrNum)))
+    ) {
       return;
     }
+
+    // Require P&L if they want an entry (keeps the calendar meaningful)
+    if (pnlTrim === "") return;
 
     setPnl((prev) => ({
       ...(prev || {}),
       [pnlEditingIso]: {
-        r: rTrim === "" ? 0 : rNum,
-        note: noteTrim,
+        symbol: sym,
+        pnl: pnlNum ?? 0,
+        rr: rrTrim === "" ? null : rrNum,
       },
     }));
     setPnlModalOpen(false);
@@ -365,7 +366,7 @@ export default function App({
       background:
         "radial-gradient(circle at top, #0b1120 0, #020617 45%, #020617 100%)",
       color: "#e5e7eb",
-      padding: "80px 16px 24px", // top padding to clear fixed header
+      padding: "80px 16px 24px",
       boxSizing: "border-box",
       fontFamily:
         '-apple-system, BlinkMacSystemFont, system-ui, "SF Pro Text", sans-serif',
@@ -385,12 +386,9 @@ export default function App({
       pointerEvents: "none",
       zIndex: 0,
     },
-    pageInner: {
-      position: "relative",
-      zIndex: 1,
-    },
+    pageInner: { position: "relative", zIndex: 1 },
 
-    // 🔹 GLOBAL FIXED HEADER
+    // 🔹 GLOBAL FIXED HEADER (NO hamburger)
     siteHeader: {
       position: "fixed",
       top: 0,
@@ -408,27 +406,6 @@ export default function App({
       zIndex: 70,
       boxShadow: "0 16px 60px rgba(15,23,42,0.9)",
       gap: 12,
-    },
-    headerLeft: {
-      display: "flex",
-      alignItems: "center",
-      gap: 10,
-    },
-    mobileNavBtn: {
-      width: 34,
-      height: 34,
-      borderRadius: 999,
-      border: "1px solid rgba(51,65,85,0.9)",
-      background:
-        "radial-gradient(circle at 0 0, rgba(34,211,238,0.18), #020617)",
-      color: "#e5e7eb",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      cursor: "pointer",
-      fontSize: 16,
-      padding: 0,
-      boxShadow: "0 10px 30px rgba(15,23,42,0.9)",
     },
     siteHeaderTitle: {
       fontSize: 18,
@@ -495,9 +472,7 @@ export default function App({
       color: "#e5e7eb",
       transition: "background .15s ease, transform .12s ease",
     },
-    menuItemDanger: {
-      color: "#fecaca",
-    },
+    menuItemDanger: { color: "#fecaca" },
 
     // 🔹 SHELL: SIDEBAR + CONTENT
     shell: {
@@ -507,12 +482,14 @@ export default function App({
       display: "flex",
       gap: 16,
       alignItems: "stretch",
+      flexWrap: "wrap", // makes sidebar stack naturally on small screens
     },
 
-    // 🔹 SIDEBAR
+    // 🔹 SIDEBAR (always visible, no dropdown)
     sidebar: {
       width: 240,
       minWidth: 240,
+      flex: "0 0 240px",
       background:
         "radial-gradient(circle at top left, rgba(2,6,23,1), rgba(2,6,23,0.92))",
       borderRadius: 20,
@@ -532,33 +509,6 @@ export default function App({
       marginBottom: 10,
       color: "#9ca3af",
     },
-    sidebarSelectWrap: { position: "relative", width: "100%", marginBottom: 12 },
-    sidebarSelect: {
-      width: "100%",
-      background:
-        "radial-gradient(circle at top left, #020617, #020617 70%, #020617 100%)",
-      border: "1px solid rgba(31,41,55,0.9)",
-      borderRadius: 12,
-      color: "#e5e7eb",
-      padding: "10px 34px 10px 12px",
-      fontSize: 13,
-      outline: "none",
-      appearance: "none",
-      WebkitAppearance: "none",
-      MozAppearance: "none",
-      boxShadow: "0 12px 40px rgba(15,23,42,0.9)",
-      cursor: "pointer",
-    },
-    sidebarArrow: {
-      position: "absolute",
-      right: 12,
-      top: "50%",
-      transform: "translateY(-50%)",
-      fontSize: 10,
-      opacity: 0.7,
-      color: "#9ca3af",
-      pointerEvents: "none",
-    },
     navItem: (active) => ({
       padding: "10px 10px",
       borderRadius: 12,
@@ -570,10 +520,12 @@ export default function App({
         : "transparent",
       border: active ? "1px solid transparent" : "1px solid rgba(51,65,85,0.6)",
       boxShadow: active ? "0 18px 55px rgba(34,211,238,0.25)" : "none",
-      fontWeight: active ? 900 : 600,
+      fontWeight: active ? 900 : 700,
       letterSpacing: active ? "0.02em" : "0",
       marginBottom: 8,
-      transition: "transform .15s ease, box-shadow .15s ease, background .15s ease",
+      transition:
+        "transform .15s ease, box-shadow .15s ease, background .15s ease",
+      userSelect: "none",
     }),
     navHint: {
       fontSize: 11,
@@ -583,31 +535,7 @@ export default function App({
       lineHeight: 1.35,
     },
 
-    // 🔹 MOBILE SIDEBAR OVERLAY
-    sideOverlay: {
-      position: "fixed",
-      inset: 0,
-      background: "rgba(2,6,23,0.72)",
-      zIndex: 85,
-      display: "flex",
-      alignItems: "stretch",
-      justifyContent: "flex-start",
-      paddingTop: 56,
-      backdropFilter: "blur(10px)",
-    },
-    sidebarMobile: {
-      width: 280,
-      background:
-        "radial-gradient(circle at top left, rgba(2,6,23,1), rgba(2,6,23,0.94))",
-      borderRight: "1px solid rgba(30,64,175,0.65)",
-      padding: 14,
-      boxShadow: "0 30px 100px rgba(0,0,0,0.55)",
-    },
-
-    content: {
-      flex: "1 1 auto",
-      minWidth: 0,
-    },
+    content: { flex: "1 1 520px", minWidth: 0 },
 
     // 🔹 DATE DROPDOWN ROW (AI page)
     dateRow: {
@@ -633,6 +561,7 @@ export default function App({
       boxShadow: "0 12px 40px rgba(15,23,42,0.9)",
       color: "#e5e7eb",
       transition: "transform .16s ease, box-shadow .16s ease, border .16s ease",
+      userSelect: "none",
     },
     datePillHover: {
       transform: "translateY(-1px)",
@@ -644,11 +573,7 @@ export default function App({
       overflow: "hidden",
       textOverflow: "ellipsis",
     },
-    datePillIcon: {
-      fontSize: 11,
-      opacity: 0.9,
-      marginLeft: 8,
-    },
+    datePillIcon: { fontSize: 11, opacity: 0.9, marginLeft: 8 },
 
     calendarPanel: {
       position: "absolute",
@@ -670,9 +595,7 @@ export default function App({
       fontSize: 13,
       color: "#e5e7eb",
     },
-    calendarHeaderTitle: {
-      fontWeight: 700,
-    },
+    calendarHeaderTitle: { fontWeight: 700 },
     calendarNavBtn: {
       width: 26,
       height: 26,
@@ -695,20 +618,14 @@ export default function App({
       marginBottom: 4,
       color: "#9ca3af",
     },
-    weekdayCell: {
-      textAlign: "center",
-      padding: "4px 0",
-    },
+    weekdayCell: { textAlign: "center", padding: "4px 0" },
     calendarWeek: {
       display: "grid",
       gridTemplateColumns: "repeat(7, 1fr)",
       gap: 4,
       marginTop: 2,
     },
-    dayCellEmpty: {
-      padding: "6px 0",
-      fontSize: 12,
-    },
+    dayCellEmpty: { padding: "6px 0", fontSize: 12 },
     dayCellBase: {
       padding: "6px 0",
       fontSize: 12,
@@ -720,14 +637,8 @@ export default function App({
       transition: "background .12s ease, border .12s ease, color .12s ease",
       userSelect: "none",
     },
-    dayCellSelected: {
-      background: CYAN,
-      color: "#020617",
-      borderColor: CYAN,
-    },
-    dayCellToday: {
-      borderColor: "rgba(34,211,238,0.6)",
-    },
+    dayCellSelected: { background: CYAN, color: "#020617", borderColor: CYAN },
+    dayCellToday: { borderColor: "rgba(34,211,238,0.6)" },
 
     // 🔹 MAIN 2/3 – 1/3 LAYOUT (AI page)
     mainShell: {
@@ -832,11 +743,7 @@ export default function App({
       marginBottom: 4,
       color: "#e5e7eb",
     },
-    statusPlaceholderText: {
-      fontSize: 13,
-      opacity: 0.8,
-      color: "#9ca3af",
-    },
+    statusPlaceholderText: { fontSize: 13, opacity: 0.8, color: "#9ca3af" },
     statusHeaderRow: {
       display: "flex",
       justifyContent: "space-between",
@@ -850,16 +757,8 @@ export default function App({
       gap: 2,
       fontSize: 12,
     },
-    statusLabel: {
-      fontSize: 13,
-      fontWeight: 700,
-      color: "#e5e7eb",
-    },
-    statusMeta: {
-      fontSize: 11,
-      opacity: 0.75,
-      color: "#9ca3af",
-    },
+    statusLabel: { fontSize: 13, fontWeight: 700, color: "#e5e7eb" },
+    statusMeta: { fontSize: 11, opacity: 0.75, color: "#9ca3af" },
     gradePill: {
       fontSize: 14,
       fontWeight: 900,
@@ -868,7 +767,8 @@ export default function App({
       background:
         "linear-gradient(135deg, rgba(34,211,238,0.05), rgba(56,189,248,0.12))",
       border: "1px solid rgba(148,163,184,0.9)",
-      boxShadow: "0 0 0 1px rgba(15,23,42,0.9), 0 0 30px rgba(34,211,238,0.4)",
+      boxShadow:
+        "0 0 0 1px rgba(15,23,42,0.9), 0 0 30px rgba(34,211,238,0.4)",
     },
     statusImg: {
       width: "100%",
@@ -887,41 +787,14 @@ export default function App({
       fontSize: 13,
       color: "#e5e7eb",
     },
-    ul: {
-      margin: 0,
-      paddingLeft: 18,
-      opacity: 0.95,
-      fontSize: 13,
-      color: "#d1d5db",
-    },
-    smallMeta: {
-      fontSize: 11,
-      opacity: 0.7,
-      marginTop: 8,
-      color: "#9ca3af",
-    },
+    ul: { margin: 0, paddingLeft: 18, opacity: 0.95, fontSize: 13, color: "#d1d5db" },
+    smallMeta: { fontSize: 11, opacity: 0.7, marginTop: 8, color: "#9ca3af" },
 
     // 🔹 FORM BELOW STATUS
-    formSection: {
-      marginTop: 10,
-      display: "flex",
-      flexDirection: "column",
-      gap: 8,
-    },
-    composerRow: {
-      display: "flex",
-      gap: 10,
-      alignItems: "stretch",
-      flexWrap: "wrap",
-    },
-    composerLeft: {
-      flex: "0 0 190px",
-      minWidth: 150,
-    },
-    composerRight: {
-      flex: "1 1 260px",
-      minWidth: 260,
-    },
+    formSection: { marginTop: 10, display: "flex", flexDirection: "column", gap: 8 },
+    composerRow: { display: "flex", gap: 10, alignItems: "stretch", flexWrap: "wrap" },
+    composerLeft: { flex: "0 0 190px", minWidth: 150 },
+    composerRight: { flex: "1 1 260px", minWidth: 260 },
 
     dropMini: {
       background:
@@ -946,8 +819,7 @@ export default function App({
     },
     dropMiniActive: {
       borderColor: CYAN,
-      background:
-        "radial-gradient(circle at top, rgba(34,211,238,0.12), #020617)",
+      background: "radial-gradient(circle at top, rgba(34,211,238,0.12), #020617)",
       transform: "translateY(-1px)",
       boxShadow: "0 20px 60px rgba(15,23,42,0.95)",
     },
@@ -958,11 +830,7 @@ export default function App({
       border: "1px solid rgba(31,41,55,0.9)",
       objectFit: "cover",
     },
-    dropMiniLabel: {
-      display: "flex",
-      flexDirection: "column",
-      gap: 3,
-    },
+    dropMiniLabel: { display: "flex", flexDirection: "column", gap: 3 },
     dropMiniTitle: { fontWeight: 700, fontSize: 12 },
     dropMiniHint: { fontSize: 11, opacity: 0.8, color: "#9ca3af" },
     miniCloseBtn: {
@@ -984,17 +852,8 @@ export default function App({
     },
 
     label: { fontSize: 12, opacity: 0.8, marginBottom: 4, color: "#9ca3af" },
-
-    fieldRow: {
-      display: "flex",
-      gap: 8,
-      marginBottom: 6,
-      flexWrap: "wrap",
-    },
-    fieldHalf: {
-      flex: "1 1 0",
-      minWidth: 140,
-    },
+    fieldRow: { display: "flex", gap: 8, marginBottom: 6, flexWrap: "wrap" },
+    fieldHalf: { flex: "1 1 0", minWidth: 140 },
 
     input: {
       width: "100%",
@@ -1011,11 +870,7 @@ export default function App({
         "border-color .15s ease, box-shadow .15s ease, background .15s ease",
     },
 
-    // wrapper + select + arrow so it matches text field with a custom caret
-    selectWrapper: {
-      position: "relative",
-      width: "100%",
-    },
+    selectWrapper: { position: "relative", width: "100%" },
     select: {
       width: "100%",
       background:
@@ -1077,16 +932,11 @@ export default function App({
       fontSize: 14,
       letterSpacing: "0.05em",
       textTransform: "uppercase",
-      boxShadow: buttonDisabled
-        ? "0 0 0 rgba(15,23,42,0.9)"
-        : "0 18px 55px rgba(34,211,238,0.45)",
+      boxShadow: buttonDisabled ? "0 0 0 rgba(15,23,42,0.9)" : "0 18px 55px rgba(34,211,238,0.45)",
       transition:
         "background .18s ease, opacity .18s ease, transform .18s ease, box-shadow .18s ease",
     },
-    buttonHover: {
-      transform: "translateY(-1px)",
-      boxShadow: "0 22px 70px rgba(34,211,238,0.6)",
-    },
+    buttonHover: { transform: "translateY(-1px)", boxShadow: "0 22px 70px rgba(34,211,238,0.6)" },
     error: {
       marginTop: 6,
       padding: 10,
@@ -1112,41 +962,20 @@ export default function App({
       minHeight: 0,
       border: "1px solid rgba(30,64,175,0.9)",
     },
-    journalHeaderRow: {
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "baseline",
-      gap: 8,
-    },
-    journalTitle: {
-      fontSize: 18,
-      fontWeight: 800,
-      color: "#f9fafb",
-    },
-    journalSub: {
-      fontSize: 11,
-      opacity: 0.8,
-      marginTop: 4,
-      maxWidth: 260,
-      color: "#9ca3af",
-    },
+    journalHeaderRow: { display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 },
+    journalTitle: { fontSize: 18, fontWeight: 800, color: "#f9fafb" },
+    journalSub: { fontSize: 11, opacity: 0.8, marginTop: 4, maxWidth: 260, color: "#9ca3af" },
     journalBadge: {
       fontSize: 11,
       padding: "4px 8px",
       borderRadius: 999,
       border: "1px solid rgba(55,65,81,0.9)",
-      background:
-        "linear-gradient(135deg, rgba(15,23,42,0.95), rgba(15,23,42,0.6))",
+      background: "linear-gradient(135deg, rgba(15,23,42,0.95), rgba(15,23,42,0.6))",
       opacity: 0.95,
       whiteSpace: "nowrap",
       color: "#e5e7eb",
     },
-    journalLabel: {
-      fontSize: 12,
-      opacity: 0.8,
-      marginBottom: 4,
-      color: "#9ca3af",
-    },
+    journalLabel: { fontSize: 12, opacity: 0.8, marginBottom: 4, color: "#9ca3af" },
     journalTextareaBig: {
       width: "100%",
       minHeight: 140,
@@ -1187,23 +1016,11 @@ export default function App({
     },
 
     // 🔹 P&L CALENDAR PAGE
-    pnlShell: {
-      width: "100%",
-      maxWidth: 1100,
-      margin: "0 auto",
-      display: "flex",
-      flexDirection: "column",
-      gap: 12,
-    },
-    pnlTopRow: {
-      display: "flex",
-      gap: 12,
-      flexWrap: "wrap",
-      alignItems: "stretch",
-    },
+    pnlShell: { width: "100%", maxWidth: 1100, margin: "0 auto", display: "flex", flexDirection: "column", gap: 12 },
+    pnlTopRow: { display: "flex", gap: 12, flexWrap: "wrap", alignItems: "stretch" },
     pnlCard: {
-      flex: "1 1 220px",
-      minWidth: 220,
+      flex: "1 1 260px",
+      minWidth: 260,
       background:
         "radial-gradient(circle at top left, #020617, #020617 60%, #020617 100%)",
       borderRadius: 18,
@@ -1214,22 +1031,10 @@ export default function App({
       flexDirection: "column",
       gap: 6,
     },
-    pnlCardLabel: {
-      fontSize: 12,
-      opacity: 0.75,
-      color: "#9ca3af",
-    },
-    pnlCardValue: {
-      fontSize: 24,
-      fontWeight: 900,
-      letterSpacing: "0.02em",
-      color: "#f9fafb",
-    },
-    pnlCardSub: {
-      fontSize: 12,
-      opacity: 0.8,
-      color: "#9ca3af",
-    },
+    pnlCardLabel: { fontSize: 12, opacity: 0.75, color: "#9ca3af" },
+    pnlCardValue: { fontSize: 24, fontWeight: 900, letterSpacing: "0.02em", color: "#f9fafb" },
+    pnlCardSub: { fontSize: 12, opacity: 0.8, color: "#9ca3af" },
+
     pnlCalendarCard: {
       background:
         "radial-gradient(circle at top left, #020617, #020617 60%, #020617 100%)",
@@ -1238,25 +1043,9 @@ export default function App({
       boxShadow: "0 20px 60px rgba(15,23,42,0.95)",
       padding: 16,
     },
-    pnlCalHeader: {
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "space-between",
-      marginBottom: 10,
-      gap: 8,
-    },
-    pnlCalTitle: {
-      fontSize: 16,
-      fontWeight: 900,
-      color: "#f9fafb",
-      letterSpacing: "0.03em",
-      textTransform: "uppercase",
-    },
-    pnlCalNav: {
-      display: "flex",
-      alignItems: "center",
-      gap: 8,
-    },
+    pnlCalHeader: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10, gap: 8, flexWrap: "wrap" },
+    pnlCalTitle: { fontSize: 16, fontWeight: 900, color: "#f9fafb", letterSpacing: "0.03em", textTransform: "uppercase" },
+    pnlCalNav: { display: "flex", alignItems: "center", gap: 8 },
     pnlNavBtn: {
       width: 30,
       height: 30,
@@ -1270,14 +1059,9 @@ export default function App({
       alignItems: "center",
       justifyContent: "center",
     },
-    pnlMonthLabel: {
-      fontSize: 13,
-      fontWeight: 700,
-      color: "#e5e7eb",
-      opacity: 0.9,
-      minWidth: 160,
-      textAlign: "center",
-    },
+    pnlMonthLabel: { fontSize: 13, fontWeight: 700, color: "#e5e7eb", opacity: 0.9, minWidth: 160, textAlign: "center" },
+    pnlMonthMeta: { fontSize: 12, opacity: 0.8, color: "#9ca3af" },
+
     pnlWeekdayRow: {
       display: "grid",
       gridTemplateColumns: "repeat(7, 1fr)",
@@ -1287,20 +1071,11 @@ export default function App({
       marginBottom: 8,
       color: "#9ca3af",
     },
-    pnlWeek: {
-      display: "grid",
-      gridTemplateColumns: "repeat(7, 1fr)",
-      gap: 8,
-      marginTop: 8,
-    },
-    pnlCellEmpty: {
-      height: 64,
-      borderRadius: 14,
-      border: "1px solid rgba(31,41,55,0.35)",
-      opacity: 0.25,
-    },
+    pnlWeek: { display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 8, marginTop: 8 },
+    pnlCellEmpty: { height: 78, borderRadius: 14, border: "1px solid rgba(31,41,55,0.35)", opacity: 0.25 },
+
     pnlDayCell: (bg, borderColor) => ({
-      height: 64,
+      height: 78,
       borderRadius: 14,
       border: `1px solid ${borderColor}`,
       background: bg,
@@ -1313,34 +1088,29 @@ export default function App({
       userSelect: "none",
       transition: "transform .12s ease, box-shadow .12s ease, border-color .12s ease",
     }),
-    pnlDayTop: {
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "space-between",
-      gap: 8,
-      fontSize: 12,
-      fontWeight: 800,
-      color: "#e5e7eb",
-    },
-    pnlDayNum: { opacity: 0.95 },
-    pnlDayTag: {
+    pnlDayTop: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 },
+    pnlDayNum: { fontSize: 12, fontWeight: 900, color: "#e5e7eb", opacity: 0.95 },
+    pnlSymbolTag: {
       fontSize: 10,
-      opacity: 0.9,
+      fontWeight: 900,
+      letterSpacing: "0.06em",
+      opacity: 0.95,
       padding: "2px 8px",
       borderRadius: 999,
-      border: "1px solid rgba(255,255,255,0.22)",
+      border: "1px solid rgba(255,255,255,0.18)",
       background: "rgba(2,6,23,0.35)",
       color: "#e5e7eb",
       whiteSpace: "nowrap",
+      maxWidth: 120,
+      overflow: "hidden",
+      textOverflow: "ellipsis",
     },
-    pnlDayValue: {
-      fontSize: 13,
-      fontWeight: 900,
-      letterSpacing: "0.02em",
-      color: "#f9fafb",
-    },
+    pnlDayMid: { display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8 },
+    pnlPnlValue: { fontSize: 14, fontWeight: 900, letterSpacing: "0.02em", color: "#f9fafb" },
+    pnlRRValue: { fontSize: 11, fontWeight: 800, opacity: 0.95, color: "#e5e7eb" },
+    pnlNoEntry: { fontSize: 11, opacity: 0.75, color: "#9ca3af", fontWeight: 700 },
 
-    // 🔹 PROFILE MODAL + GENERIC MODAL
+    // 🔹 MODALS
     overlay: {
       position: "fixed",
       inset: 0,
@@ -1364,34 +1134,10 @@ export default function App({
       fontSize: 13,
       color: "#e5e7eb",
     },
-    modalTitle: {
-      fontSize: 18,
-      fontWeight: 800,
-      marginBottom: 6,
-      textAlign: "center",
-      color: "#f9fafb",
-    },
-    modalText: {
-      fontSize: 12,
-      opacity: 0.8,
-      marginBottom: 12,
-      textAlign: "center",
-      color: "#9ca3af",
-    },
-    modalRow: {
-      marginBottom: 10,
-      fontSize: 13,
-    },
-    modalLabel: {
-      fontWeight: 700,
-      opacity: 0.9,
-      color: "#e5e7eb",
-      marginBottom: 4,
-    },
-    modalValue: {
-      opacity: 0.95,
-      color: "#e5e7eb",
-    },
+    modalTitle: { fontSize: 18, fontWeight: 800, marginBottom: 6, textAlign: "center", color: "#f9fafb" },
+    modalText: { fontSize: 12, opacity: 0.8, marginBottom: 12, textAlign: "center", color: "#9ca3af" },
+    modalRow: { marginBottom: 10, fontSize: 13 },
+    modalLabel: { fontWeight: 700, opacity: 0.9, color: "#e5e7eb", marginBottom: 4 },
     modalCloseBtn: {
       marginTop: 14,
       width: "100%",
@@ -1405,11 +1151,7 @@ export default function App({
       color: "#e5e7eb",
       cursor: "pointer",
     },
-    modalBtnRow: {
-      display: "flex",
-      gap: 10,
-      marginTop: 14,
-    },
+    modalBtnRow: { display: "flex", gap: 10, marginTop: 14, flexWrap: "wrap" },
     modalBtnPrimary: {
       flex: 1,
       borderRadius: 999,
@@ -1421,6 +1163,7 @@ export default function App({
       color: "#020617",
       background: `linear-gradient(135deg, ${CYAN}, ${CYAN_SOFT})`,
       boxShadow: "0 18px 55px rgba(34,211,238,0.35)",
+      minWidth: 140,
     },
     modalBtnGhost: {
       flex: 1,
@@ -1433,6 +1176,7 @@ export default function App({
       background:
         "linear-gradient(135deg, rgba(15,23,42,0.95), rgba(15,23,42,0.7))",
       color: "#e5e7eb",
+      minWidth: 140,
     },
     modalBtnDanger: {
       flex: 1,
@@ -1444,6 +1188,7 @@ export default function App({
       cursor: "pointer",
       background: "rgba(127,29,29,0.85)",
       color: "#fee2e2",
+      minWidth: 140,
     },
   };
 
@@ -1486,13 +1231,11 @@ export default function App({
     if (chats && chats.length > 0) {
       try {
         localStorage.setItem(LAST_DAY_KEY, day);
-      } catch {
-        // ignore
-      }
+      } catch {}
     }
   }, [chats, day]);
 
-  // 🔹 Load journal per day (v2 object, fallback to legacy string)
+  // Load journal per day
   useEffect(() => {
     try {
       const keyV2 = `tradeJournalV2:${day}`;
@@ -1507,15 +1250,10 @@ export default function App({
         return;
       }
 
-      // legacy single-string journal
       const legacyKey = `tradeJournal:${day}`;
       const legacy = localStorage.getItem(legacyKey);
       if (legacy) {
-        setJournal({
-          notes: legacy,
-          learned: "",
-          improve: "",
-        });
+        setJournal({ notes: legacy, learned: "", improve: "" });
         return;
       }
 
@@ -1525,7 +1263,7 @@ export default function App({
     }
   }, [day]);
 
-  // 🔹 Persist journal per day + mark last day with data
+  // Persist journal per day + mark last day with data
   useEffect(() => {
     try {
       const keyV2 = `tradeJournalV2:${day}`;
@@ -1536,21 +1274,15 @@ export default function App({
         (journal.learned || "").trim() ||
         (journal.improve || "").trim();
 
-      if (hasJournal) {
-        localStorage.setItem(LAST_DAY_KEY, day);
-      }
-    } catch {
-      // ignore
-    }
+      if (hasJournal) localStorage.setItem(LAST_DAY_KEY, day);
+    } catch {}
   }, [journal, day]);
 
-  // 🔹 Persist P&L calendar
+  // Persist P&L calendar
   useEffect(() => {
     try {
       localStorage.setItem(PNL_KEY, JSON.stringify(pnl || {}));
-    } catch {
-      // ignore
-    }
+    } catch {}
   }, [pnl]);
 
   /* ---------------- HANDLERS ---------------- */
@@ -1558,9 +1290,7 @@ export default function App({
   async function handleSubmit(e) {
     e.preventDefault();
     setError("");
-
     if (!isValid || submitting) return;
-
     setSubmitting(true);
 
     try {
@@ -1592,11 +1322,7 @@ export default function App({
       fd.append("instrument", form.instrument);
       if (form.file) fd.append("screenshot", form.file);
 
-      const res = await fetch(WEBHOOK_URL, {
-        method: "POST",
-        body: fd,
-      });
-
+      const res = await fetch(WEBHOOK_URL, { method: "POST", body: fd });
       const text = await res.text();
 
       let data = null;
@@ -1620,12 +1346,10 @@ export default function App({
             } catch {}
           }
 
-          console.log("TradeCoach response:", data);
-
           return {
             ...c,
             pending: false,
-            screenshotUrl: null, // no backend screenshot URL anymore
+            screenshotUrl: null,
             analysis: data?.analysis || data || null,
             serverTimestamp: data?.timestamp || null,
             localPreviewUrl: c.localPreviewUrl,
@@ -1634,12 +1358,7 @@ export default function App({
         })
       );
 
-      // keep timeframe + instrument so they don't have to re-fill
-      setForm((prev) => ({
-        ...prev,
-        strategyNotes: "",
-        file: null,
-      }));
+      setForm((prev) => ({ ...prev, strategyNotes: "", file: null }));
       setPreviewUrl(null);
     } catch (err) {
       setError(err?.message || "Submit failed");
@@ -1670,19 +1389,12 @@ export default function App({
   }
 
   function handleResetTrade() {
-    // Clear current trade status + form so user can start a fresh one
     setChats([]);
-    setForm({
-      strategyNotes: "",
-      file: null,
-      timeframe: "",
-      instrument: "",
-    });
+    setForm({ strategyNotes: "", file: null, timeframe: "", instrument: "" });
     setPreviewUrl(null);
     setError("");
   }
 
-  // Drag & drop helpers
   function preventDefaults(e) {
     e.preventDefault();
     e.stopPropagation();
@@ -1700,13 +1412,11 @@ export default function App({
   function handleLogout() {
     try {
       localStorage.removeItem(MEMBER_LS_KEY);
-      localStorage.removeItem("tc_member_id"); // legacy cleanup
-    } catch {
-      // ignore
-    }
+      localStorage.removeItem("tc_member_id");
+    } catch {}
     setMember(null);
     setMenuOpen(false);
-    navigate("/"); // back to landing page
+    navigate("/");
   }
 
   /* ---------------- DERIVED (AI) ---------------- */
@@ -1734,9 +1444,7 @@ export default function App({
     ? "Uploading…"
     : "Get feedback";
 
-  const statusAnimatedStyle = lastChat
-    ? { opacity: 1, transform: "translateY(0)" }
-    : { opacity: 1, transform: "translateY(0)" };
+  const statusAnimatedStyle = { opacity: 1, transform: "translateY(0)" };
 
   const [menuBtnHover, setMenuBtnHover] = useState(false);
   const [btnHover, setBtnHover] = useState(false);
@@ -1745,13 +1453,30 @@ export default function App({
   /* ---------------- DERIVED (P&L) ---------------- */
 
   const allEntries = pnl || {};
-  const allTimeTotal = useMemo(() => {
-    let sum = 0;
-    for (const k in allEntries) {
-      const r = allEntries?.[k]?.r;
-      if (typeof r === "number" && Number.isFinite(r)) sum += r;
+
+  const allTimeStats = useMemo(() => {
+    let pnlSum = 0;
+    let rrSum = 0;
+    let rrCount = 0;
+
+    for (const iso in allEntries) {
+      const entry = allEntries?.[iso];
+      const p = entry?.pnl;
+      const rr = entry?.rr;
+
+      if (typeof p === "number" && Number.isFinite(p)) pnlSum += p;
+
+      if (typeof rr === "number" && Number.isFinite(rr)) {
+        rrSum += rr;
+        rrCount += 1;
+      }
     }
-    return sum;
+
+    return {
+      pnlSum,
+      avgRR: rrCount ? rrSum / rrCount : null,
+      rrCount,
+    };
   }, [allEntries]);
 
   const monthKey = useMemo(() => {
@@ -1760,95 +1485,75 @@ export default function App({
   }, [pnlMonth]);
 
   const monthStats = useMemo(() => {
-    let sum = 0;
-    let green = 0;
-    let red = 0;
-    let be = 0;
+    let pnlSum = 0;
+    let rrSum = 0;
+    let rrCount = 0;
 
     for (const iso in allEntries) {
       if (toMonthKey(iso) !== monthKey) continue;
-      const r = allEntries?.[iso]?.r;
-      if (typeof r !== "number" || !Number.isFinite(r)) continue;
-      sum += r;
-      if (r > 0) green++;
-      else if (r < 0) red++;
-      else be++;
+      const entry = allEntries?.[iso];
+      const p = entry?.pnl;
+      const rr = entry?.rr;
+
+      if (typeof p === "number" && Number.isFinite(p)) pnlSum += p;
+
+      if (typeof rr === "number" && Number.isFinite(rr)) {
+        rrSum += rr;
+        rrCount += 1;
+      }
     }
 
-    return { sum, green, red, be };
+    return {
+      pnlSum,
+      avgRR: rrCount ? rrSum / rrCount : null,
+      rrCount,
+    };
   }, [allEntries, monthKey]);
 
   function cellThemeForIso(iso) {
     const entry = allEntries?.[iso];
-    const r = entry?.r;
+    const p = entry?.pnl;
 
-    // Default = “no entry yet” (dark)
-    if (typeof r !== "number" || !Number.isFinite(r)) {
-      const isToday = iso === todayIso;
+    const isToday = iso === todayIso;
+
+    // No entry
+    if (typeof p !== "number" || !Number.isFinite(p)) {
       return {
         bg: isToday
           ? "radial-gradient(circle at top, rgba(34,211,238,0.16), rgba(2,6,23,0.95) 60%)"
           : "radial-gradient(circle at top, rgba(148,163,184,0.08), rgba(2,6,23,0.95) 60%)",
         border: isToday ? "rgba(34,211,238,0.55)" : "rgba(51,65,85,0.55)",
-        tag: "No entry",
-        value: "—",
       };
     }
 
-    if (r > 0) {
+    if (p > 0) {
       return {
         bg: "radial-gradient(circle at top, rgba(34,197,94,0.18), rgba(2,6,23,0.95) 62%)",
         border: "rgba(34,197,94,0.55)",
-        tag: "Green",
-        value: `${fmtSigned(r)}R`,
       };
     }
-    if (r < 0) {
+    if (p < 0) {
       return {
         bg: "radial-gradient(circle at top, rgba(248,113,113,0.16), rgba(2,6,23,0.95) 62%)",
         border: "rgba(248,113,113,0.55)",
-        tag: "Red",
-        value: `${fmtSigned(r)}R`,
       };
     }
     return {
       bg: "radial-gradient(circle at top, rgba(250,204,21,0.14), rgba(2,6,23,0.95) 62%)",
       border: "rgba(250,204,21,0.5)",
-      tag: "B/E",
-      value: "0R",
     };
   }
 
   /* ---------------- RENDER ---------------- */
 
-  const Sidebar = ({ mobile = false }) => (
-    <div style={mobile ? styles.sidebarMobile : styles.sidebar}>
+  const Sidebar = () => (
+    <div style={styles.sidebar}>
       <div style={styles.sidebarTitle}>Navigation</div>
 
-      {/* Dropdown selector (what you asked for) */}
-      <div style={styles.sidebarSelectWrap}>
-        <select
-          style={styles.sidebarSelect}
-          value={activePage}
-          onChange={(e) => {
-            const v = e.target.value;
-            setActivePage(v);
-            setNavOpen(false);
-            setShowCalendar(false);
-          }}
-        >
-          <option value={PAGES.AI}>AI feedback + journal</option>
-          <option value={PAGES.PNL}>P&L calendar</option>
-        </select>
-        <span style={styles.sidebarArrow}>▾</span>
-      </div>
-
-      {/* Clickable items too (nice UX) */}
       <div
         style={styles.navItem(activePage === PAGES.AI)}
         onClick={() => {
           setActivePage(PAGES.AI);
-          setNavOpen(false);
           setShowCalendar(false);
         }}
       >
@@ -1859,16 +1564,16 @@ export default function App({
         style={styles.navItem(activePage === PAGES.PNL)}
         onClick={() => {
           setActivePage(PAGES.PNL);
-          setNavOpen(false);
           setShowCalendar(false);
         }}
       >
-        P&L calendar
+        P&amp;L calendar
       </div>
 
       <div style={styles.navHint}>
-        Tip: Your P&L calendar is manual (paper-friendly). Click a day to add or
-        edit that day’s result.
+        P&amp;L is manual (paper-friendly). Click a day to enter:
+        <br />
+        <strong>Symbol</strong>, <strong>$ P&amp;L</strong>, and <strong>RR</strong>.
       </div>
     </div>
   );
@@ -1877,18 +1582,7 @@ export default function App({
     <>
       {/* 🔹 GLOBAL HEADER (fixed, very top of site) */}
       <div style={styles.siteHeader}>
-        <div style={styles.headerLeft}>
-          {/* mobile sidebar toggle */}
-          <button
-            type="button"
-            style={styles.mobileNavBtn}
-            onClick={() => setNavOpen(true)}
-            title="Menu"
-          >
-            ☰
-          </button>
-          <div style={styles.siteHeaderTitle}>MaxTradeAI</div>
-        </div>
+        <div style={styles.siteHeaderTitle}>MaxTradeAI</div>
 
         <div style={styles.siteHeaderActions}>
           <span style={styles.workspaceTag}>Personal workspace</span>
@@ -1939,30 +1633,15 @@ export default function App({
         </div>
       </div>
 
-      {/* MOBILE SIDEBAR */}
-      {navOpen && (
-        <div
-          style={styles.sideOverlay}
-          onClick={() => setNavOpen(false)}
-        >
-          <div onClick={(e) => e.stopPropagation()}>
-            <Sidebar mobile />
-          </div>
-        </div>
-      )}
-
       {/* PAGE CONTENT */}
       <div style={styles.page}>
         <div style={styles.pageGlow} />
         <div style={styles.pageInner}>
           <div style={styles.shell}>
-            {/* Desktop sidebar */}
-            <div style={{ display: "none" }} />
-            <div className="__sidebar_desktop__" style={styles.sidebar}>
-              <Sidebar />
-            </div>
+            {/* Sidebar always visible */}
+            <Sidebar />
 
-            {/* Main content area */}
+            {/* Main content */}
             <div style={styles.content}>
               {/* 🔹 DATE DROPDOWN (only on AI page) */}
               {activePage === PAGES.AI && (
@@ -1976,39 +1655,24 @@ export default function App({
                       setShowCalendar((open) => !open);
                       if (!showCalendar) {
                         const d = parseLocalDateFromIso(day);
-                        setCalendarMonth({
-                          year: d.getFullYear(),
-                          month: d.getMonth(),
-                        });
+                        setCalendarMonth({ year: d.getFullYear(), month: d.getMonth() });
                       }
                     }}
                     onMouseEnter={() => setDateHover(true)}
                     onMouseLeave={() => setDateHover(false)}
                   >
                     <div style={styles.datePillText}>{formattedDayLabel}</div>
-                    <div style={styles.datePillIcon}>
-                      {showCalendar ? "▲" : "▼"}
-                    </div>
+                    <div style={styles.datePillIcon}>{showCalendar ? "▲" : "▼"}</div>
                   </div>
 
                   {showCalendar && (
                     <div style={styles.calendarPanel}>
                       <div style={styles.calendarHeader}>
-                        <button
-                          type="button"
-                          style={styles.calendarNavBtn}
-                          onClick={goToPrevMonth}
-                        >
+                        <button type="button" style={styles.calendarNavBtn} onClick={goToPrevMonth}>
                           ‹
                         </button>
-                        <div style={styles.calendarHeaderTitle}>
-                          {calendarMonthLabel}
-                        </div>
-                        <button
-                          type="button"
-                          style={styles.calendarNavBtn}
-                          onClick={goToNextMonth}
-                        >
+                        <div style={styles.calendarHeaderTitle}>{calendarMonthLabel}</div>
+                        <button type="button" style={styles.calendarNavBtn} onClick={goToNextMonth}>
                           ›
                         </button>
                       </div>
@@ -2024,25 +1688,16 @@ export default function App({
                       {monthWeeks.map((week, wi) => (
                         <div key={wi} style={styles.calendarWeek}>
                           {week.map((cell, di) => {
-                            if (!cell) {
-                              return <div key={di} style={styles.dayCellEmpty} />;
-                            }
+                            if (!cell) return <div key={di} style={styles.dayCellEmpty} />;
                             const isSelected = cell.iso === day;
                             const isToday = cell.iso === todayIso;
 
                             let style = { ...styles.dayCellBase };
-                            if (isSelected) {
-                              style = { ...style, ...styles.dayCellSelected };
-                            } else if (isToday) {
-                              style = { ...style, ...styles.dayCellToday };
-                            }
+                            if (isSelected) style = { ...style, ...styles.dayCellSelected };
+                            else if (isToday) style = { ...style, ...styles.dayCellToday };
 
                             return (
-                              <div
-                                key={di}
-                                style={style}
-                                onClick={() => handlePickDate(cell.iso)}
-                              >
+                              <div key={di} style={style} onClick={() => handlePickDate(cell.iso)}>
                                 {cell.day}
                               </div>
                             );
@@ -2064,13 +1719,11 @@ export default function App({
                         <div>
                           <div style={styles.coachTitle}>Trade Coach</div>
                           <div style={styles.coachSub}>
-                            Upload chart → choose pair & timeframe → explain your
-                            idea → AI feedback.
+                            Upload chart → choose pair & timeframe → explain your idea → AI feedback.
                             <br />
                             <strong>
-                              The more detail you give (bias, liquidity, session,
-                              entry, stop, target, emotions), the more accurate
-                              your AI feedback will be.
+                              The more detail you give (bias, liquidity, session, entry, stop, target,
+                              emotions), the more accurate your AI feedback will be.
                             </strong>
                           </div>
                         </div>
@@ -2080,31 +1733,22 @@ export default function App({
                       {/* STATUS BOX */}
                       <div style={styles.statusBox}>
                         <div style={styles.statusGlow} />
-                        <div
-                          style={{
-                            ...styles.statusContent,
-                            ...statusAnimatedStyle,
-                          }}
-                        >
+                        <div style={{ ...styles.statusContent, ...statusAnimatedStyle }}>
                           {!lastChat && (
                             <>
                               <div style={styles.statusPlaceholderTitle}>Status…</div>
                               <p style={styles.statusPlaceholderText}>
-                                Add a screenshot + your thought process below, then
-                                press &ldquo;Get feedback&rdquo; to see your trade
-                                graded here.
+                                Add a screenshot + your thought process below, then press “Get feedback”
+                                to see your trade graded here.
                               </p>
                             </>
                           )}
 
                           {lastChat && isPending && (
                             <>
-                              <div style={styles.statusPlaceholderTitle}>
-                                Trade Coach analyzing…
-                              </div>
+                              <div style={styles.statusPlaceholderTitle}>Trade Coach analyzing…</div>
                               <p style={styles.statusPlaceholderText}>
-                                Hold on a second while your trade is graded and broken
-                                down.
+                                Hold on a second while your trade is graded and broken down.
                               </p>
                             </>
                           )}
@@ -2116,15 +1760,9 @@ export default function App({
                                   <span style={styles.statusLabel}>Trade Coach AI</span>
                                   {(lastChat.instrument || lastChat.timeframe) && (
                                     <span style={styles.statusMeta}>
-                                      {lastChat.instrument && (
-                                        <span>{lastChat.instrument}</span>
-                                      )}
-                                      {lastChat.instrument && lastChat.timeframe && (
-                                        <span> • </span>
-                                      )}
-                                      {lastChat.timeframe && (
-                                        <span>{lastChat.timeframe}</span>
-                                      )}
+                                      {lastChat.instrument && <span>{lastChat.instrument}</span>}
+                                      {lastChat.instrument && lastChat.timeframe && <span> • </span>}
+                                      {lastChat.timeframe && <span>{lastChat.timeframe}</span>}
                                     </span>
                                   )}
                                 </div>
@@ -2148,17 +1786,11 @@ export default function App({
                               )}
 
                               {imgSrc && (
-                                <img
-                                  src={imgSrc}
-                                  alt="Trade screenshot"
-                                  style={styles.statusImg}
-                                />
+                                <img src={imgSrc} alt="Trade screenshot" style={styles.statusImg} />
                               )}
 
                               {oneLineVerdict && (
-                                <div style={{ opacity: 0.96, fontSize: 13 }}>
-                                  {oneLineVerdict}
-                                </div>
+                                <div style={{ opacity: 0.96, fontSize: 13 }}>{oneLineVerdict}</div>
                               )}
 
                               {whatWentRight.length > 0 && (
@@ -2197,13 +1829,7 @@ export default function App({
                               {lessonLearned && (
                                 <>
                                   <div style={styles.sectionTitle}>Lesson learned</div>
-                                  <div
-                                    style={{
-                                      opacity: 0.96,
-                                      fontSize: 13,
-                                      color: "#d1d5db",
-                                    }}
-                                  >
+                                  <div style={{ opacity: 0.96, fontSize: 13, color: "#d1d5db" }}>
                                     {lessonLearned}
                                   </div>
                                 </>
@@ -2221,11 +1847,8 @@ export default function App({
                         </div>
                       </div>
 
-                      {/* FORM AREA */}
-                      <form
-                        onSubmit={hasCompletedTrade ? undefined : handleSubmit}
-                        style={styles.formSection}
-                      >
+                      {/* FORM */}
+                      <form onSubmit={hasCompletedTrade ? undefined : handleSubmit} style={styles.formSection}>
                         <div style={styles.composerRow}>
                           <div style={styles.composerLeft}>
                             <div
@@ -2247,15 +1870,9 @@ export default function App({
                             >
                               {previewUrl ? (
                                 <>
-                                  <img
-                                    src={previewUrl}
-                                    alt="preview"
-                                    style={styles.previewThumb}
-                                  />
+                                  <img src={previewUrl} alt="preview" style={styles.previewThumb} />
                                   <div style={styles.dropMiniLabel}>
-                                    <span style={styles.dropMiniTitle}>
-                                      Screenshot added
-                                    </span>
+                                    <span style={styles.dropMiniTitle}>Screenshot added</span>
                                     <span style={styles.dropMiniHint}>
                                       Click to replace • drag a new chart here
                                     </span>
@@ -2273,9 +1890,7 @@ export default function App({
                                 </>
                               ) : (
                                 <div style={styles.dropMiniLabel}>
-                                  <span style={styles.dropMiniTitle}>
-                                    + Add screenshot
-                                  </span>
+                                  <span style={styles.dropMiniTitle}>+ Add screenshot</span>
                                   <span style={styles.dropMiniHint}>
                                     Click or drag chart here (.png / .jpg)
                                   </span>
@@ -2286,29 +1901,22 @@ export default function App({
                                 ref={fileInputRef}
                                 type="file"
                                 accept="image/*"
-                                onChange={(e) =>
-                                  onChange("file", e.target.files?.[0] || null)
-                                }
+                                onChange={(e) => onChange("file", e.target.files?.[0] || null)}
                                 style={{ display: "none" }}
                               />
                             </div>
                           </div>
 
                           <div style={styles.composerRight}>
-                            {/* Instrument + timeframe */}
                             <div style={styles.fieldRow}>
                               <div style={styles.fieldHalf}>
-                                <div style={styles.label}>
-                                  What were you trading?
-                                </div>
+                                <div style={styles.label}>What were you trading?</div>
                                 <input
                                   type="text"
                                   style={styles.input}
                                   placeholder="e.g. NASDAQ, S&P 500, GBP/USD, XAU/USD"
                                   value={form.instrument}
-                                  onChange={(e) =>
-                                    onChange("instrument", e.target.value)
-                                  }
+                                  onChange={(e) => onChange("instrument", e.target.value)}
                                 />
                               </div>
                               <div style={styles.fieldHalf}>
@@ -2317,9 +1925,7 @@ export default function App({
                                   <select
                                     style={styles.select}
                                     value={form.timeframe}
-                                    onChange={(e) =>
-                                      onChange("timeframe", e.target.value)
-                                    }
+                                    onChange={(e) => onChange("timeframe", e.target.value)}
                                   >
                                     <option value="">Select timeframe</option>
                                     <option value="1m">1m</option>
@@ -2338,14 +1944,11 @@ export default function App({
                             </div>
 
                             <div style={styles.label}>
-                              Strategy / thought process — what setup were you
-                              taking?
+                              Strategy / thought process — what setup were you taking?
                             </div>
                             <textarea
                               value={form.strategyNotes}
-                              onChange={(e) =>
-                                onChange("strategyNotes", e.target.value)
-                              }
+                              onChange={(e) => onChange("strategyNotes", e.target.value)}
                               placeholder="Explain your idea: HTF bias, BOS/CHoCH, FVG/OB, liquidity grab, session, target, risk plan, management rules..."
                               required
                               style={styles.textarea}
@@ -2358,9 +1961,7 @@ export default function App({
                           disabled={buttonDisabled}
                           style={{
                             ...styles.button,
-                            ...(btnHover && !buttonDisabled
-                              ? styles.buttonHover
-                              : {}),
+                            ...(btnHover && !buttonDisabled ? styles.buttonHover : {}),
                           }}
                           onClick={hasCompletedTrade ? handleResetTrade : undefined}
                           onMouseEnter={() => !buttonDisabled && setBtnHover(true)}
@@ -2374,8 +1975,8 @@ export default function App({
                             Error: {error}
                             {!WEBHOOK_URL && (
                               <div style={styles.hint}>
-                                Tip: define VITE_N8N_TRADE_FEEDBACK_WEBHOOK in
-                                .env.local and in your deploy env.
+                                Tip: define VITE_N8N_TRADE_FEEDBACK_WEBHOOK in .env.local and in your
+                                deploy env.
                               </div>
                             )}
                           </div>
@@ -2391,8 +1992,7 @@ export default function App({
                         <div>
                           <div style={styles.journalTitle}>Journal</div>
                           <div style={styles.journalSub}>
-                            Your personal notes for this day. Saved automatically
-                            for each date you select.
+                            Your personal notes for this day. Saved automatically for each date you select.
                           </div>
                         </div>
                         <div style={styles.journalBadge}>Entry for {day}</div>
@@ -2403,12 +2003,7 @@ export default function App({
                         <textarea
                           style={styles.journalTextareaBig}
                           value={journal.notes}
-                          onChange={(e) =>
-                            setJournal((prev) => ({
-                              ...prev,
-                              notes: e.target.value,
-                            }))
-                          }
+                          onChange={(e) => setJournal((prev) => ({ ...prev, notes: e.target.value }))}
                           placeholder="Text here..."
                         />
                       </div>
@@ -2418,12 +2013,7 @@ export default function App({
                         <textarea
                           style={styles.journalTextareaSmall}
                           value={journal.learned}
-                          onChange={(e) =>
-                            setJournal((prev) => ({
-                              ...prev,
-                              learned: e.target.value,
-                            }))
-                          }
+                          onChange={(e) => setJournal((prev) => ({ ...prev, learned: e.target.value }))}
                           placeholder="Key lessons, patterns, or rules you want to remember."
                         />
                       </div>
@@ -2433,21 +2023,13 @@ export default function App({
                         <textarea
                           style={styles.journalTextareaSmall}
                           value={journal.improve}
-                          onChange={(e) =>
-                            setJournal((prev) => ({
-                              ...prev,
-                              improve: e.target.value,
-                            }))
-                          }
+                          onChange={(e) => setJournal((prev) => ({ ...prev, improve: e.target.value }))}
                           placeholder="Risk, discipline, entries, exits, patience, etc."
                         />
                       </div>
 
                       <div style={styles.journalHintRow}>
-                        <span>
-                          Auto-saved per day — switch dates above to see past
-                          entries.
-                        </span>
+                        <span>Auto-saved per day — switch dates above to see past entries.</span>
                       </div>
                     </div>
                   </div>
@@ -2459,32 +2041,35 @@ export default function App({
                 <div style={styles.pnlShell}>
                   <div style={styles.pnlTopRow}>
                     <div style={styles.pnlCard}>
-                      <div style={styles.pnlCardLabel}>All-time P&amp;L (R)</div>
+                      <div style={styles.pnlCardLabel}>All-time P&amp;L ($)</div>
                       <div style={styles.pnlCardValue}>
-                        {fmtSigned(Number(allTimeTotal.toFixed(2)))}R
+                        {fmtMoneySigned(Number(allTimeStats.pnlSum.toFixed(2)))}
                       </div>
-                      <div style={styles.pnlCardSub}>
-                        Manual entries • paper-friendly
-                      </div>
+                      <div style={styles.pnlCardSub}>Manual entries • paper-friendly</div>
                     </div>
 
                     <div style={styles.pnlCard}>
-                      <div style={styles.pnlCardLabel}>
-                        {pnlMonthLabel} P&amp;L (R)
-                      </div>
+                      <div style={styles.pnlCardLabel}>All-time Avg RR</div>
                       <div style={styles.pnlCardValue}>
-                        {fmtSigned(Number(monthStats.sum.toFixed(2)))}R
+                        {allTimeStats.avgRR == null ? "—" : fmtRR(allTimeStats.avgRR)}
                       </div>
                       <div style={styles.pnlCardSub}>
-                        Green {monthStats.green} • Red {monthStats.red} • B/E{" "}
-                        {monthStats.be}
+                        Based on {allTimeStats.rrCount} day{allTimeStats.rrCount === 1 ? "" : "s"} with RR entered
                       </div>
                     </div>
                   </div>
 
                   <div style={styles.pnlCalendarCard}>
                     <div style={styles.pnlCalHeader}>
-                      <div style={styles.pnlCalTitle}>P&amp;L Calendar</div>
+                      <div>
+                        <div style={styles.pnlCalTitle}>P&amp;L Calendar</div>
+                        <div style={styles.pnlMonthMeta}>
+                          {pnlMonthLabel}:{" "}
+                          <strong>{fmtMoneySigned(Number(monthStats.pnlSum.toFixed(2)))}</strong>{" "}
+                          • Avg RR:{" "}
+                          <strong>{monthStats.avgRR == null ? "—" : fmtRR(monthStats.avgRR)}</strong>
+                        </div>
+                      </div>
 
                       <div style={styles.pnlCalNav}>
                         <button type="button" style={styles.pnlNavBtn} onClick={pnlPrevMonth}>
@@ -2508,12 +2093,19 @@ export default function App({
                     {pnlWeeks.map((week, wi) => (
                       <div key={wi} style={styles.pnlWeek}>
                         {week.map((cell, di) => {
-                          if (!cell) {
-                            return <div key={di} style={styles.pnlCellEmpty} />;
-                          }
+                          if (!cell) return <div key={di} style={styles.pnlCellEmpty} />;
 
-                          const theme = cellThemeForIso(cell.iso);
                           const entry = allEntries?.[cell.iso];
+                          const theme = cellThemeForIso(cell.iso);
+
+                          const hasPnl =
+                            typeof entry?.pnl === "number" && Number.isFinite(entry.pnl);
+
+                          const symbol = clampSymbol(entry?.symbol || "");
+                          const rr =
+                            typeof entry?.rr === "number" && Number.isFinite(entry.rr)
+                              ? entry.rr
+                              : null;
 
                           return (
                             <div
@@ -2522,32 +2114,38 @@ export default function App({
                               onClick={() => openPnlModal(cell.iso)}
                               onMouseEnter={(e) => {
                                 e.currentTarget.style.transform = "translateY(-1px)";
-                                e.currentTarget.style.boxShadow =
-                                  "0 16px 50px rgba(15,23,42,0.75)";
+                                e.currentTarget.style.boxShadow = "0 16px 50px rgba(15,23,42,0.75)";
                               }}
                               onMouseLeave={(e) => {
                                 e.currentTarget.style.transform = "translateY(0)";
-                                e.currentTarget.style.boxShadow =
-                                  "0 10px 35px rgba(15,23,42,0.55)";
+                                e.currentTarget.style.boxShadow = "0 10px 35px rgba(15,23,42,0.55)";
                               }}
-                              title={entry?.note ? entry.note : "Click to add / edit"}
+                              title="Click to add / edit"
                             >
                               <div style={styles.pnlDayTop}>
                                 <span style={styles.pnlDayNum}>{cell.day}</span>
-                                <span style={styles.pnlDayTag}>{theme.tag}</span>
+                                <span style={styles.pnlSymbolTag}>
+                                  {symbol || "—"}
+                                </span>
                               </div>
-                              <div style={styles.pnlDayValue}>{theme.value}</div>
+
+                              {!hasPnl ? (
+                                <div style={styles.pnlNoEntry}>No entry</div>
+                              ) : (
+                                <div style={styles.pnlDayMid}>
+                                  <span style={styles.pnlPnlValue}>
+                                    {fmtMoneySigned(Number(entry.pnl.toFixed(2)))}
+                                  </span>
+                                  <span style={styles.pnlRRValue}>
+                                    {rr == null ? "—" : fmtRR(rr)}
+                                  </span>
+                                </div>
+                              )}
                             </div>
                           );
                         })}
                       </div>
                     ))}
-                  </div>
-
-                  <div style={{ ...styles.navHint, maxWidth: 900 }}>
-                    How it works: click a day → enter your net <strong>R</strong> for
-                    that day (ex: <strong>+2</strong>, <strong>-1.5</strong>,{" "}
-                    <strong>0</strong>). Leave blank to clear the day. Notes are optional.
                   </div>
                 </div>
               )}
@@ -2561,20 +2159,14 @@ export default function App({
         <div style={styles.overlay}>
           <div style={styles.modalCard}>
             <div style={styles.modalTitle}>Profile</div>
-            <div style={styles.modalText}>
-              Basic info for your MaxTradeAI workspace.
-            </div>
+            <div style={styles.modalText}>Basic info for your MaxTradeAI workspace.</div>
 
             <div style={styles.modalRow}>
               <div style={styles.modalLabel}>Member ID</div>
-              <div style={styles.modalValue}>{member?.memberId || "—"}</div>
+              <div style={{ opacity: 0.95 }}>{member?.memberId || "—"}</div>
             </div>
 
-            <button
-              type="button"
-              style={styles.modalCloseBtn}
-              onClick={() => setShowProfile(false)}
-            >
+            <button type="button" style={styles.modalCloseBtn} onClick={() => setShowProfile(false)}>
               Close
             </button>
           </div>
@@ -2583,15 +2175,9 @@ export default function App({
 
       {/* P&L EDIT MODAL */}
       {pnlModalOpen && (
-        <div
-          style={styles.overlay}
-          onClick={() => setPnlModalOpen(false)}
-        >
-          <div
-            style={styles.modalCard}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div style={styles.modalTitle}>Edit P&amp;L</div>
+        <div style={styles.overlay} onClick={() => setPnlModalOpen(false)}>
+          <div style={styles.modalCard} onClick={(e) => e.stopPropagation()}>
+            <div style={styles.modalTitle}>Edit Day</div>
             <div style={styles.modalText}>
               {pnlEditingIso
                 ? parseLocalDateFromIso(pnlEditingIso).toLocaleDateString(undefined, {
@@ -2604,27 +2190,40 @@ export default function App({
             </div>
 
             <div style={styles.modalRow}>
-              <div style={styles.modalLabel}>Net R for the day</div>
+              <div style={styles.modalLabel}>Symbol (what was traded)</div>
+              <input
+                type="text"
+                value={pnlEditSymbol}
+                onChange={(e) => setPnlEditSymbol(e.target.value)}
+                placeholder="Ex: NQ, ES, GBPUSD, XAUUSD"
+                style={styles.input}
+              />
+            </div>
+
+            <div style={styles.modalRow}>
+              <div style={styles.modalLabel}>P&amp;L for the day ($)</div>
               <input
                 type="number"
                 step="0.01"
-                value={pnlEditR}
-                onChange={(e) => setPnlEditR(e.target.value)}
-                placeholder="Ex: 2, -1.5, 0"
+                value={pnlEditPnl}
+                onChange={(e) => setPnlEditPnl(e.target.value)}
+                placeholder="Ex: 120, -45.50, 0"
                 style={styles.input}
               />
               <div style={{ fontSize: 11, opacity: 0.75, marginTop: 6, color: "#9ca3af" }}>
-                Tip: leave this blank (and no note) to clear the day.
+                Tip: Leave everything blank to delete the day.
               </div>
             </div>
 
             <div style={styles.modalRow}>
-              <div style={styles.modalLabel}>Note (optional)</div>
-              <textarea
-                value={pnlEditNote}
-                onChange={(e) => setPnlEditNote(e.target.value)}
-                placeholder="Quick context (ex: overtraded, A+ setup, news day, etc.)"
-                style={{ ...styles.textarea, minHeight: 90 }}
+              <div style={styles.modalLabel}>RR ratio (optional)</div>
+              <input
+                type="number"
+                step="0.01"
+                value={pnlEditRR}
+                onChange={(e) => setPnlEditRR(e.target.value)}
+                placeholder="Ex: 2, 1.5, 0.8"
+                style={styles.input}
               />
             </div>
 
@@ -2645,11 +2244,6 @@ export default function App({
           </div>
         </div>
       )}
-
-      {/* NOTE:
-          Your existing payment + member logic stays unchanged.
-          This P&L calendar is purely manual + stored locally per user/browser.
-      */}
     </>
   );
 }
