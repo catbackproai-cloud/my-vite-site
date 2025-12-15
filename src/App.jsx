@@ -194,11 +194,16 @@ export default function App({ selectedDay = todayStr() }) {
 
   const [previewUrl, setPreviewUrl] = useState(null);
 
-  // ⭐ member info (from localStorage)
+  // ⭐ member info (from localStorage) — WITH fallback to tc_member_id
   const [member, setMember] = useState(() => {
     try {
       const raw = localStorage.getItem(MEMBER_LS_KEY);
-      return raw ? JSON.parse(raw) : null;
+      if (raw) return JSON.parse(raw);
+
+      const legacy = localStorage.getItem("tc_member_id");
+      if (legacy) return { memberId: legacy };
+
+      return null;
     } catch {
       return null;
     }
@@ -288,6 +293,7 @@ export default function App({ selectedDay = todayStr() }) {
 
   /* =========================================================
      LOAD MEMBER STATE from SHEETS (per memberId)
+     FIX: Use FormData (avoids CORS preflight)
      ========================================================= */
 
   async function loadState() {
@@ -303,10 +309,12 @@ export default function App({ selectedDay = todayStr() }) {
     }
 
     try {
+      const fd = new FormData();
+      fd.append("memberId", memberId);
+
       const res = await fetch(GET_STATE_URL, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ memberId }),
+        body: fd,
       });
 
       const text = await res.text();
@@ -378,6 +386,7 @@ export default function App({ selectedDay = todayStr() }) {
 
   /* =========================================================
      SAVE MEMBER STATE to SHEETS (per memberId)
+     FIX: Use FormData (avoids CORS preflight)
      ========================================================= */
 
   async function saveWorkspace() {
@@ -399,13 +408,13 @@ export default function App({ selectedDay = todayStr() }) {
         pnl,
       });
 
+      const fd = new FormData();
+      fd.append("memberId", memberId);
+      fd.append("state", JSON.stringify(stateToSave));
+
       const res = await fetch(SAVE_STATE_URL, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          memberId,
-          state: stateToSave,
-        }),
+        body: fd,
       });
 
       const text = await res.text();
@@ -467,10 +476,11 @@ export default function App({ selectedDay = todayStr() }) {
   ).toLocaleDateString(undefined, { month: "long", year: "numeric" });
 
   const pnlWeeks = buildMonthWeeks(pnlMonth);
-  const pnlMonthLabel = new Date(pnlMonth.year, pnlMonth.month, 1).toLocaleDateString(
-    undefined,
-    { month: "long", year: "numeric" }
-  );
+  const pnlMonthLabel = new Date(
+    pnlMonth.year,
+    pnlMonth.month,
+    1
+  ).toLocaleDateString(undefined, { month: "long", year: "numeric" });
 
   const formattedDayLabel = useMemo(() => {
     try {
@@ -603,7 +613,10 @@ export default function App({ selectedDay = todayStr() }) {
 
   const isValid = useMemo(
     () =>
-      !!form.strategyNotes && !!form.file && !!form.timeframe && !!form.instrument,
+      !!form.strategyNotes &&
+      !!form.file &&
+      !!form.timeframe &&
+      !!form.instrument,
     [form]
   );
 
@@ -611,8 +624,7 @@ export default function App({ selectedDay = todayStr() }) {
   const isPending = !!lastChat?.pending;
   const hasCompletedTrade = !!(lastChat && !lastChat.pending);
 
-  const buttonDisabled =
-    !hasCompletedTrade && (!isValid || submitting || isPending);
+  const buttonDisabled = !hasCompletedTrade && (!isValid || submitting || isPending);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -627,9 +639,7 @@ export default function App({ selectedDay = todayStr() }) {
       const localDataUrl = await fileToDataUrl(form.file);
       const localPreviewUrl = form.file ? URL.createObjectURL(form.file) : null;
 
-      const tempId = `tmp-${Date.now()}-${Math.random()
-        .toString(36)
-        .slice(2)}`;
+      const tempId = `tmp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
       const tempChat = {
         id: tempId,
         timestamp: new Date().toISOString(),
@@ -660,9 +670,7 @@ export default function App({ selectedDay = todayStr() }) {
       try {
         data = text ? JSON.parse(text) : null;
       } catch {
-        throw new Error(
-          `Non-JSON response (${res.status}): ${text?.slice(0, 200)}`
-        );
+        throw new Error(`Non-JSON response (${res.status}): ${text?.slice(0, 200)}`);
       }
 
       if (!res.ok) {
@@ -1862,7 +1870,8 @@ export default function App({ selectedDay = todayStr() }) {
         <strong>Symbol</strong>, <strong>$ P&amp;L</strong>, and <strong>RR</strong>.
         <br />
         <br />
-        <strong>IMPORTANT:</strong> Click <strong>Save</strong> (top bar) to sync across devices.
+        <strong>IMPORTANT:</strong> Click <strong>Save</strong> (top bar) to sync
+        across devices.
       </div>
     </div>
   );
@@ -2254,7 +2263,9 @@ export default function App({ selectedDay = todayStr() }) {
                               </div>
                             </div>
 
-                            <div style={styles.label}>Strategy / thought process — what setup were you taking?</div>
+                            <div style={styles.label}>
+                              Strategy / thought process — what setup were you taking?
+                            </div>
                             <textarea
                               value={form.strategyNotes}
                               onChange={(e) => onChange("strategyNotes", e.target.value)}
@@ -2268,7 +2279,10 @@ export default function App({ selectedDay = todayStr() }) {
                         <button
                           type={hasCompletedTrade ? "button" : "submit"}
                           disabled={buttonDisabled}
-                          style={{ ...styles.button, ...(btnHover && !buttonDisabled ? styles.buttonHover : {}) }}
+                          style={{
+                            ...styles.button,
+                            ...(btnHover && !buttonDisabled ? styles.buttonHover : {}),
+                          }}
                           onClick={hasCompletedTrade ? handleResetTrade : undefined}
                           onMouseEnter={() => !buttonDisabled && setBtnHover(true)}
                           onMouseLeave={() => setBtnHover(false)}
@@ -2281,7 +2295,8 @@ export default function App({ selectedDay = todayStr() }) {
                             Error: {error}
                             {!WEBHOOK_URL && (
                               <div style={styles.hint}>
-                                Tip: define VITE_N8N_TRADE_FEEDBACK_WEBHOOK in .env.local and in your deploy env.
+                                Tip: define VITE_N8N_TRADE_FEEDBACK_WEBHOOK in .env.local and in
+                                your deploy env.
                               </div>
                             )}
                           </div>
