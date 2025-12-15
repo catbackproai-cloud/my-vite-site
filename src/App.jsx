@@ -12,6 +12,9 @@ const WEBHOOK_URL =
 const MEMBER_LS_KEY = "tc_member_v1";
 const LAST_DAY_KEY = "tradeCoach:lastDayWithData";
 
+// ⭐ NEW: P&L Calendar storage (manual entry)
+const PNL_KEY = "mtai_pnl_v1";
+
 const CYAN = "#22d3ee";
 const CYAN_SOFT = "#38bdf8";
 
@@ -87,10 +90,38 @@ function safeSaveChats(key, chats) {
   }
 }
 
+function safeParseJSON(raw, fallback) {
+  try {
+    if (!raw) return fallback;
+    return JSON.parse(raw);
+  } catch {
+    return fallback;
+  }
+}
+
+function toMonthKey(iso) {
+  // "YYYY-MM"
+  return (iso || "").slice(0, 7);
+}
+
+function fmtSigned(n) {
+  if (typeof n !== "number" || Number.isNaN(n)) return "—";
+  const s = n > 0 ? `+${n}` : `${n}`;
+  return s;
+}
+
 export default function App({
   selectedDay = todayStr(), // ✅ use LOCAL today as default
 }) {
   const navigate = useNavigate();
+
+  // ⭐ NEW: “pages” (sidebar)
+  const PAGES = {
+    AI: "ai",
+    PNL: "pnl",
+  };
+  const [activePage, setActivePage] = useState(PAGES.AI);
+  const [navOpen, setNavOpen] = useState(false); // for mobile sidebar toggle
 
   const [form, setForm] = useState({
     strategyNotes: "",
@@ -130,7 +161,7 @@ export default function App({
   const [menuOpen, setMenuOpen] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
 
-  // ⭐ DAY + CALENDAR STATE
+  // ⭐ DAY + CALENDAR STATE (AI page)
   const [day, setDay] = useState(initialDay); // internal selected day
   const [showCalendar, setShowCalendar] = useState(false);
   const [calendarMonth, setCalendarMonth] = useState(() => {
@@ -144,6 +175,21 @@ export default function App({
     learned: "",
     improve: "",
   });
+
+  // ⭐ P&L CALENDAR STATE
+  const [pnlMonth, setPnlMonth] = useState(() => {
+    const d = parseLocalDateFromIso(todayStr());
+    return { year: d.getFullYear(), month: d.getMonth() };
+  });
+  const [pnl, setPnl] = useState(() => {
+    const raw = typeof window !== "undefined" ? localStorage.getItem(PNL_KEY) : null;
+    // shape: { "YYYY-MM-DD": { r: number, note: string } }
+    return safeParseJSON(raw, {});
+  });
+  const [pnlModalOpen, setPnlModalOpen] = useState(false);
+  const [pnlEditingIso, setPnlEditingIso] = useState(null);
+  const [pnlEditR, setPnlEditR] = useState("");
+  const [pnlEditNote, setPnlEditNote] = useState("");
 
   const todayIso = todayStr();
 
@@ -164,9 +210,9 @@ export default function App({
   const buttonDisabled =
     !hasCompletedTrade && (!isValid || submitting || isPending);
 
-  // Build calendar weeks for dropdown
-  function buildMonthWeeks() {
-    const { year, month } = calendarMonth;
+  // Build calendar weeks (generic)
+  function buildMonthWeeks(monthState) {
+    const { year, month } = monthState;
     const first = new Date(year, month, 1);
     const startDow = first.getDay(); // 0-6, Sun-Sat
     const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -192,7 +238,8 @@ export default function App({
     return weeks;
   }
 
-  const monthWeeks = buildMonthWeeks();
+  // AI date dropdown calendar
+  const monthWeeks = buildMonthWeeks(calendarMonth);
   const calendarMonthLabel = new Date(
     calendarMonth.year,
     calendarMonth.month,
@@ -201,6 +248,13 @@ export default function App({
     month: "long",
     year: "numeric",
   });
+
+  // P&L month calendar
+  const pnlWeeks = buildMonthWeeks(pnlMonth);
+  const pnlMonthLabel = new Date(pnlMonth.year, pnlMonth.month, 1).toLocaleDateString(
+    undefined,
+    { month: "long", year: "numeric" }
+  );
 
   const formattedDayLabel = parseLocalDateFromIso(day).toLocaleDateString(
     undefined,
@@ -231,7 +285,77 @@ export default function App({
     setShowCalendar(false);
   }
 
+  function pnlPrevMonth() {
+    setPnlMonth((prev) => {
+      const d = new Date(prev.year, prev.month - 1, 1);
+      return { year: d.getFullYear(), month: d.getMonth() };
+    });
+  }
+  function pnlNextMonth() {
+    setPnlMonth((prev) => {
+      const d = new Date(prev.year, prev.month + 1, 1);
+      return { year: d.getFullYear(), month: d.getMonth() };
+    });
+  }
+
   const onChange = (k, v) => setForm((prev) => ({ ...prev, [k]: v }));
+
+  function openPnlModal(iso) {
+    const existing = pnl?.[iso];
+    setPnlEditingIso(iso);
+    setPnlEditR(
+      typeof existing?.r === "number" && !Number.isNaN(existing.r)
+        ? String(existing.r)
+        : ""
+    );
+    setPnlEditNote(existing?.note || "");
+    setPnlModalOpen(true);
+  }
+
+  function savePnlEntry() {
+    if (!pnlEditingIso) return;
+
+    const rTrim = (pnlEditR || "").trim();
+    const noteTrim = (pnlEditNote || "").trim();
+
+    // If both empty -> delete entry
+    if (!rTrim && !noteTrim) {
+      setPnl((prev) => {
+        const copy = { ...(prev || {}) };
+        delete copy[pnlEditingIso];
+        return copy;
+      });
+      setPnlModalOpen(false);
+      return;
+    }
+
+    const rNum = rTrim === "" ? null : Number(rTrim);
+
+    // If r provided but not a number -> ignore save
+    if (rTrim !== "" && (Number.isNaN(rNum) || !Number.isFinite(rNum))) {
+      // simple inline “guard” (no extra UI)
+      return;
+    }
+
+    setPnl((prev) => ({
+      ...(prev || {}),
+      [pnlEditingIso]: {
+        r: rTrim === "" ? 0 : rNum,
+        note: noteTrim,
+      },
+    }));
+    setPnlModalOpen(false);
+  }
+
+  function deletePnlEntry() {
+    if (!pnlEditingIso) return;
+    setPnl((prev) => {
+      const copy = { ...(prev || {}) };
+      delete copy[pnlEditingIso];
+      return copy;
+    });
+    setPnlModalOpen(false);
+  }
 
   /* ---------------- STYLES ---------------- */
 
@@ -276,13 +400,35 @@ export default function App({
       display: "flex",
       alignItems: "center",
       justifyContent: "space-between",
-      padding: "0 32px",
+      padding: "0 16px",
       background:
         "linear-gradient(to right, rgba(15,23,42,0.96), rgba(8,25,43,0.96))",
       borderBottom: "1px solid rgba(15,23,42,0.9)",
       backdropFilter: "blur(20px)",
       zIndex: 70,
       boxShadow: "0 16px 60px rgba(15,23,42,0.9)",
+      gap: 12,
+    },
+    headerLeft: {
+      display: "flex",
+      alignItems: "center",
+      gap: 10,
+    },
+    mobileNavBtn: {
+      width: 34,
+      height: 34,
+      borderRadius: 999,
+      border: "1px solid rgba(51,65,85,0.9)",
+      background:
+        "radial-gradient(circle at 0 0, rgba(34,211,238,0.18), #020617)",
+      color: "#e5e7eb",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      cursor: "pointer",
+      fontSize: 16,
+      padding: 0,
+      boxShadow: "0 10px 30px rgba(15,23,42,0.9)",
     },
     siteHeaderTitle: {
       fontSize: 18,
@@ -353,7 +499,117 @@ export default function App({
       color: "#fecaca",
     },
 
-    // 🔹 DATE DROPDOWN ROW
+    // 🔹 SHELL: SIDEBAR + CONTENT
+    shell: {
+      width: "100%",
+      maxWidth: 1240,
+      margin: "0 auto",
+      display: "flex",
+      gap: 16,
+      alignItems: "stretch",
+    },
+
+    // 🔹 SIDEBAR
+    sidebar: {
+      width: 240,
+      minWidth: 240,
+      background:
+        "radial-gradient(circle at top left, rgba(2,6,23,1), rgba(2,6,23,0.92))",
+      borderRadius: 20,
+      border: "1px solid rgba(30,64,175,0.65)",
+      boxShadow: "0 20px 60px rgba(15,23,42,0.95)",
+      padding: 14,
+      height: "fit-content",
+      position: "sticky",
+      top: 72,
+      alignSelf: "flex-start",
+    },
+    sidebarTitle: {
+      fontSize: 12,
+      opacity: 0.75,
+      letterSpacing: "0.08em",
+      textTransform: "uppercase",
+      marginBottom: 10,
+      color: "#9ca3af",
+    },
+    sidebarSelectWrap: { position: "relative", width: "100%", marginBottom: 12 },
+    sidebarSelect: {
+      width: "100%",
+      background:
+        "radial-gradient(circle at top left, #020617, #020617 70%, #020617 100%)",
+      border: "1px solid rgba(31,41,55,0.9)",
+      borderRadius: 12,
+      color: "#e5e7eb",
+      padding: "10px 34px 10px 12px",
+      fontSize: 13,
+      outline: "none",
+      appearance: "none",
+      WebkitAppearance: "none",
+      MozAppearance: "none",
+      boxShadow: "0 12px 40px rgba(15,23,42,0.9)",
+      cursor: "pointer",
+    },
+    sidebarArrow: {
+      position: "absolute",
+      right: 12,
+      top: "50%",
+      transform: "translateY(-50%)",
+      fontSize: 10,
+      opacity: 0.7,
+      color: "#9ca3af",
+      pointerEvents: "none",
+    },
+    navItem: (active) => ({
+      padding: "10px 10px",
+      borderRadius: 12,
+      cursor: "pointer",
+      fontSize: 13,
+      color: active ? "#020617" : "#e5e7eb",
+      background: active
+        ? `linear-gradient(135deg, ${CYAN}, ${CYAN_SOFT})`
+        : "transparent",
+      border: active ? "1px solid transparent" : "1px solid rgba(51,65,85,0.6)",
+      boxShadow: active ? "0 18px 55px rgba(34,211,238,0.25)" : "none",
+      fontWeight: active ? 900 : 600,
+      letterSpacing: active ? "0.02em" : "0",
+      marginBottom: 8,
+      transition: "transform .15s ease, box-shadow .15s ease, background .15s ease",
+    }),
+    navHint: {
+      fontSize: 11,
+      opacity: 0.75,
+      color: "#9ca3af",
+      marginTop: 10,
+      lineHeight: 1.35,
+    },
+
+    // 🔹 MOBILE SIDEBAR OVERLAY
+    sideOverlay: {
+      position: "fixed",
+      inset: 0,
+      background: "rgba(2,6,23,0.72)",
+      zIndex: 85,
+      display: "flex",
+      alignItems: "stretch",
+      justifyContent: "flex-start",
+      paddingTop: 56,
+      backdropFilter: "blur(10px)",
+    },
+    sidebarMobile: {
+      width: 280,
+      background:
+        "radial-gradient(circle at top left, rgba(2,6,23,1), rgba(2,6,23,0.94))",
+      borderRight: "1px solid rgba(30,64,175,0.65)",
+      padding: 14,
+      boxShadow: "0 30px 100px rgba(0,0,0,0.55)",
+    },
+
+    content: {
+      flex: "1 1 auto",
+      minWidth: 0,
+    },
+
+    // 🔹 DATE DROPDOWN ROW (AI page)
     dateRow: {
       width: "100%",
       maxWidth: 1100,
@@ -381,8 +637,7 @@ export default function App({
     datePillHover: {
       transform: "translateY(-1px)",
       boxShadow: "0 16px 50px rgba(15,23,42,0.95)",
-      border:
-        "1px solid rgba(34,211,238,0.85)",
+      border: "1px solid rgba(34,211,238,0.85)",
     },
     datePillText: {
       whiteSpace: "nowrap",
@@ -463,6 +718,7 @@ export default function App({
       border: "1px solid transparent",
       color: "#e5e7eb",
       transition: "background .12s ease, border .12s ease, color .12s ease",
+      userSelect: "none",
     },
     dayCellSelected: {
       background: CYAN,
@@ -473,7 +729,7 @@ export default function App({
       borderColor: "rgba(34,211,238,0.6)",
     },
 
-    // 🔹 MAIN 2/3 – 1/3 LAYOUT
+    // 🔹 MAIN 2/3 – 1/3 LAYOUT (AI page)
     mainShell: {
       width: "100%",
       maxWidth: 1100,
@@ -670,8 +926,7 @@ export default function App({
     dropMini: {
       background:
         "radial-gradient(circle at top left, #020617, #020617 70%, #020617 100%)",
-      border:
-        "1px dashed rgba(51,65,85,0.95)",
+      border: "1px dashed rgba(51,65,85,0.95)",
       borderRadius: 14,
       padding: 10,
       height: "100%",
@@ -931,7 +1186,161 @@ export default function App({
       color: "#9ca3af",
     },
 
-    // 🔹 PROFILE MODAL
+    // 🔹 P&L CALENDAR PAGE
+    pnlShell: {
+      width: "100%",
+      maxWidth: 1100,
+      margin: "0 auto",
+      display: "flex",
+      flexDirection: "column",
+      gap: 12,
+    },
+    pnlTopRow: {
+      display: "flex",
+      gap: 12,
+      flexWrap: "wrap",
+      alignItems: "stretch",
+    },
+    pnlCard: {
+      flex: "1 1 220px",
+      minWidth: 220,
+      background:
+        "radial-gradient(circle at top left, #020617, #020617 60%, #020617 100%)",
+      borderRadius: 18,
+      border: "1px solid rgba(30,64,175,0.7)",
+      boxShadow: "0 20px 60px rgba(15,23,42,0.95)",
+      padding: 16,
+      display: "flex",
+      flexDirection: "column",
+      gap: 6,
+    },
+    pnlCardLabel: {
+      fontSize: 12,
+      opacity: 0.75,
+      color: "#9ca3af",
+    },
+    pnlCardValue: {
+      fontSize: 24,
+      fontWeight: 900,
+      letterSpacing: "0.02em",
+      color: "#f9fafb",
+    },
+    pnlCardSub: {
+      fontSize: 12,
+      opacity: 0.8,
+      color: "#9ca3af",
+    },
+    pnlCalendarCard: {
+      background:
+        "radial-gradient(circle at top left, #020617, #020617 60%, #020617 100%)",
+      borderRadius: 20,
+      border: "1px solid rgba(30,64,175,0.7)",
+      boxShadow: "0 20px 60px rgba(15,23,42,0.95)",
+      padding: 16,
+    },
+    pnlCalHeader: {
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 10,
+      gap: 8,
+    },
+    pnlCalTitle: {
+      fontSize: 16,
+      fontWeight: 900,
+      color: "#f9fafb",
+      letterSpacing: "0.03em",
+      textTransform: "uppercase",
+    },
+    pnlCalNav: {
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
+    },
+    pnlNavBtn: {
+      width: 30,
+      height: 30,
+      borderRadius: 999,
+      border: "1px solid rgba(55,65,81,0.9)",
+      background: "#020617",
+      color: "#e5e7eb",
+      fontSize: 14,
+      cursor: "pointer",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    pnlMonthLabel: {
+      fontSize: 13,
+      fontWeight: 700,
+      color: "#e5e7eb",
+      opacity: 0.9,
+      minWidth: 160,
+      textAlign: "center",
+    },
+    pnlWeekdayRow: {
+      display: "grid",
+      gridTemplateColumns: "repeat(7, 1fr)",
+      gap: 8,
+      fontSize: 11,
+      opacity: 0.75,
+      marginBottom: 8,
+      color: "#9ca3af",
+    },
+    pnlWeek: {
+      display: "grid",
+      gridTemplateColumns: "repeat(7, 1fr)",
+      gap: 8,
+      marginTop: 8,
+    },
+    pnlCellEmpty: {
+      height: 64,
+      borderRadius: 14,
+      border: "1px solid rgba(31,41,55,0.35)",
+      opacity: 0.25,
+    },
+    pnlDayCell: (bg, borderColor) => ({
+      height: 64,
+      borderRadius: 14,
+      border: `1px solid ${borderColor}`,
+      background: bg,
+      boxShadow: "0 10px 35px rgba(15,23,42,0.55)",
+      padding: 10,
+      cursor: "pointer",
+      display: "flex",
+      flexDirection: "column",
+      justifyContent: "space-between",
+      userSelect: "none",
+      transition: "transform .12s ease, box-shadow .12s ease, border-color .12s ease",
+    }),
+    pnlDayTop: {
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: 8,
+      fontSize: 12,
+      fontWeight: 800,
+      color: "#e5e7eb",
+    },
+    pnlDayNum: { opacity: 0.95 },
+    pnlDayTag: {
+      fontSize: 10,
+      opacity: 0.9,
+      padding: "2px 8px",
+      borderRadius: 999,
+      border: "1px solid rgba(255,255,255,0.22)",
+      background: "rgba(2,6,23,0.35)",
+      color: "#e5e7eb",
+      whiteSpace: "nowrap",
+    },
+    pnlDayValue: {
+      fontSize: 13,
+      fontWeight: 900,
+      letterSpacing: "0.02em",
+      color: "#f9fafb",
+    },
+
+    // 🔹 PROFILE MODAL + GENERIC MODAL
     overlay: {
       position: "fixed",
       inset: 0,
@@ -945,7 +1354,7 @@ export default function App({
     },
     modalCard: {
       width: "100%",
-      maxWidth: 380,
+      maxWidth: 420,
       background:
         "radial-gradient(circle at top, #020617, #020617 60%, #020617 100%)",
       borderRadius: 20,
@@ -970,13 +1379,14 @@ export default function App({
       color: "#9ca3af",
     },
     modalRow: {
-      marginBottom: 8,
+      marginBottom: 10,
       fontSize: 13,
     },
     modalLabel: {
       fontWeight: 700,
       opacity: 0.9,
       color: "#e5e7eb",
+      marginBottom: 4,
     },
     modalValue: {
       opacity: 0.95,
@@ -989,11 +1399,51 @@ export default function App({
       border: "1px solid rgba(55,65,81,0.9)",
       padding: "8px 12px",
       fontSize: 13,
-      fontWeight: 500,
+      fontWeight: 700,
       background:
         "linear-gradient(135deg, rgba(15,23,42,0.95), rgba(15,23,42,0.7))",
       color: "#e5e7eb",
       cursor: "pointer",
+    },
+    modalBtnRow: {
+      display: "flex",
+      gap: 10,
+      marginTop: 14,
+    },
+    modalBtnPrimary: {
+      flex: 1,
+      borderRadius: 999,
+      border: "none",
+      padding: "10px 12px",
+      fontSize: 13,
+      fontWeight: 900,
+      cursor: "pointer",
+      color: "#020617",
+      background: `linear-gradient(135deg, ${CYAN}, ${CYAN_SOFT})`,
+      boxShadow: "0 18px 55px rgba(34,211,238,0.35)",
+    },
+    modalBtnGhost: {
+      flex: 1,
+      borderRadius: 999,
+      border: "1px solid rgba(55,65,81,0.9)",
+      padding: "10px 12px",
+      fontSize: 13,
+      fontWeight: 800,
+      cursor: "pointer",
+      background:
+        "linear-gradient(135deg, rgba(15,23,42,0.95), rgba(15,23,42,0.7))",
+      color: "#e5e7eb",
+    },
+    modalBtnDanger: {
+      flex: 1,
+      borderRadius: 999,
+      border: "1px solid rgba(248,113,113,0.6)",
+      padding: "10px 12px",
+      fontSize: 13,
+      fontWeight: 900,
+      cursor: "pointer",
+      background: "rgba(127,29,29,0.85)",
+      color: "#fee2e2",
     },
   };
 
@@ -1094,6 +1544,15 @@ export default function App({
     }
   }, [journal, day]);
 
+  // 🔹 Persist P&L calendar
+  useEffect(() => {
+    try {
+      localStorage.setItem(PNL_KEY, JSON.stringify(pnl || {}));
+    } catch {
+      // ignore
+    }
+  }, [pnl]);
+
   /* ---------------- HANDLERS ---------------- */
 
   async function handleSubmit(e) {
@@ -1108,13 +1567,9 @@ export default function App({
       if (!WEBHOOK_URL) throw new Error("No webhook URL configured.");
 
       const localDataUrl = await fileToDataUrl(form.file);
-      const localPreviewUrl = form.file
-        ? URL.createObjectURL(form.file)
-        : null;
+      const localPreviewUrl = form.file ? URL.createObjectURL(form.file) : null;
 
-      const tempId = `tmp-${Date.now()}-${Math.random()
-        .toString(36)
-        .slice(2)}`;
+      const tempId = `tmp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
       const tempChat = {
         id: tempId,
         timestamp: new Date().toISOString(),
@@ -1148,15 +1603,11 @@ export default function App({
       try {
         data = text ? JSON.parse(text) : null;
       } catch {
-        throw new Error(
-          `Non-JSON response (${res.status}): ${text?.slice(0, 200)}`
-        );
+        throw new Error(`Non-JSON response (${res.status}): ${text?.slice(0, 200)}`);
       }
 
       if (!res.ok) {
-        throw new Error(
-          data?.message || data?.error || `Server responded ${res.status}`
-        );
+        throw new Error(data?.message || data?.error || `Server responded ${res.status}`);
       }
 
       setChats((prev) =>
@@ -1168,7 +1619,9 @@ export default function App({
               URL.revokeObjectURL(c.localPreviewUrl);
             } catch {}
           }
-console.log("TradeCoach response:", data);
+
+          console.log("TradeCoach response:", data);
+
           return {
             ...c,
             pending: false,
@@ -1256,7 +1709,7 @@ console.log("TradeCoach response:", data);
     navigate("/"); // back to landing page
   }
 
-  /* ---------------- RENDER ---------------- */
+  /* ---------------- DERIVED (AI) ---------------- */
 
   const analysis = lastChat?.analysis ?? {};
   const {
@@ -1282,24 +1735,161 @@ console.log("TradeCoach response:", data);
     : "Get feedback";
 
   const statusAnimatedStyle = lastChat
-    ? {
-        opacity: 1,
-        transform: "translateY(0)",
-      }
-    : {
-        opacity: 1,
-        transform: "translateY(0)",
-      };
+    ? { opacity: 1, transform: "translateY(0)" }
+    : { opacity: 1, transform: "translateY(0)" };
 
   const [menuBtnHover, setMenuBtnHover] = useState(false);
   const [btnHover, setBtnHover] = useState(false);
   const [dateHover, setDateHover] = useState(false);
 
+  /* ---------------- DERIVED (P&L) ---------------- */
+
+  const allEntries = pnl || {};
+  const allTimeTotal = useMemo(() => {
+    let sum = 0;
+    for (const k in allEntries) {
+      const r = allEntries?.[k]?.r;
+      if (typeof r === "number" && Number.isFinite(r)) sum += r;
+    }
+    return sum;
+  }, [allEntries]);
+
+  const monthKey = useMemo(() => {
+    const m = String(pnlMonth.month + 1).padStart(2, "0");
+    return `${pnlMonth.year}-${m}`;
+  }, [pnlMonth]);
+
+  const monthStats = useMemo(() => {
+    let sum = 0;
+    let green = 0;
+    let red = 0;
+    let be = 0;
+
+    for (const iso in allEntries) {
+      if (toMonthKey(iso) !== monthKey) continue;
+      const r = allEntries?.[iso]?.r;
+      if (typeof r !== "number" || !Number.isFinite(r)) continue;
+      sum += r;
+      if (r > 0) green++;
+      else if (r < 0) red++;
+      else be++;
+    }
+
+    return { sum, green, red, be };
+  }, [allEntries, monthKey]);
+
+  function cellThemeForIso(iso) {
+    const entry = allEntries?.[iso];
+    const r = entry?.r;
+
+    // Default = “no entry yet” (dark)
+    if (typeof r !== "number" || !Number.isFinite(r)) {
+      const isToday = iso === todayIso;
+      return {
+        bg: isToday
+          ? "radial-gradient(circle at top, rgba(34,211,238,0.16), rgba(2,6,23,0.95) 60%)"
+          : "radial-gradient(circle at top, rgba(148,163,184,0.08), rgba(2,6,23,0.95) 60%)",
+        border: isToday ? "rgba(34,211,238,0.55)" : "rgba(51,65,85,0.55)",
+        tag: "No entry",
+        value: "—",
+      };
+    }
+
+    if (r > 0) {
+      return {
+        bg: "radial-gradient(circle at top, rgba(34,197,94,0.18), rgba(2,6,23,0.95) 62%)",
+        border: "rgba(34,197,94,0.55)",
+        tag: "Green",
+        value: `${fmtSigned(r)}R`,
+      };
+    }
+    if (r < 0) {
+      return {
+        bg: "radial-gradient(circle at top, rgba(248,113,113,0.16), rgba(2,6,23,0.95) 62%)",
+        border: "rgba(248,113,113,0.55)",
+        tag: "Red",
+        value: `${fmtSigned(r)}R`,
+      };
+    }
+    return {
+      bg: "radial-gradient(circle at top, rgba(250,204,21,0.14), rgba(2,6,23,0.95) 62%)",
+      border: "rgba(250,204,21,0.5)",
+      tag: "B/E",
+      value: "0R",
+    };
+  }
+
+  /* ---------------- RENDER ---------------- */
+
+  const Sidebar = ({ mobile = false }) => (
+    <div style={mobile ? styles.sidebarMobile : styles.sidebar}>
+      <div style={styles.sidebarTitle}>Navigation</div>
+
+      {/* Dropdown selector (what you asked for) */}
+      <div style={styles.sidebarSelectWrap}>
+        <select
+          style={styles.sidebarSelect}
+          value={activePage}
+          onChange={(e) => {
+            const v = e.target.value;
+            setActivePage(v);
+            setNavOpen(false);
+            setShowCalendar(false);
+          }}
+        >
+          <option value={PAGES.AI}>AI feedback + journal</option>
+          <option value={PAGES.PNL}>P&L calendar</option>
+        </select>
+        <span style={styles.sidebarArrow}>▾</span>
+      </div>
+
+      {/* Clickable items too (nice UX) */}
+      <div
+        style={styles.navItem(activePage === PAGES.AI)}
+        onClick={() => {
+          setActivePage(PAGES.AI);
+          setNavOpen(false);
+          setShowCalendar(false);
+        }}
+      >
+        AI feedback + journal
+      </div>
+
+      <div
+        style={styles.navItem(activePage === PAGES.PNL)}
+        onClick={() => {
+          setActivePage(PAGES.PNL);
+          setNavOpen(false);
+          setShowCalendar(false);
+        }}
+      >
+        P&L calendar
+      </div>
+
+      <div style={styles.navHint}>
+        Tip: Your P&L calendar is manual (paper-friendly). Click a day to add or
+        edit that day’s result.
+      </div>
+    </div>
+  );
+
   return (
     <>
       {/* 🔹 GLOBAL HEADER (fixed, very top of site) */}
       <div style={styles.siteHeader}>
-        <div style={styles.siteHeaderTitle}>MaxTradeAI</div>
+        <div style={styles.headerLeft}>
+          {/* mobile sidebar toggle */}
+          <button
+            type="button"
+            style={styles.mobileNavBtn}
+            onClick={() => setNavOpen(true)}
+            title="Menu"
+          >
+            ☰
+          </button>
+          <div style={styles.siteHeaderTitle}>MaxTradeAI</div>
+        </div>
+
         <div style={styles.siteHeaderActions}>
           <span style={styles.workspaceTag}>Personal workspace</span>
           <button
@@ -1349,504 +1939,618 @@ console.log("TradeCoach response:", data);
         </div>
       </div>
 
+      {/* MOBILE SIDEBAR */}
+      {navOpen && (
+        <div
+          style={styles.sideOverlay}
+          onClick={() => setNavOpen(false)}
+        >
+          <div onClick={(e) => e.stopPropagation()}>
+            <Sidebar mobile />
+          </div>
+        </div>
+      )}
+
       {/* PAGE CONTENT */}
       <div style={styles.page}>
         <div style={styles.pageGlow} />
         <div style={styles.pageInner}>
-          {/* 🔹 DATE DROPDOWN */}
-          <div style={styles.dateRow}>
-            <div
-              style={{
-                ...styles.datePill,
-                ...(dateHover ? styles.datePillHover : {}),
-              }}
-              onClick={() => {
-                setShowCalendar((open) => !open);
-                if (!showCalendar) {
-                  const d = parseLocalDateFromIso(day);
-                  setCalendarMonth({
-                    year: d.getFullYear(),
-                    month: d.getMonth(),
-                  });
-                }
-              }}
-              onMouseEnter={() => setDateHover(true)}
-              onMouseLeave={() => setDateHover(false)}
-            >
-              <div style={styles.datePillText}>{formattedDayLabel}</div>
-              <div style={styles.datePillIcon}>
-                {showCalendar ? "▲" : "▼"}
-              </div>
+          <div style={styles.shell}>
+            {/* Desktop sidebar */}
+            <div style={{ display: "none" }} />
+            <div className="__sidebar_desktop__" style={styles.sidebar}>
+              <Sidebar />
             </div>
 
-            {showCalendar && (
-              <div style={styles.calendarPanel}>
-                <div style={styles.calendarHeader}>
-                  <button
-                    type="button"
-                    style={styles.calendarNavBtn}
-                    onClick={goToPrevMonth}
-                  >
-                    ‹
-                  </button>
-                  <div style={styles.calendarHeaderTitle}>
-                    {calendarMonthLabel}
-                  </div>
-                  <button
-                    type="button"
-                    style={styles.calendarNavBtn}
-                    onClick={goToNextMonth}
-                  >
-                    ›
-                  </button>
-                </div>
-
-                <div style={styles.weekdayRow}>
-                  {["S", "M", "T", "W", "T", "F", "S"].map((w) => (
-                    <div key={w} style={styles.weekdayCell}>
-                      {w}
-                    </div>
-                  ))}
-                </div>
-
-                {monthWeeks.map((week, wi) => (
-                  <div key={wi} style={styles.calendarWeek}>
-                    {week.map((cell, di) => {
-                      if (!cell) {
-                        return <div key={di} style={styles.dayCellEmpty} />;
-                      }
-                      const isSelected = cell.iso === day;
-                      const isToday = cell.iso === todayIso;
-
-                      let style = { ...styles.dayCellBase };
-                      if (isSelected) {
-                        style = { ...style, ...styles.dayCellSelected };
-                      } else if (isToday) {
-                        style = { ...style, ...styles.dayCellToday };
-                      }
-
-                      return (
-                        <div
-                          key={di}
-                          style={style}
-                          onClick={() => handlePickDate(cell.iso)}
-                        >
-                          {cell.day}
-                        </div>
-                      );
-                    })}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* 🔹 2/3 – 1/3 LAYOUT */}
-          <div style={styles.mainShell}>
-            {/* LEFT: TRADE COACH */}
-            <div style={styles.leftCol}>
-              <div style={styles.coachCard}>
-                <div style={styles.coachHeaderRow}>
-                  <div>
-                    <div style={styles.coachTitle}>Trade Coach</div>
-                    <div style={styles.coachSub}>
-  Upload chart → choose pair & timeframe → explain your idea → AI feedback.
-  <br />
-  <strong>
-    The more detail you give (bias, liquidity, session, entry, stop, target,
-    emotions), the more accurate your AI feedback will be.
-  </strong>
-</div>
-                  </div>
-                  <div style={styles.dayBadge}>Day: {day}</div>
-                </div>
-
-                {/* STATUS BOX */}
-                <div style={styles.statusBox}>
-                  <div style={styles.statusGlow} />
+            {/* Main content area */}
+            <div style={styles.content}>
+              {/* 🔹 DATE DROPDOWN (only on AI page) */}
+              {activePage === PAGES.AI && (
+                <div style={styles.dateRow}>
                   <div
                     style={{
-                      ...styles.statusContent,
-                      ...statusAnimatedStyle,
+                      ...styles.datePill,
+                      ...(dateHover ? styles.datePillHover : {}),
                     }}
+                    onClick={() => {
+                      setShowCalendar((open) => !open);
+                      if (!showCalendar) {
+                        const d = parseLocalDateFromIso(day);
+                        setCalendarMonth({
+                          year: d.getFullYear(),
+                          month: d.getMonth(),
+                        });
+                      }
+                    }}
+                    onMouseEnter={() => setDateHover(true)}
+                    onMouseLeave={() => setDateHover(false)}
                   >
-                    {!lastChat && (
-                      <>
-                        <div style={styles.statusPlaceholderTitle}>
-                          Status…
-                        </div>
-                        <p style={styles.statusPlaceholderText}>
-                          Add a screenshot + your thought process below, then
-                          press &ldquo;Get feedback&rdquo; to see your trade
-                          graded here.
-                        </p>
-                      </>
-                    )}
-
-                    {lastChat && isPending && (
-                      <>
-                        <div style={styles.statusPlaceholderTitle}>
-                          Trade Coach analyzing…
-                        </div>
-                        <p style={styles.statusPlaceholderText}>
-                          Hold on a second while your trade is graded and broken
-                          down.
-                        </p>
-                      </>
-                    )}
-
-                    {lastChat && !isPending && (
-                      <>
-                        <div style={styles.statusHeaderRow}>
-                          <div style={styles.statusHeaderLeft}>
-                            <span style={styles.statusLabel}>
-                              Trade Coach AI
-                            </span>
-                            {(lastChat.instrument || lastChat.timeframe) && (
-                              <span style={styles.statusMeta}>
-                                {lastChat.instrument && (
-                                  <span>{lastChat.instrument}</span>
-                                )}
-                                {lastChat.instrument &&
-                                  lastChat.timeframe && <span> • </span>}
-                                {lastChat.timeframe && (
-                                  <span>{lastChat.timeframe}</span>
-                                )}
-                              </span>
-                            )}
-                          </div>
-                          {grade && (
-                            <span
-                              style={{
-                                ...styles.gradePill,
-                                backgroundColor: gradeColor(grade),
-                                color: "#020617",
-                              }}
-                            >
-                              {grade}
-                            </span>
-                          )}
-                        </div>
-
-                        {typeof confidence === "number" && (
-                          <div style={styles.statusMeta}>
-                            {Math.round(confidence * 100)}% confident
-                          </div>
-                        )}
-
-                        {imgSrc && (
-                          <img
-                            src={imgSrc}
-                            alt="Trade screenshot"
-                            style={styles.statusImg}
-                          />
-                        )}
-
-                        {oneLineVerdict && (
-                          <div style={{ opacity: 0.96, fontSize: 13 }}>
-                            {oneLineVerdict}
-                          </div>
-                        )}
-
-                        {whatWentRight.length > 0 && (
-                          <>
-                            <div style={styles.sectionTitle}>
-                              What went right
-                            </div>
-                            <ul style={styles.ul}>
-                              {whatWentRight.map((x, i) => (
-                                <li key={i}>{x}</li>
-                              ))}
-                            </ul>
-                          </>
-                        )}
-
-                        {whatWentWrong.length > 0 && (
-                          <>
-                            <div style={styles.sectionTitle}>
-                              What went wrong
-                            </div>
-                            <ul style={styles.ul}>
-                              {whatWentWrong.map((x, i) => (
-                                <li key={i}>{x}</li>
-                              ))}
-                            </ul>
-                          </>
-                        )}
-
-                        {improvements.length > 0 && (
-                          <>
-                            <div style={styles.sectionTitle}>Improvements</div>
-                            <ul style={styles.ul}>
-                              {improvements.map((x, i) => (
-                                <li key={i}>{x}</li>
-                              ))}
-                            </ul>
-                          </>
-                        )}
-
-                        {lessonLearned && (
-                          <>
-                            <div style={styles.sectionTitle}>
-                              Lesson learned
-                            </div>
-                            <div
-                              style={{
-                                opacity: 0.96,
-                                fontSize: 13,
-                                color: "#d1d5db",
-                              }}
-                            >
-                              {lessonLearned}
-                            </div>
-                          </>
-                        )}
-
-                        {(lastChat.serverTimestamp || lastChat.timestamp) && (
-                          <div style={styles.smallMeta}>
-                            {new Date(
-                              lastChat.serverTimestamp || lastChat.timestamp
-                            ).toLocaleString()}
-                          </div>
-                        )}
-                      </>
-                    )}
-                  </div>
-                </div>
-
-                {/* FORM AREA */}
-                <form
-                  onSubmit={hasCompletedTrade ? undefined : handleSubmit}
-                  style={styles.formSection}
-                >
-                  <div style={styles.composerRow}>
-                    <div style={styles.composerLeft}>
-                      <div
-                        style={{
-                          ...styles.dropMini,
-                          ...(dragActive ? styles.dropMiniActive : {}),
-                        }}
-                        onClick={() => fileInputRef.current?.click()}
-                        onDragEnter={(e) => {
-                          preventDefaults(e);
-                          setDragActive(true);
-                        }}
-                        onDragOver={preventDefaults}
-                        onDragLeave={(e) => {
-                          preventDefaults(e);
-                          setDragActive(false);
-                        }}
-                        onDrop={handleDrop}
-                      >
-                        {previewUrl ? (
-                          <>
-                            <img
-                              src={previewUrl}
-                              alt="preview"
-                              style={styles.previewThumb}
-                            />
-                            <div style={styles.dropMiniLabel}>
-                              <span style={styles.dropMiniTitle}>
-                                Screenshot added
-                              </span>
-                              <span style={styles.dropMiniHint}>
-                                Click to replace • drag a new chart here
-                              </span>
-                            </div>
-                            <button
-                              type="button"
-                              style={styles.miniCloseBtn}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onChange("file", null);
-                              }}
-                            >
-                              ×
-                            </button>
-                          </>
-                        ) : (
-                          <div style={styles.dropMiniLabel}>
-                            <span style={styles.dropMiniTitle}>
-                              + Add screenshot
-                            </span>
-                            <span style={styles.dropMiniHint}>
-                              Click or drag chart here (.png / .jpg)
-                            </span>
-                          </div>
-                        )}
-
-                        <input
-                          ref={fileInputRef}
-                          type="file"
-                          accept="image/*"
-                          onChange={(e) =>
-                            onChange("file", e.target.files?.[0] || null)
-                          }
-                          style={{ display: "none" }}
-                        />
-                      </div>
+                    <div style={styles.datePillText}>{formattedDayLabel}</div>
+                    <div style={styles.datePillIcon}>
+                      {showCalendar ? "▲" : "▼"}
                     </div>
+                  </div>
 
-                    <div style={styles.composerRight}>
-                      {/* Instrument + timeframe */}
-                      <div style={styles.fieldRow}>
-                        <div style={styles.fieldHalf}>
-                          <div style={styles.label}>
-                            What were you trading?
+                  {showCalendar && (
+                    <div style={styles.calendarPanel}>
+                      <div style={styles.calendarHeader}>
+                        <button
+                          type="button"
+                          style={styles.calendarNavBtn}
+                          onClick={goToPrevMonth}
+                        >
+                          ‹
+                        </button>
+                        <div style={styles.calendarHeaderTitle}>
+                          {calendarMonthLabel}
+                        </div>
+                        <button
+                          type="button"
+                          style={styles.calendarNavBtn}
+                          onClick={goToNextMonth}
+                        >
+                          ›
+                        </button>
+                      </div>
+
+                      <div style={styles.weekdayRow}>
+                        {["S", "M", "T", "W", "T", "F", "S"].map((w) => (
+                          <div key={w} style={styles.weekdayCell}>
+                            {w}
                           </div>
-                          <input
-                            type="text"
-                            style={styles.input}
-                            placeholder="e.g. NASDAQ, S&P 500, GBP/USD, XAU/USD"
-                            value={form.instrument}
-                            onChange={(e) =>
-                              onChange("instrument", e.target.value)
+                        ))}
+                      </div>
+
+                      {monthWeeks.map((week, wi) => (
+                        <div key={wi} style={styles.calendarWeek}>
+                          {week.map((cell, di) => {
+                            if (!cell) {
+                              return <div key={di} style={styles.dayCellEmpty} />;
                             }
-                          />
-                        </div>
-                        <div style={styles.fieldHalf}>
-                          <div style={styles.label}>Timeframe</div>
-                          <div style={styles.selectWrapper}>
-                            <select
-                              style={styles.select}
-                              value={form.timeframe}
-                              onChange={(e) =>
-                                onChange("timeframe", e.target.value)
-                              }
-                            >
-                              <option value="">Select timeframe</option>
-                              <option value="1m">1m</option>
-                              <option value="3m">3m</option>
-                              <option value="5m">5m</option>
-                              <option value="15m">15m</option>
-                              <option value="30m">30m</option>
-                              <option value="1H">1H</option>
-                              <option value="2H">2H</option>
-                              <option value="4H">4H</option>
-                              <option value="Daily">Daily</option>
-                            </select>
-                            <span style={styles.selectArrow}>▾</span>
-                          </div>
-                        </div>
-                      </div>
+                            const isSelected = cell.iso === day;
+                            const isToday = cell.iso === todayIso;
 
-                      <div style={styles.label}>
-                        Strategy / thought process — what setup were you
-                        taking?
-                      </div>
-                      <textarea
-                        value={form.strategyNotes}
-                        onChange={(e) =>
-                          onChange("strategyNotes", e.target.value)
-                        }
-                        placeholder="Explain your idea: HTF bias, BOS/CHoCH, FVG/OB, liquidity grab, session, target, risk plan, management rules..."
-                        required
-                        style={styles.textarea}
-                      />
-                    </div>
-                  </div>
+                            let style = { ...styles.dayCellBase };
+                            if (isSelected) {
+                              style = { ...style, ...styles.dayCellSelected };
+                            } else if (isToday) {
+                              style = { ...style, ...styles.dayCellToday };
+                            }
 
-                  <button
-                    type={hasCompletedTrade ? "button" : "submit"}
-                    disabled={buttonDisabled}
-                    style={{
-                      ...styles.button,
-                      ...(btnHover && !buttonDisabled
-                        ? styles.buttonHover
-                        : {}),
-                    }}
-                    onClick={hasCompletedTrade ? handleResetTrade : undefined}
-                    onMouseEnter={() => !buttonDisabled && setBtnHover(true)}
-                    onMouseLeave={() => setBtnHover(false)}
-                  >
-                    {primaryButtonLabel}
-                  </button>
-
-                  {error && (
-                    <div style={styles.error}>
-                      Error: {error}
-                      {!WEBHOOK_URL && (
-                        <div style={styles.hint}>
-                          Tip: define VITE_N8N_TRADE_FEEDBACK_WEBHOOK in
-                          .env.local and in your deploy env.
+                            return (
+                              <div
+                                key={di}
+                                style={style}
+                                onClick={() => handlePickDate(cell.iso)}
+                              >
+                                {cell.day}
+                              </div>
+                            );
+                          })}
                         </div>
-                      )}
+                      ))}
                     </div>
                   )}
-                </form>
-              </div>
-            </div>
+                </div>
+              )}
 
-            {/* RIGHT: JOURNAL */}
-            <div style={styles.rightCol}>
-              <div style={styles.journalCard}>
-                <div style={styles.journalHeaderRow}>
-                  <div>
-                    <div style={styles.journalTitle}>Journal</div>
-                    <div style={styles.journalSub}>
-                      Your personal notes for this day. Saved automatically for
-                      each date you select.
+              {/* ===================== PAGE: AI FEEDBACK + JOURNAL ===================== */}
+              {activePage === PAGES.AI && (
+                <div style={styles.mainShell}>
+                  {/* LEFT: TRADE COACH */}
+                  <div style={styles.leftCol}>
+                    <div style={styles.coachCard}>
+                      <div style={styles.coachHeaderRow}>
+                        <div>
+                          <div style={styles.coachTitle}>Trade Coach</div>
+                          <div style={styles.coachSub}>
+                            Upload chart → choose pair & timeframe → explain your
+                            idea → AI feedback.
+                            <br />
+                            <strong>
+                              The more detail you give (bias, liquidity, session,
+                              entry, stop, target, emotions), the more accurate
+                              your AI feedback will be.
+                            </strong>
+                          </div>
+                        </div>
+                        <div style={styles.dayBadge}>Day: {day}</div>
+                      </div>
+
+                      {/* STATUS BOX */}
+                      <div style={styles.statusBox}>
+                        <div style={styles.statusGlow} />
+                        <div
+                          style={{
+                            ...styles.statusContent,
+                            ...statusAnimatedStyle,
+                          }}
+                        >
+                          {!lastChat && (
+                            <>
+                              <div style={styles.statusPlaceholderTitle}>Status…</div>
+                              <p style={styles.statusPlaceholderText}>
+                                Add a screenshot + your thought process below, then
+                                press &ldquo;Get feedback&rdquo; to see your trade
+                                graded here.
+                              </p>
+                            </>
+                          )}
+
+                          {lastChat && isPending && (
+                            <>
+                              <div style={styles.statusPlaceholderTitle}>
+                                Trade Coach analyzing…
+                              </div>
+                              <p style={styles.statusPlaceholderText}>
+                                Hold on a second while your trade is graded and broken
+                                down.
+                              </p>
+                            </>
+                          )}
+
+                          {lastChat && !isPending && (
+                            <>
+                              <div style={styles.statusHeaderRow}>
+                                <div style={styles.statusHeaderLeft}>
+                                  <span style={styles.statusLabel}>Trade Coach AI</span>
+                                  {(lastChat.instrument || lastChat.timeframe) && (
+                                    <span style={styles.statusMeta}>
+                                      {lastChat.instrument && (
+                                        <span>{lastChat.instrument}</span>
+                                      )}
+                                      {lastChat.instrument && lastChat.timeframe && (
+                                        <span> • </span>
+                                      )}
+                                      {lastChat.timeframe && (
+                                        <span>{lastChat.timeframe}</span>
+                                      )}
+                                    </span>
+                                  )}
+                                </div>
+                                {grade && (
+                                  <span
+                                    style={{
+                                      ...styles.gradePill,
+                                      backgroundColor: gradeColor(grade),
+                                      color: "#020617",
+                                    }}
+                                  >
+                                    {grade}
+                                  </span>
+                                )}
+                              </div>
+
+                              {typeof confidence === "number" && (
+                                <div style={styles.statusMeta}>
+                                  {Math.round(confidence * 100)}% confident
+                                </div>
+                              )}
+
+                              {imgSrc && (
+                                <img
+                                  src={imgSrc}
+                                  alt="Trade screenshot"
+                                  style={styles.statusImg}
+                                />
+                              )}
+
+                              {oneLineVerdict && (
+                                <div style={{ opacity: 0.96, fontSize: 13 }}>
+                                  {oneLineVerdict}
+                                </div>
+                              )}
+
+                              {whatWentRight.length > 0 && (
+                                <>
+                                  <div style={styles.sectionTitle}>What went right</div>
+                                  <ul style={styles.ul}>
+                                    {whatWentRight.map((x, i) => (
+                                      <li key={i}>{x}</li>
+                                    ))}
+                                  </ul>
+                                </>
+                              )}
+
+                              {whatWentWrong.length > 0 && (
+                                <>
+                                  <div style={styles.sectionTitle}>What went wrong</div>
+                                  <ul style={styles.ul}>
+                                    {whatWentWrong.map((x, i) => (
+                                      <li key={i}>{x}</li>
+                                    ))}
+                                  </ul>
+                                </>
+                              )}
+
+                              {improvements.length > 0 && (
+                                <>
+                                  <div style={styles.sectionTitle}>Improvements</div>
+                                  <ul style={styles.ul}>
+                                    {improvements.map((x, i) => (
+                                      <li key={i}>{x}</li>
+                                    ))}
+                                  </ul>
+                                </>
+                              )}
+
+                              {lessonLearned && (
+                                <>
+                                  <div style={styles.sectionTitle}>Lesson learned</div>
+                                  <div
+                                    style={{
+                                      opacity: 0.96,
+                                      fontSize: 13,
+                                      color: "#d1d5db",
+                                    }}
+                                  >
+                                    {lessonLearned}
+                                  </div>
+                                </>
+                              )}
+
+                              {(lastChat.serverTimestamp || lastChat.timestamp) && (
+                                <div style={styles.smallMeta}>
+                                  {new Date(
+                                    lastChat.serverTimestamp || lastChat.timestamp
+                                  ).toLocaleString()}
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* FORM AREA */}
+                      <form
+                        onSubmit={hasCompletedTrade ? undefined : handleSubmit}
+                        style={styles.formSection}
+                      >
+                        <div style={styles.composerRow}>
+                          <div style={styles.composerLeft}>
+                            <div
+                              style={{
+                                ...styles.dropMini,
+                                ...(dragActive ? styles.dropMiniActive : {}),
+                              }}
+                              onClick={() => fileInputRef.current?.click()}
+                              onDragEnter={(e) => {
+                                preventDefaults(e);
+                                setDragActive(true);
+                              }}
+                              onDragOver={preventDefaults}
+                              onDragLeave={(e) => {
+                                preventDefaults(e);
+                                setDragActive(false);
+                              }}
+                              onDrop={handleDrop}
+                            >
+                              {previewUrl ? (
+                                <>
+                                  <img
+                                    src={previewUrl}
+                                    alt="preview"
+                                    style={styles.previewThumb}
+                                  />
+                                  <div style={styles.dropMiniLabel}>
+                                    <span style={styles.dropMiniTitle}>
+                                      Screenshot added
+                                    </span>
+                                    <span style={styles.dropMiniHint}>
+                                      Click to replace • drag a new chart here
+                                    </span>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    style={styles.miniCloseBtn}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onChange("file", null);
+                                    }}
+                                  >
+                                    ×
+                                  </button>
+                                </>
+                              ) : (
+                                <div style={styles.dropMiniLabel}>
+                                  <span style={styles.dropMiniTitle}>
+                                    + Add screenshot
+                                  </span>
+                                  <span style={styles.dropMiniHint}>
+                                    Click or drag chart here (.png / .jpg)
+                                  </span>
+                                </div>
+                              )}
+
+                              <input
+                                ref={fileInputRef}
+                                type="file"
+                                accept="image/*"
+                                onChange={(e) =>
+                                  onChange("file", e.target.files?.[0] || null)
+                                }
+                                style={{ display: "none" }}
+                              />
+                            </div>
+                          </div>
+
+                          <div style={styles.composerRight}>
+                            {/* Instrument + timeframe */}
+                            <div style={styles.fieldRow}>
+                              <div style={styles.fieldHalf}>
+                                <div style={styles.label}>
+                                  What were you trading?
+                                </div>
+                                <input
+                                  type="text"
+                                  style={styles.input}
+                                  placeholder="e.g. NASDAQ, S&P 500, GBP/USD, XAU/USD"
+                                  value={form.instrument}
+                                  onChange={(e) =>
+                                    onChange("instrument", e.target.value)
+                                  }
+                                />
+                              </div>
+                              <div style={styles.fieldHalf}>
+                                <div style={styles.label}>Timeframe</div>
+                                <div style={styles.selectWrapper}>
+                                  <select
+                                    style={styles.select}
+                                    value={form.timeframe}
+                                    onChange={(e) =>
+                                      onChange("timeframe", e.target.value)
+                                    }
+                                  >
+                                    <option value="">Select timeframe</option>
+                                    <option value="1m">1m</option>
+                                    <option value="3m">3m</option>
+                                    <option value="5m">5m</option>
+                                    <option value="15m">15m</option>
+                                    <option value="30m">30m</option>
+                                    <option value="1H">1H</option>
+                                    <option value="2H">2H</option>
+                                    <option value="4H">4H</option>
+                                    <option value="Daily">Daily</option>
+                                  </select>
+                                  <span style={styles.selectArrow}>▾</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div style={styles.label}>
+                              Strategy / thought process — what setup were you
+                              taking?
+                            </div>
+                            <textarea
+                              value={form.strategyNotes}
+                              onChange={(e) =>
+                                onChange("strategyNotes", e.target.value)
+                              }
+                              placeholder="Explain your idea: HTF bias, BOS/CHoCH, FVG/OB, liquidity grab, session, target, risk plan, management rules..."
+                              required
+                              style={styles.textarea}
+                            />
+                          </div>
+                        </div>
+
+                        <button
+                          type={hasCompletedTrade ? "button" : "submit"}
+                          disabled={buttonDisabled}
+                          style={{
+                            ...styles.button,
+                            ...(btnHover && !buttonDisabled
+                              ? styles.buttonHover
+                              : {}),
+                          }}
+                          onClick={hasCompletedTrade ? handleResetTrade : undefined}
+                          onMouseEnter={() => !buttonDisabled && setBtnHover(true)}
+                          onMouseLeave={() => setBtnHover(false)}
+                        >
+                          {primaryButtonLabel}
+                        </button>
+
+                        {error && (
+                          <div style={styles.error}>
+                            Error: {error}
+                            {!WEBHOOK_URL && (
+                              <div style={styles.hint}>
+                                Tip: define VITE_N8N_TRADE_FEEDBACK_WEBHOOK in
+                                .env.local and in your deploy env.
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </form>
                     </div>
                   </div>
-                  <div style={styles.journalBadge}>Entry for {day}</div>
-                </div>
 
-                <div>
-                  <div style={styles.journalLabel}>Notes</div>
-                  <textarea
-                    style={styles.journalTextareaBig}
-                    value={journal.notes}
-                    onChange={(e) =>
-                      setJournal((prev) => ({
-                        ...prev,
-                        notes: e.target.value,
-                      }))
-                    }
-                    placeholder="Text here..."
-                  />
-                </div>
+                  {/* RIGHT: JOURNAL */}
+                  <div style={styles.rightCol}>
+                    <div style={styles.journalCard}>
+                      <div style={styles.journalHeaderRow}>
+                        <div>
+                          <div style={styles.journalTitle}>Journal</div>
+                          <div style={styles.journalSub}>
+                            Your personal notes for this day. Saved automatically
+                            for each date you select.
+                          </div>
+                        </div>
+                        <div style={styles.journalBadge}>Entry for {day}</div>
+                      </div>
 
-                <div>
-                  <div style={styles.journalLabel}>
-                    What did you learn today?
+                      <div>
+                        <div style={styles.journalLabel}>Notes</div>
+                        <textarea
+                          style={styles.journalTextareaBig}
+                          value={journal.notes}
+                          onChange={(e) =>
+                            setJournal((prev) => ({
+                              ...prev,
+                              notes: e.target.value,
+                            }))
+                          }
+                          placeholder="Text here..."
+                        />
+                      </div>
+
+                      <div>
+                        <div style={styles.journalLabel}>What did you learn today?</div>
+                        <textarea
+                          style={styles.journalTextareaSmall}
+                          value={journal.learned}
+                          onChange={(e) =>
+                            setJournal((prev) => ({
+                              ...prev,
+                              learned: e.target.value,
+                            }))
+                          }
+                          placeholder="Key lessons, patterns, or rules you want to remember."
+                        />
+                      </div>
+
+                      <div>
+                        <div style={styles.journalLabel}>What do you need to improve?</div>
+                        <textarea
+                          style={styles.journalTextareaSmall}
+                          value={journal.improve}
+                          onChange={(e) =>
+                            setJournal((prev) => ({
+                              ...prev,
+                              improve: e.target.value,
+                            }))
+                          }
+                          placeholder="Risk, discipline, entries, exits, patience, etc."
+                        />
+                      </div>
+
+                      <div style={styles.journalHintRow}>
+                        <span>
+                          Auto-saved per day — switch dates above to see past
+                          entries.
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                  <textarea
-                    style={styles.journalTextareaSmall}
-                    value={journal.learned}
-                    onChange={(e) =>
-                      setJournal((prev) => ({
-                        ...prev,
-                        learned: e.target.value,
-                      }))
-                    }
-                    placeholder="Key lessons, patterns, or rules you want to remember."
-                  />
                 </div>
+              )}
 
-                <div>
-                  <div style={styles.journalLabel}>
-                    What do you need to improve?
+              {/* ===================== PAGE: P&L CALENDAR ===================== */}
+              {activePage === PAGES.PNL && (
+                <div style={styles.pnlShell}>
+                  <div style={styles.pnlTopRow}>
+                    <div style={styles.pnlCard}>
+                      <div style={styles.pnlCardLabel}>All-time P&amp;L (R)</div>
+                      <div style={styles.pnlCardValue}>
+                        {fmtSigned(Number(allTimeTotal.toFixed(2)))}R
+                      </div>
+                      <div style={styles.pnlCardSub}>
+                        Manual entries • paper-friendly
+                      </div>
+                    </div>
+
+                    <div style={styles.pnlCard}>
+                      <div style={styles.pnlCardLabel}>
+                        {pnlMonthLabel} P&amp;L (R)
+                      </div>
+                      <div style={styles.pnlCardValue}>
+                        {fmtSigned(Number(monthStats.sum.toFixed(2)))}R
+                      </div>
+                      <div style={styles.pnlCardSub}>
+                        Green {monthStats.green} • Red {monthStats.red} • B/E{" "}
+                        {monthStats.be}
+                      </div>
+                    </div>
                   </div>
-                  <textarea
-                    style={styles.journalTextareaSmall}
-                    value={journal.improve}
-                    onChange={(e) =>
-                      setJournal((prev) => ({
-                        ...prev,
-                        improve: e.target.value,
-                      }))
-                    }
-                    placeholder="Risk, discipline, entries, exits, patience, etc."
-                  />
-                </div>
 
-                <div style={styles.journalHintRow}>
-                  <span>
-                    Auto-saved per day — switch dates above to see past
-                    entries.
-                  </span>
+                  <div style={styles.pnlCalendarCard}>
+                    <div style={styles.pnlCalHeader}>
+                      <div style={styles.pnlCalTitle}>P&amp;L Calendar</div>
+
+                      <div style={styles.pnlCalNav}>
+                        <button type="button" style={styles.pnlNavBtn} onClick={pnlPrevMonth}>
+                          ‹
+                        </button>
+                        <div style={styles.pnlMonthLabel}>{pnlMonthLabel}</div>
+                        <button type="button" style={styles.pnlNavBtn} onClick={pnlNextMonth}>
+                          ›
+                        </button>
+                      </div>
+                    </div>
+
+                    <div style={styles.pnlWeekdayRow}>
+                      {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((w) => (
+                        <div key={w} style={{ textAlign: "center" }}>
+                          {w}
+                        </div>
+                      ))}
+                    </div>
+
+                    {pnlWeeks.map((week, wi) => (
+                      <div key={wi} style={styles.pnlWeek}>
+                        {week.map((cell, di) => {
+                          if (!cell) {
+                            return <div key={di} style={styles.pnlCellEmpty} />;
+                          }
+
+                          const theme = cellThemeForIso(cell.iso);
+                          const entry = allEntries?.[cell.iso];
+
+                          return (
+                            <div
+                              key={di}
+                              style={styles.pnlDayCell(theme.bg, theme.border)}
+                              onClick={() => openPnlModal(cell.iso)}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.transform = "translateY(-1px)";
+                                e.currentTarget.style.boxShadow =
+                                  "0 16px 50px rgba(15,23,42,0.75)";
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.transform = "translateY(0)";
+                                e.currentTarget.style.boxShadow =
+                                  "0 10px 35px rgba(15,23,42,0.55)";
+                              }}
+                              title={entry?.note ? entry.note : "Click to add / edit"}
+                            >
+                              <div style={styles.pnlDayTop}>
+                                <span style={styles.pnlDayNum}>{cell.day}</span>
+                                <span style={styles.pnlDayTag}>{theme.tag}</span>
+                              </div>
+                              <div style={styles.pnlDayValue}>{theme.value}</div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ))}
+                  </div>
+
+                  <div style={{ ...styles.navHint, maxWidth: 900 }}>
+                    How it works: click a day → enter your net <strong>R</strong> for
+                    that day (ex: <strong>+2</strong>, <strong>-1.5</strong>,{" "}
+                    <strong>0</strong>). Leave blank to clear the day. Notes are optional.
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
         </div>
@@ -1876,6 +2580,76 @@ console.log("TradeCoach response:", data);
           </div>
         </div>
       )}
+
+      {/* P&L EDIT MODAL */}
+      {pnlModalOpen && (
+        <div
+          style={styles.overlay}
+          onClick={() => setPnlModalOpen(false)}
+        >
+          <div
+            style={styles.modalCard}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={styles.modalTitle}>Edit P&amp;L</div>
+            <div style={styles.modalText}>
+              {pnlEditingIso
+                ? parseLocalDateFromIso(pnlEditingIso).toLocaleDateString(undefined, {
+                    weekday: "long",
+                    year: "numeric",
+                    month: "short",
+                    day: "numeric",
+                  })
+                : ""}
+            </div>
+
+            <div style={styles.modalRow}>
+              <div style={styles.modalLabel}>Net R for the day</div>
+              <input
+                type="number"
+                step="0.01"
+                value={pnlEditR}
+                onChange={(e) => setPnlEditR(e.target.value)}
+                placeholder="Ex: 2, -1.5, 0"
+                style={styles.input}
+              />
+              <div style={{ fontSize: 11, opacity: 0.75, marginTop: 6, color: "#9ca3af" }}>
+                Tip: leave this blank (and no note) to clear the day.
+              </div>
+            </div>
+
+            <div style={styles.modalRow}>
+              <div style={styles.modalLabel}>Note (optional)</div>
+              <textarea
+                value={pnlEditNote}
+                onChange={(e) => setPnlEditNote(e.target.value)}
+                placeholder="Quick context (ex: overtraded, A+ setup, news day, etc.)"
+                style={{ ...styles.textarea, minHeight: 90 }}
+              />
+            </div>
+
+            <div style={styles.modalBtnRow}>
+              <button type="button" style={styles.modalBtnGhost} onClick={() => setPnlModalOpen(false)}>
+                Cancel
+              </button>
+              <button type="button" style={styles.modalBtnPrimary} onClick={savePnlEntry}>
+                Save
+              </button>
+            </div>
+
+            <div style={styles.modalBtnRow}>
+              <button type="button" style={styles.modalBtnDanger} onClick={deletePnlEntry}>
+                Delete day
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* NOTE:
+          Your existing payment + member logic stays unchanged.
+          This P&L calendar is purely manual + stored locally per user/browser.
+      */}
     </>
   );
 }
