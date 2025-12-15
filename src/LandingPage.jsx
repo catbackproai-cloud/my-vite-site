@@ -6,7 +6,7 @@ const STRIPE_PAYMENT_URL =
 
 const MEMBER_LS_KEY = "tc_member_v1";
 
-// ✅ Pricing (single source of truth for copy)
+// ✅ Pricing (single source of truth for all copy)
 const PRICE_DISPLAY = "$24.99";
 const BILLING_PERIOD = "month";
 const PRICE_SHORT = `${PRICE_DISPLAY}/${BILLING_PERIOD}`;
@@ -1204,6 +1204,41 @@ export default function LandingPage({ onEnterApp }) {
           </div>
         </section>
 
+        {/* ✅ P&L CALENDAR EXPLANATION */}
+        <section style={styles.section}>
+          <div style={styles.sectionInner}>
+            <div style={styles.sectionEyebrow}>Track performance, not just ideas</div>
+            <h2 style={styles.sectionTitle}>
+              Your P&amp;L calendar shows the truth about your trading.
+            </h2>
+            <p style={styles.sectionSub}>
+              Every trading day gets logged with your{" "}
+              <strong>profit or loss</strong> and your{" "}
+              <strong>risk-to-reward ratio</strong>. Instead of guessing how your
+              month went, you see it clearly — day by day.
+            </p>
+
+            <div
+              style={{
+                marginTop: 14,
+                fontSize: 13,
+                opacity: 0.85,
+                maxWidth: 600,
+                lineHeight: 1.6,
+                textAlign: "left",
+              }}
+            >
+              • Log how much you won or lost each day
+              <br />
+              • Track your R:R to spot discipline issues
+              <br />
+              • Automatically see total P&amp;L and average R:R for the month
+              <br />
+              • Tie performance directly to your screenshots and journal notes
+            </div>
+          </div>
+        </section>
+
         {/* WHAT YOU GET / VS EVERYTHING ELSE */}
         <section style={styles.section}>
           <div style={styles.sectionInner}>
@@ -1420,7 +1455,10 @@ export default function LandingPage({ onEnterApp }) {
               >
                 Privacy Policy
               </span>
-              <span style={styles.footerLink} onClick={() => setShowTerms(true)}>
+              <span
+                style={styles.footerLink}
+                onClick={() => setShowTerms(true)}
+              >
                 Terms of Use
               </span>
               <span
@@ -1446,7 +1484,7 @@ export default function LandingPage({ onEnterApp }) {
         </footer>
       </div>
 
-      {/* CHECKOUT / CREATE MEMBER MODAL */}
+      {/* CHECKOUT MODAL */}
       {showCheckout && (
         <div style={styles.overlay}>
           <div style={styles.modalCard}>
