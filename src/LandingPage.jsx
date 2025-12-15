@@ -6,6 +6,14 @@ const STRIPE_PAYMENT_URL =
 
 const MEMBER_LS_KEY = "tc_member_v1";
 
+// ✅ Pricing (single source of truth for copy)
+const PRICE_DISPLAY = "$24.99";
+const BILLING_PERIOD = "month";
+const PRICE_SHORT = `${PRICE_DISPLAY}/${BILLING_PERIOD}`;
+const PRICE_CTA = `Get access for ${PRICE_SHORT}`;
+const PRICE_CTA_LONG = `Get instant access for ${PRICE_SHORT} →`;
+const PRICE_BUTTON = `Subscribe for ${PRICE_SHORT} →`;
+
 function saveMemberToLocal(partial) {
   const base = {
     memberId: "",
@@ -787,7 +795,7 @@ export default function LandingPage({ onEnterApp }) {
         plan: "personal",
       });
 
-      // 🚀 send user directly to Stripe Payment Link
+      // 🚀 send user directly to Stripe Payment Link (subscription)
       window.location.href = STRIPE_PAYMENT_URL;
     } catch (err) {
       console.error(err);
@@ -843,9 +851,9 @@ export default function LandingPage({ onEnterApp }) {
           <div style={styles.ribbonInner}>
             <span style={styles.ribbonText}>
               <span style={styles.ribbonStrong}>
-                Founders beta · $39 one-time:
+                Monthly access · {PRICE_SHORT}:
               </span>{" "}
-              lock in early access while we refine MaxTradeAI with real traders.
+              get your private portal + AI feedback + daily journal.
             </span>
             <button
               style={styles.ribbonBtn}
@@ -856,7 +864,7 @@ export default function LandingPage({ onEnterApp }) {
                 setShowCheckout(true);
               }}
             >
-              Get access for $39
+              {PRICE_CTA}
             </button>
           </div>
         </div>
@@ -913,8 +921,8 @@ export default function LandingPage({ onEnterApp }) {
               fontSize: 12,
             }}
           >
-            Payment confirmed ✅ Check your email for your MaxTradeAI Member ID,
-            then click &quot;Enter Member ID&quot; to open your portal.
+            Subscription confirmed ✅ Check your email for your MaxTradeAI Member
+            ID, then click &quot;Enter Member ID&quot; to open your portal.
           </div>
         )}
 
@@ -963,7 +971,7 @@ export default function LandingPage({ onEnterApp }) {
                   setShowCheckout(true);
                 }}
               >
-                Get instant access for $39 →
+                {PRICE_CTA_LONG}
               </button>
               <button
                 style={styles.heroSecondaryBtn}
@@ -988,8 +996,8 @@ export default function LandingPage({ onEnterApp }) {
             </div>
 
             <div style={styles.heroTertiary}>
-              One-time $39 founders access. Your trades stay organized per day —
-              not buried in camera roll folders or Discord chats.
+              {PRICE_SHORT} subscription access. Your trades stay organized per
+              day — not buried in camera roll folders or Discord chats.
             </div>
 
             {/* logos strip */}
@@ -1029,7 +1037,7 @@ export default function LandingPage({ onEnterApp }) {
               <div style={{ fontSize: 12, opacity: 0.75, maxWidth: 520 }}>
                 Traders use MaxTradeAI to{" "}
                 <strong>grade trades, journal daily,</strong> and build rules
-                they actually follow — for a one-time $39.
+                they actually follow — for {PRICE_SHORT}.
               </div>
             </div>
 
@@ -1362,11 +1370,10 @@ export default function LandingPage({ onEnterApp }) {
                 time.
               </h2>
               <p style={styles.finalSub}>
-                Get instant access to your MaxTradeAI portal for a one-time{" "}
-                <strong>$39 founders price</strong>. Upload your next trade,
-                explain your idea, and see how different it feels to get a
-                structured, ICT-aware breakdown instead of a random emoji-filled
-                comment.
+                Get instant access to your MaxTradeAI portal for{" "}
+                <strong>{PRICE_SHORT}</strong>. Upload your next trade, explain
+                your idea, and see how different it feels to get a structured,
+                ICT-aware breakdown instead of a random emoji-filled comment.
               </p>
               <button
                 style={styles.heroPrimaryBtn}
@@ -1377,7 +1384,7 @@ export default function LandingPage({ onEnterApp }) {
                   setShowCheckout(true);
                 }}
               >
-                Get MaxTradeAI for $39 →
+                {PRICE_BUTTON}
               </button>
 
               {/* brief legal note under final CTA */}
@@ -1392,7 +1399,8 @@ export default function LandingPage({ onEnterApp }) {
                 MaxTradeAI does not guarantee profits or specific outcomes. AI
                 feedback is fallible and may miss or misinterpret information
                 you provide. Always use your own judgment and risk management.
-
+                <br />
+                <br />
                 Contact Us: orbitalbiz1@gmail.com
               </div>
             </div>
@@ -1412,10 +1420,7 @@ export default function LandingPage({ onEnterApp }) {
               >
                 Privacy Policy
               </span>
-              <span
-                style={styles.footerLink}
-                onClick={() => setShowTerms(true)}
-              >
+              <span style={styles.footerLink} onClick={() => setShowTerms(true)}>
                 Terms of Use
               </span>
               <span
@@ -1448,7 +1453,7 @@ export default function LandingPage({ onEnterApp }) {
             <div style={styles.modalTitle}>Continue to Stripe</div>
             <div style={styles.modalText}>
               You&apos;ll enter your details directly in Stripe Checkout. This is
-              a <strong>one-time $39</strong> founders price for access to your
+              a <strong>{PRICE_SHORT}</strong> subscription for access to your
               portal.
               <br />
               <br />
@@ -1507,7 +1512,9 @@ export default function LandingPage({ onEnterApp }) {
                   cursor: checkoutLoading ? "default" : "pointer",
                 }}
               >
-                {checkoutLoading ? "Redirecting…" : "Pay $39 with Stripe →"}
+                {checkoutLoading
+                  ? "Redirecting…"
+                  : `Subscribe ${PRICE_SHORT} with Stripe →`}
               </button>
             </form>
 
