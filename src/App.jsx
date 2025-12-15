@@ -6,14 +6,17 @@ import { useNavigate } from "react-router-dom";
    ========================================================= */
 
 // ✅ Trade feedback (existing)
-const PROD_TRADE_FEEDBACK = "https://jacobtf007.app.n8n.cloud/webhook/trade_feedback";
+const PROD_TRADE_FEEDBACK =
+  "https://jacobtf007.app.n8n.cloud/webhook/trade_feedback";
 const WEBHOOK_URL =
   (import.meta?.env && import.meta.env.VITE_N8N_TRADE_FEEDBACK_WEBHOOK) ||
   PROD_TRADE_FEEDBACK;
 
-// ✅ NEW: Member state (Sheets-backed)
-const PROD_GET_STATE = "https://jacobtf007.app.n8n.cloud/webhook/tradecoach_get_state";
-const PROD_SAVE_STATE = "https://jacobtf007.app.n8n.cloud/webhook/tradecoach_save_state";
+// ✅ Member state (Sheets-backed)
+const PROD_GET_STATE =
+  "https://jacobtf007.app.n8n.cloud/webhook/tradecoach_get_state";
+const PROD_SAVE_STATE =
+  "https://jacobtf007.app.n8n.cloud/webhook/tradecoach_save_state";
 
 const GET_STATE_URL =
   (import.meta?.env && import.meta.env.VITE_N8N_TRADECOACH_GET_STATE) ||
@@ -70,8 +73,8 @@ function todayStr() {
 }
 
 function parseLocalDateFromIso(iso) {
-  const [y, m, d] = iso.split("-").map(Number);
-  return new Date(y, m - 1, d);
+  const [y, m, d] = (iso || "").split("-").map(Number);
+  return new Date(y, (m || 1) - 1, d || 1);
 }
 
 /* ---------------- HELPERS ---------------- */
@@ -143,6 +146,7 @@ function leanChatsForSave(chats) {
     const {
       localPreviewUrl, // blob URL (device-only)
       localDataUrl, // base64 (too big for Sheets)
+      file, // File object
       pending, // transient
       ...rest
     } = c || {};
@@ -245,7 +249,10 @@ export default function App({ selectedDay = todayStr() }) {
      READ current day-specific data from server-backed maps
      ========================================================= */
 
-  const chats = useMemo(() => (chatsByDay?.[day] ? chatsByDay[day] : []), [chatsByDay, day]);
+  const chats = useMemo(
+    () => (chatsByDay?.[day] ? chatsByDay[day] : []),
+    [chatsByDay, day]
+  );
 
   const journal = useMemo(() => {
     const j = journalByDay?.[day];
@@ -283,78 +290,90 @@ export default function App({ selectedDay = todayStr() }) {
      LOAD MEMBER STATE from SHEETS (per memberId)
      ========================================================= */
 
+  async function loadState() {
+    setStateLoading(true);
+    setStateLoadError("");
+
+    const memberId = String(member?.memberId || "").trim();
+
+    if (!memberId) {
+      setStateLoading(false);
+      setStateLoadError("Missing member session. Please log in again.");
+      return;
+    }
+
+    try {
+      const res = await fetch(GET_STATE_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ memberId }),
+      });
+
+      const text = await res.text();
+      const data = safeParseJSON(text, null);
+
+      if (!res.ok) {
+        throw new Error(
+          data?.error || data?.message || `Get state failed (${res.status})`
+        );
+      }
+
+      const remoteState =
+        data?.state && typeof data.state === "object" ? data.state : null;
+
+      const merged = {
+        ...DEFAULT_STATE,
+        ...(remoteState || {}),
+        chatsByDay:
+          remoteState?.chatsByDay &&
+          typeof remoteState.chatsByDay === "object"
+            ? remoteState.chatsByDay
+            : {},
+        journalByDay:
+          remoteState?.journalByDay &&
+          typeof remoteState.journalByDay === "object"
+            ? remoteState.journalByDay
+            : {},
+        pnl:
+          remoteState?.pnl && typeof remoteState.pnl === "object"
+            ? remoteState.pnl
+            : {},
+      };
+
+      const initial = merged.lastDay || selectedDay || todayStr();
+
+      setLastDay(merged.lastDay || "");
+      setChatsByDay(merged.chatsByDay || {});
+      setJournalByDay(merged.journalByDay || {});
+      setPnl(merged.pnl || {});
+      setDay(initial);
+
+      // reset calendar month to selected day
+      try {
+        const d = parseLocalDateFromIso(initial);
+        setCalendarMonth({ year: d.getFullYear(), month: d.getMonth() });
+      } catch {}
+
+      setDirty(false);
+    } catch (e) {
+      setStateLoadError(e?.message || "Failed to load state");
+    } finally {
+      setStateLoading(false);
+    }
+  }
+
   useEffect(() => {
     let cancelled = false;
 
-    async function loadState() {
-      setStateLoading(true);
-      setStateLoadError("");
+    (async () => {
+      if (cancelled) return;
+      await loadState();
+    })();
 
-      const memberId = String(member?.memberId || "").trim();
-
-      if (!memberId) {
-        // If no login, bounce to landing
-        setStateLoading(false);
-        setStateLoadError("Missing member session. Please log in again.");
-        return;
-      }
-
-      try {
-        const res = await fetch(GET_STATE_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ memberId }),
-        });
-
-        const text = await res.text();
-        const data = safeParseJSON(text, null);
-
-        if (!res.ok) {
-          throw new Error(data?.error || data?.message || `Get state failed (${res.status})`);
-        }
-
-        const remoteState = data?.state && typeof data.state === "object" ? data.state : null;
-
-        const merged = {
-          ...DEFAULT_STATE,
-          ...(remoteState || {}),
-          chatsByDay: remoteState?.chatsByDay && typeof remoteState.chatsByDay === "object" ? remoteState.chatsByDay : {},
-          journalByDay:
-            remoteState?.journalByDay && typeof remoteState.journalByDay === "object"
-              ? remoteState.journalByDay
-              : {},
-          pnl: remoteState?.pnl && typeof remoteState.pnl === "object" ? remoteState.pnl : {},
-        };
-
-        const initial = merged.lastDay || selectedDay || todayStr();
-
-        if (cancelled) return;
-
-        setLastDay(merged.lastDay || "");
-        setChatsByDay(merged.chatsByDay || {});
-        setJournalByDay(merged.journalByDay || {});
-        setPnl(merged.pnl || {});
-        setDay(initial);
-
-        // reset calendar month to selected day
-        try {
-          const d = parseLocalDateFromIso(initial);
-          setCalendarMonth({ year: d.getFullYear(), month: d.getMonth() });
-        } catch {}
-
-        setDirty(false);
-      } catch (e) {
-        if (cancelled) return;
-        setStateLoadError(e?.message || "Failed to load state");
-      } finally {
-        if (!cancelled) setStateLoading(false);
-      }
-    }
-
-    loadState();
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [member?.memberId, selectedDay]);
 
   /* =========================================================
@@ -393,7 +412,9 @@ export default function App({ selectedDay = todayStr() }) {
       const data = safeParseJSON(text, null);
 
       if (!res.ok) {
-        throw new Error(data?.error || data?.message || `Save failed (${res.status})`);
+        throw new Error(
+          data?.error || data?.message || `Save failed (${res.status})`
+        );
       }
 
       setDirty(false);
@@ -439,16 +460,17 @@ export default function App({ selectedDay = todayStr() }) {
   }
 
   const monthWeeks = buildMonthWeeks(calendarMonth);
-  const calendarMonthLabel = new Date(calendarMonth.year, calendarMonth.month, 1).toLocaleDateString(
+  const calendarMonthLabel = new Date(
+    calendarMonth.year,
+    calendarMonth.month,
+    1
+  ).toLocaleDateString(undefined, { month: "long", year: "numeric" });
+
+  const pnlWeeks = buildMonthWeeks(pnlMonth);
+  const pnlMonthLabel = new Date(pnlMonth.year, pnlMonth.month, 1).toLocaleDateString(
     undefined,
     { month: "long", year: "numeric" }
   );
-
-  const pnlWeeks = buildMonthWeeks(pnlMonth);
-  const pnlMonthLabel = new Date(pnlMonth.year, pnlMonth.month, 1).toLocaleDateString(undefined, {
-    month: "long",
-    year: "numeric",
-  });
 
   const formattedDayLabel = useMemo(() => {
     try {
@@ -502,9 +524,15 @@ export default function App({ selectedDay = todayStr() }) {
     setPnlEditingIso(iso);
     setPnlEditSymbol(existing?.symbol || "");
     setPnlEditPnl(
-      typeof existing?.pnl === "number" && Number.isFinite(existing.pnl) ? String(existing.pnl) : ""
+      typeof existing?.pnl === "number" && Number.isFinite(existing.pnl)
+        ? String(existing.pnl)
+        : ""
     );
-    setPnlEditRR(typeof existing?.rr === "number" && Number.isFinite(existing.rr) ? String(existing.rr) : "");
+    setPnlEditRR(
+      typeof existing?.rr === "number" && Number.isFinite(existing.rr)
+        ? String(existing.rr)
+        : ""
+    );
     setPnlModalOpen(true);
   }
 
@@ -574,7 +602,8 @@ export default function App({ selectedDay = todayStr() }) {
      ========================================================= */
 
   const isValid = useMemo(
-    () => !!form.strategyNotes && !!form.file && !!form.timeframe && !!form.instrument,
+    () =>
+      !!form.strategyNotes && !!form.file && !!form.timeframe && !!form.instrument,
     [form]
   );
 
@@ -582,7 +611,8 @@ export default function App({ selectedDay = todayStr() }) {
   const isPending = !!lastChat?.pending;
   const hasCompletedTrade = !!(lastChat && !lastChat.pending);
 
-  const buttonDisabled = !hasCompletedTrade && (!isValid || submitting || isPending);
+  const buttonDisabled =
+    !hasCompletedTrade && (!isValid || submitting || isPending);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -597,7 +627,9 @@ export default function App({ selectedDay = todayStr() }) {
       const localDataUrl = await fileToDataUrl(form.file);
       const localPreviewUrl = form.file ? URL.createObjectURL(form.file) : null;
 
-      const tempId = `tmp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      const tempId = `tmp-${Date.now()}-${Math.random()
+        .toString(36)
+        .slice(2)}`;
       const tempChat = {
         id: tempId,
         timestamp: new Date().toISOString(),
@@ -628,7 +660,9 @@ export default function App({ selectedDay = todayStr() }) {
       try {
         data = text ? JSON.parse(text) : null;
       } catch {
-        throw new Error(`Non-JSON response (${res.status}): ${text?.slice(0, 200)}`);
+        throw new Error(
+          `Non-JSON response (${res.status}): ${text?.slice(0, 200)}`
+        );
       }
 
       if (!res.ok) {
@@ -737,7 +771,7 @@ export default function App({ selectedDay = todayStr() }) {
     improvements = [],
     lessonLearned,
     confidence,
-  } = analysis;
+  } = analysis || {};
 
   const imgSrc =
     normalizeDriveUrl(lastChat?.screenshotUrl) ||
@@ -854,17 +888,19 @@ export default function App({ selectedDay = todayStr() }) {
   }
 
   /* =========================================================
-     Styles (same look, plus Save)
+     Styles
      ========================================================= */
 
   const styles = {
     page: {
       minHeight: "100vh",
-      background: "radial-gradient(circle at top, #0b1120 0, #020617 45%, #020617 100%)",
+      background:
+        "radial-gradient(circle at top, #0b1120 0, #020617 45%, #020617 100%)",
       color: "#e5e7eb",
       padding: "80px 16px 24px",
       boxSizing: "border-box",
-      fontFamily: '-apple-system, BlinkMacSystemFont, system-ui, "SF Pro Text", sans-serif',
+      fontFamily:
+        '-apple-system, BlinkMacSystemFont, system-ui, "SF Pro Text", sans-serif',
       position: "relative",
       overflowX: "hidden",
     },
@@ -893,7 +929,8 @@ export default function App({ selectedDay = todayStr() }) {
       alignItems: "center",
       justifyContent: "space-between",
       padding: "0 16px",
-      background: "linear-gradient(to right, rgba(15,23,42,0.96), rgba(8,25,43,0.96))",
+      background:
+        "linear-gradient(to right, rgba(15,23,42,0.96), rgba(8,25,43,0.96))",
       borderBottom: "1px solid rgba(15,23,42,0.9)",
       backdropFilter: "blur(20px)",
       zIndex: 70,
@@ -915,7 +952,8 @@ export default function App({ selectedDay = todayStr() }) {
       padding: "6px 10px",
       borderRadius: 999,
       border: "1px solid rgba(51,65,85,0.9)",
-      background: "linear-gradient(135deg, rgba(15,23,42,0.95), rgba(15,23,42,0.6))",
+      background:
+        "linear-gradient(135deg, rgba(15,23,42,0.95), rgba(15,23,42,0.6))",
       color: "#e5e7eb",
       fontSize: 12,
       fontWeight: 800,
@@ -951,14 +989,16 @@ export default function App({ selectedDay = todayStr() }) {
       padding: "4px 10px",
       borderRadius: 999,
       border: "1px solid rgba(148,163,184,0.5)",
-      background: "linear-gradient(135deg, rgba(15,23,42,0.9), rgba(15,23,42,0.5))",
+      background:
+        "linear-gradient(135deg, rgba(15,23,42,0.9), rgba(15,23,42,0.5))",
     },
     menuButton: {
       width: 30,
       height: 30,
       borderRadius: 999,
       border: "1px solid rgba(51,65,85,0.9)",
-      background: "radial-gradient(circle at 0 0, rgba(34,211,238,0.18), #020617)",
+      background:
+        "radial-gradient(circle at 0 0, rgba(34,211,238,0.18), #020617)",
       color: "#e5e7eb",
       display: "flex",
       alignItems: "center",
@@ -1009,7 +1049,8 @@ export default function App({ selectedDay = todayStr() }) {
       width: 240,
       minWidth: 240,
       flex: "0 0 240px",
-      background: "radial-gradient(circle at top left, rgba(2,6,23,1), rgba(2,6,23,0.92))",
+      background:
+        "radial-gradient(circle at top left, rgba(2,6,23,1), rgba(2,6,23,0.92))",
       borderRadius: 20,
       border: "1px solid rgba(30,64,175,0.65)",
       boxShadow: "0 20px 60px rgba(15,23,42,0.95)",
@@ -1033,13 +1074,16 @@ export default function App({ selectedDay = todayStr() }) {
       cursor: "pointer",
       fontSize: 13,
       color: active ? "#020617" : "#e5e7eb",
-      background: active ? `linear-gradient(135deg, ${CYAN}, ${CYAN_SOFT})` : "transparent",
+      background: active
+        ? `linear-gradient(135deg, ${CYAN}, ${CYAN_SOFT})`
+        : "transparent",
       border: active ? "1px solid transparent" : "1px solid rgba(51,65,85,0.6)",
       boxShadow: active ? "0 18px 55px rgba(34,211,238,0.25)" : "none",
       fontWeight: active ? 900 : 700,
       letterSpacing: active ? "0.02em" : "0",
       marginBottom: 8,
-      transition: "transform .15s ease, box-shadow .15s ease, background .15s ease",
+      transition:
+        "transform .15s ease, box-shadow .15s ease, background .15s ease",
       userSelect: "none",
     }),
     navHint: {
@@ -1074,7 +1118,8 @@ export default function App({ selectedDay = todayStr() }) {
       cursor: "pointer",
       boxShadow: "0 12px 40px rgba(15,23,42,0.9)",
       color: "#e5e7eb",
-      transition: "transform .16s ease, box-shadow .16s ease, border .16s ease",
+      transition:
+        "transform .16s ease, box-shadow .16s ease, border .16s ease",
       userSelect: "none",
     },
     datePillHover: {
@@ -1093,7 +1138,8 @@ export default function App({ selectedDay = todayStr() }) {
       position: "absolute",
       top: "115%",
       zIndex: 60,
-      background: "radial-gradient(circle at top, #020617, #020617 55%, #020617 100%)",
+      background:
+        "radial-gradient(circle at top, #020617, #020617 55%, #020617 100%)",
       borderRadius: 18,
       border: "1px solid rgba(51,65,85,0.9)",
       padding: 12,
@@ -1162,11 +1208,22 @@ export default function App({ selectedDay = todayStr() }) {
       alignItems: "stretch",
       flexWrap: "wrap",
     },
-    leftCol: { flex: "2 1 360px", display: "flex", flexDirection: "column", gap: 12 },
-    rightCol: { flex: "1 1 260px", display: "flex", flexDirection: "column", gap: 12 },
+    leftCol: {
+      flex: "2 1 360px",
+      display: "flex",
+      flexDirection: "column",
+      gap: 12,
+    },
+    rightCol: {
+      flex: "1 1 260px",
+      display: "flex",
+      flexDirection: "column",
+      gap: 12,
+    },
 
     coachCard: {
-      background: "radial-gradient(circle at top left, #020617, #020617 60%, #020617 100%)",
+      background:
+        "radial-gradient(circle at top left, #020617, #020617 60%, #020617 100%)",
       borderRadius: 20,
       boxShadow: "0 20px 60px rgba(15,23,42,0.95)",
       padding: 20,
@@ -1176,7 +1233,12 @@ export default function App({ selectedDay = todayStr() }) {
       minHeight: 0,
       border: "1px solid rgba(30,64,175,0.7)",
     },
-    coachHeaderRow: { display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 },
+    coachHeaderRow: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "baseline",
+      gap: 8,
+    },
     coachTitle: {
       fontSize: 20,
       fontWeight: 800,
@@ -1184,7 +1246,13 @@ export default function App({ selectedDay = todayStr() }) {
       textTransform: "uppercase",
       color: "#f9fafb",
     },
-    coachSub: { fontSize: 12, opacity: 0.75, marginTop: 4, maxWidth: 380, color: "#9ca3af" },
+    coachSub: {
+      fontSize: 12,
+      opacity: 0.75,
+      marginTop: 4,
+      maxWidth: 380,
+      color: "#9ca3af",
+    },
     dayBadge: {
       fontSize: 11,
       opacity: 0.9,
@@ -1194,12 +1262,14 @@ export default function App({ selectedDay = todayStr() }) {
       whiteSpace: "nowrap",
       alignSelf: "flex-start",
       color: "#e5e7eb",
-      background: "linear-gradient(135deg, rgba(15,23,42,0.95), rgba(15,23,42,0.6))",
+      background:
+        "linear-gradient(135deg, rgba(15,23,42,0.95), rgba(15,23,42,0.6))",
     },
 
     statusBox: {
       marginTop: 4,
-      background: "radial-gradient(circle at top left, #020617, #020617 70%, #020617 100%)",
+      background:
+        "radial-gradient(circle at top left, #020617, #020617 70%, #020617 100%)",
       borderRadius: 18,
       border: "1px solid rgba(31,41,55,0.9)",
       padding: 16,
@@ -1215,14 +1285,35 @@ export default function App({ selectedDay = todayStr() }) {
       position: "absolute",
       inset: 0,
       opacity: 0.26,
-      background: "radial-gradient(circle at top center, rgba(34,211,238,0.28), transparent 55%)",
+      background:
+        "radial-gradient(circle at top center, rgba(34,211,238,0.28), transparent 55%)",
       pointerEvents: "none",
     },
-    statusContent: { position: "relative", zIndex: 1, transition: "opacity .22s ease, transform .22s ease" },
-    statusPlaceholderTitle: { fontSize: 16, fontWeight: 700, marginBottom: 4, color: "#e5e7eb" },
+    statusContent: {
+      position: "relative",
+      zIndex: 1,
+      transition: "opacity .22s ease, transform .22s ease",
+    },
+    statusPlaceholderTitle: {
+      fontSize: 16,
+      fontWeight: 700,
+      marginBottom: 4,
+      color: "#e5e7eb",
+    },
     statusPlaceholderText: { fontSize: 13, opacity: 0.8, color: "#9ca3af" },
-    statusHeaderRow: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 6 },
-    statusHeaderLeft: { display: "flex", flexDirection: "column", gap: 2, fontSize: 12 },
+    statusHeaderRow: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      gap: 8,
+      marginBottom: 6,
+    },
+    statusHeaderLeft: {
+      display: "flex",
+      flexDirection: "column",
+      gap: 2,
+      fontSize: 12,
+    },
     statusLabel: { fontSize: 13, fontWeight: 700, color: "#e5e7eb" },
     statusMeta: { fontSize: 11, opacity: 0.75, color: "#9ca3af" },
     gradePill: {
@@ -1230,9 +1321,11 @@ export default function App({ selectedDay = todayStr() }) {
       fontWeight: 900,
       padding: "3px 10px",
       borderRadius: 999,
-      background: "linear-gradient(135deg, rgba(34,211,238,0.05), rgba(56,189,248,0.12))",
+      background:
+        "linear-gradient(135deg, rgba(34,211,238,0.05), rgba(56,189,248,0.12))",
       border: "1px solid rgba(148,163,184,0.9)",
-      boxShadow: "0 0 0 1px rgba(15,23,42,0.9), 0 0 30px rgba(34,211,238,0.4)",
+      boxShadow:
+        "0 0 0 1px rgba(15,23,42,0.9), 0 0 30px rgba(34,211,238,0.4)",
     },
     statusImg: {
       width: "100%",
@@ -1244,8 +1337,20 @@ export default function App({ selectedDay = todayStr() }) {
       alignSelf: "flex-start",
       boxShadow: "0 20px 60px rgba(15,23,42,0.95)",
     },
-    sectionTitle: { fontWeight: 800, marginTop: 8, marginBottom: 4, fontSize: 13, color: "#e5e7eb" },
-    ul: { margin: 0, paddingLeft: 18, opacity: 0.95, fontSize: 13, color: "#d1d5db" },
+    sectionTitle: {
+      fontWeight: 800,
+      marginTop: 8,
+      marginBottom: 4,
+      fontSize: 13,
+      color: "#e5e7eb",
+    },
+    ul: {
+      margin: 0,
+      paddingLeft: 18,
+      opacity: 0.95,
+      fontSize: 13,
+      color: "#d1d5db",
+    },
     smallMeta: { fontSize: 11, opacity: 0.7, marginTop: 8, color: "#9ca3af" },
 
     formSection: { marginTop: 10, display: "flex", flexDirection: "column", gap: 8 },
@@ -1254,7 +1359,8 @@ export default function App({ selectedDay = todayStr() }) {
     composerRight: { flex: "1 1 260px", minWidth: 260 },
 
     dropMini: {
-      background: "radial-gradient(circle at top left, #020617, #020617 70%, #020617 100%)",
+      background:
+        "radial-gradient(circle at top left, #020617, #020617 70%, #020617 100%)",
       border: "1px dashed rgba(51,65,85,0.95)",
       borderRadius: 14,
       padding: 10,
@@ -1267,7 +1373,8 @@ export default function App({ selectedDay = todayStr() }) {
       cursor: "pointer",
       fontSize: 12,
       color: "rgba(226,232,240,0.9)",
-      transition: "border-color .2s ease, background .2s ease, box-shadow .2s ease, transform .15s ease",
+      transition:
+        "border-color .2s ease, background .2s ease, box-shadow .2s ease, transform .15s ease",
       position: "relative",
       boxSizing: "border-box",
       boxShadow: "0 16px 40px rgba(15,23,42,0.9)",
@@ -1278,7 +1385,13 @@ export default function App({ selectedDay = todayStr() }) {
       transform: "translateY(-1px)",
       boxShadow: "0 20px 60px rgba(15,23,42,0.95)",
     },
-    previewThumb: { maxWidth: 88, maxHeight: 66, borderRadius: 10, border: "1px solid rgba(31,41,55,0.9)", objectFit: "cover" },
+    previewThumb: {
+      maxWidth: 88,
+      maxHeight: 66,
+      borderRadius: 10,
+      border: "1px solid rgba(31,41,55,0.9)",
+      objectFit: "cover",
+    },
     dropMiniLabel: { display: "flex", flexDirection: "column", gap: 3 },
     dropMiniTitle: { fontWeight: 700, fontSize: 12 },
     dropMiniHint: { fontSize: 11, opacity: 0.8, color: "#9ca3af" },
@@ -1306,7 +1419,8 @@ export default function App({ selectedDay = todayStr() }) {
 
     input: {
       width: "100%",
-      background: "radial-gradient(circle at top left, #020617, #020617 70%, #020617 100%)",
+      background:
+        "radial-gradient(circle at top left, #020617, #020617 70%, #020617 100%)",
       border: "1px solid rgba(31,41,55,0.9)",
       borderRadius: 12,
       color: "#e5e7eb",
@@ -1319,7 +1433,8 @@ export default function App({ selectedDay = todayStr() }) {
     selectWrapper: { position: "relative", width: "100%" },
     select: {
       width: "100%",
-      background: "radial-gradient(circle at top left, #020617, #020617 70%, #020617 100%)",
+      background:
+        "radial-gradient(circle at top left, #020617, #020617 70%, #020617 100%)",
       border: "1px solid rgba(31,41,55,0.9)",
       borderRadius: 12,
       color: "#e5e7eb",
@@ -1331,12 +1446,22 @@ export default function App({ selectedDay = todayStr() }) {
       WebkitAppearance: "none",
       MozAppearance: "none",
     },
-    selectArrow: { position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", fontSize: 10, pointerEvents: "none", opacity: 0.7, color: "#9ca3af" },
+    selectArrow: {
+      position: "absolute",
+      right: 10,
+      top: "50%",
+      transform: "translateY(-50%)",
+      fontSize: 10,
+      pointerEvents: "none",
+      opacity: 0.7,
+      color: "#9ca3af",
+    },
 
     textarea: {
       width: "100%",
       minHeight: 90,
-      background: "radial-gradient(circle at top left, #020617, #020617 70%, #020617 100%)",
+      background:
+        "radial-gradient(circle at top left, #020617, #020617 70%, #020617 100%)",
       border: "1px solid rgba(31,41,55,0.9)",
       borderRadius: 14,
       color: "#e5e7eb",
@@ -1363,15 +1488,31 @@ export default function App({ selectedDay = todayStr() }) {
       fontSize: 14,
       letterSpacing: "0.05em",
       textTransform: "uppercase",
-      boxShadow: buttonDisabled ? "0 0 0 rgba(15,23,42,0.9)" : "0 18px 55px rgba(34,211,238,0.45)",
-      transition: "background .18s ease, opacity .18s ease, transform .18s ease, box-shadow .18s ease",
+      boxShadow: buttonDisabled
+        ? "0 0 0 rgba(15,23,42,0.9)"
+        : "0 18px 55px rgba(34,211,238,0.45)",
+      transition:
+        "background .18s ease, opacity .18s ease, transform .18s ease, box-shadow .18s ease",
     },
-    buttonHover: { transform: "translateY(-1px)", boxShadow: "0 22px 70px rgba(34,211,238,0.6)" },
-    error: { marginTop: 6, padding: 10, borderRadius: 12, background: "rgba(127,29,29,0.9)", color: "#fee2e2", whiteSpace: "pre-wrap", fontSize: 12, border: "1px solid rgba(248,113,113,0.7)" },
+    buttonHover: {
+      transform: "translateY(-1px)",
+      boxShadow: "0 22px 70px rgba(34,211,238,0.6)",
+    },
+    error: {
+      marginTop: 6,
+      padding: 10,
+      borderRadius: 12,
+      background: "rgba(127,29,29,0.9)",
+      color: "#fee2e2",
+      whiteSpace: "pre-wrap",
+      fontSize: 12,
+      border: "1px solid rgba(248,113,113,0.7)",
+    },
     hint: { marginTop: 4, fontSize: 11, opacity: 0.75, color: "#fecaca" },
 
     journalCard: {
-      background: "radial-gradient(circle at top right, #020617, #020617 70%, #020617 100%)",
+      background:
+        "radial-gradient(circle at top right, #020617, #020617 70%, #020617 100%)",
       borderRadius: 20,
       boxShadow: "0 20px 60px rgba(15,23,42,0.95)",
       padding: 20,
@@ -1381,15 +1522,27 @@ export default function App({ selectedDay = todayStr() }) {
       minHeight: 0,
       border: "1px solid rgba(30,64,175,0.9)",
     },
-    journalHeaderRow: { display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 },
+    journalHeaderRow: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "baseline",
+      gap: 8,
+    },
     journalTitle: { fontSize: 18, fontWeight: 800, color: "#f9fafb" },
-    journalSub: { fontSize: 11, opacity: 0.8, marginTop: 4, maxWidth: 260, color: "#9ca3af" },
+    journalSub: {
+      fontSize: 11,
+      opacity: 0.8,
+      marginTop: 4,
+      maxWidth: 260,
+      color: "#9ca3af",
+    },
     journalBadge: {
       fontSize: 11,
       padding: "4px 8px",
       borderRadius: 999,
       border: "1px solid rgba(55,65,81,0.9)",
-      background: "linear-gradient(135deg, rgba(15,23,42,0.95), rgba(15,23,42,0.6))",
+      background:
+        "linear-gradient(135deg, rgba(15,23,42,0.95), rgba(15,23,42,0.6))",
       opacity: 0.95,
       whiteSpace: "nowrap",
       color: "#e5e7eb",
@@ -1398,7 +1551,8 @@ export default function App({ selectedDay = todayStr() }) {
     journalTextareaBig: {
       width: "100%",
       minHeight: 140,
-      background: "radial-gradient(circle at top left, #020617, #020617 70%, #020617 100%)",
+      background:
+        "radial-gradient(circle at top left, #020617, #020617 70%, #020617 100%)",
       border: "1px solid rgba(31,41,55,0.9)",
       borderRadius: 14,
       color: "#e5e7eb",
@@ -1411,7 +1565,8 @@ export default function App({ selectedDay = todayStr() }) {
     journalTextareaSmall: {
       width: "100%",
       minHeight: 70,
-      background: "radial-gradient(circle at top left, #020617, #020617 70%, #020617 100%)",
+      background:
+        "radial-gradient(circle at top left, #020617, #020617 70%, #020617 100%)",
       border: "1px solid rgba(31,41,55,0.9)",
       borderRadius: 14,
       color: "#e5e7eb",
@@ -1421,14 +1576,36 @@ export default function App({ selectedDay = todayStr() }) {
       fontSize: 13,
       boxSizing: "border-box",
     },
-    journalHintRow: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, fontSize: 11, opacity: 0.8, marginTop: 6, color: "#9ca3af" },
+    journalHintRow: {
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: 8,
+      fontSize: 11,
+      opacity: 0.8,
+      marginTop: 6,
+      color: "#9ca3af",
+    },
 
-    pnlShell: { width: "100%", maxWidth: 1100, margin: "0 auto", display: "flex", flexDirection: "column", gap: 12 },
-    pnlTopRow: { display: "flex", gap: 12, flexWrap: "wrap", alignItems: "stretch" },
+    pnlShell: {
+      width: "100%",
+      maxWidth: 1100,
+      margin: "0 auto",
+      display: "flex",
+      flexDirection: "column",
+      gap: 12,
+    },
+    pnlTopRow: {
+      display: "flex",
+      gap: 12,
+      flexWrap: "wrap",
+      alignItems: "stretch",
+    },
     pnlCard: {
       flex: "1 1 260px",
       minWidth: 260,
-      background: "radial-gradient(circle at top left, #020617, #020617 60%, #020617 100%)",
+      background:
+        "radial-gradient(circle at top left, #020617, #020617 60%, #020617 100%)",
       borderRadius: 18,
       border: "1px solid rgba(30,64,175,0.7)",
       boxShadow: "0 20px 60px rgba(15,23,42,0.95)",
@@ -1438,18 +1615,37 @@ export default function App({ selectedDay = todayStr() }) {
       gap: 6,
     },
     pnlCardLabel: { fontSize: 12, opacity: 0.75, color: "#9ca3af" },
-    pnlCardValue: { fontSize: 24, fontWeight: 900, letterSpacing: "0.02em", color: "#f9fafb" },
+    pnlCardValue: {
+      fontSize: 24,
+      fontWeight: 900,
+      letterSpacing: "0.02em",
+      color: "#f9fafb",
+    },
     pnlCardSub: { fontSize: 12, opacity: 0.8, color: "#9ca3af" },
 
     pnlCalendarCard: {
-      background: "radial-gradient(circle at top left, #020617, #020617 60%, #020617 100%)",
+      background:
+        "radial-gradient(circle at top left, #020617, #020617 60%, #020617 100%)",
       borderRadius: 20,
       border: "1px solid rgba(30,64,175,0.7)",
       boxShadow: "0 20px 60px rgba(15,23,42,0.95)",
       padding: 16,
     },
-    pnlCalHeader: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10, gap: 8, flexWrap: "wrap" },
-    pnlCalTitle: { fontSize: 16, fontWeight: 900, color: "#f9fafb", letterSpacing: "0.03em", textTransform: "uppercase" },
+    pnlCalHeader: {
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 10,
+      gap: 8,
+      flexWrap: "wrap",
+    },
+    pnlCalTitle: {
+      fontSize: 16,
+      fontWeight: 900,
+      color: "#f9fafb",
+      letterSpacing: "0.03em",
+      textTransform: "uppercase",
+    },
     pnlCalNav: { display: "flex", alignItems: "center", gap: 8 },
     pnlNavBtn: {
       width: 30,
@@ -1464,7 +1660,14 @@ export default function App({ selectedDay = todayStr() }) {
       alignItems: "center",
       justifyContent: "center",
     },
-    pnlMonthLabel: { fontSize: 13, fontWeight: 700, color: "#e5e7eb", opacity: 0.9, minWidth: 160, textAlign: "center" },
+    pnlMonthLabel: {
+      fontSize: 13,
+      fontWeight: 700,
+      color: "#e5e7eb",
+      opacity: 0.9,
+      minWidth: 160,
+      textAlign: "center",
+    },
     pnlMonthMeta: { fontSize: 12, opacity: 0.8, color: "#9ca3af" },
 
     pnlWeekdayRow: {
@@ -1476,8 +1679,18 @@ export default function App({ selectedDay = todayStr() }) {
       marginBottom: 8,
       color: "#9ca3af",
     },
-    pnlWeek: { display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 8, marginTop: 8 },
-    pnlCellEmpty: { height: 78, borderRadius: 14, border: "1px solid rgba(31,41,55,0.35)", opacity: 0.25 },
+    pnlWeek: {
+      display: "grid",
+      gridTemplateColumns: "repeat(7, 1fr)",
+      gap: 8,
+      marginTop: 8,
+    },
+    pnlCellEmpty: {
+      height: 78,
+      borderRadius: 14,
+      border: "1px solid rgba(31,41,55,0.35)",
+      opacity: 0.25,
+    },
 
     pnlDayCell: (bg, borderColor) => ({
       height: 78,
@@ -1493,7 +1706,12 @@ export default function App({ selectedDay = todayStr() }) {
       userSelect: "none",
       transition: "transform .12s ease, box-shadow .12s ease, border-color .12s ease",
     }),
-    pnlDayTop: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 },
+    pnlDayTop: {
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: 8,
+    },
     pnlDayNum: { fontSize: 12, fontWeight: 900, color: "#e5e7eb", opacity: 0.95 },
     pnlSymbolTag: {
       fontSize: 10,
@@ -1510,8 +1728,18 @@ export default function App({ selectedDay = todayStr() }) {
       overflow: "hidden",
       textOverflow: "ellipsis",
     },
-    pnlDayMid: { display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8 },
-    pnlPnlValue: { fontSize: 14, fontWeight: 900, letterSpacing: "0.02em", color: "#f9fafb" },
+    pnlDayMid: {
+      display: "flex",
+      alignItems: "baseline",
+      justifyContent: "space-between",
+      gap: 8,
+    },
+    pnlPnlValue: {
+      fontSize: 14,
+      fontWeight: 900,
+      letterSpacing: "0.02em",
+      color: "#f9fafb",
+    },
     pnlRRValue: { fontSize: 11, fontWeight: 800, opacity: 0.95, color: "#e5e7eb" },
     pnlNoEntry: { fontSize: 11, opacity: 0.75, color: "#9ca3af", fontWeight: 700 },
 
@@ -1529,7 +1757,8 @@ export default function App({ selectedDay = todayStr() }) {
     modalCard: {
       width: "100%",
       maxWidth: 420,
-      background: "radial-gradient(circle at top, #020617, #020617 60%, #020617 100%)",
+      background:
+        "radial-gradient(circle at top, #020617, #020617 60%, #020617 100%)",
       borderRadius: 20,
       border: "1px solid rgba(30,64,175,0.9)",
       padding: 20,
@@ -1537,7 +1766,13 @@ export default function App({ selectedDay = todayStr() }) {
       fontSize: 13,
       color: "#e5e7eb",
     },
-    modalTitle: { fontSize: 18, fontWeight: 800, marginBottom: 6, textAlign: "center", color: "#f9fafb" },
+    modalTitle: {
+      fontSize: 18,
+      fontWeight: 800,
+      marginBottom: 6,
+      textAlign: "center",
+      color: "#f9fafb",
+    },
     modalText: { fontSize: 12, opacity: 0.8, marginBottom: 12, textAlign: "center", color: "#9ca3af" },
     modalRow: { marginBottom: 10, fontSize: 13 },
     modalLabel: { fontWeight: 700, opacity: 0.9, color: "#e5e7eb", marginBottom: 4 },
@@ -1641,7 +1876,9 @@ export default function App({ selectedDay = todayStr() }) {
       <div style={{ ...styles.page, paddingTop: 80 }}>
         <div style={styles.pageGlow} />
         <div style={{ position: "relative", zIndex: 1, maxWidth: 900, margin: "0 auto" }}>
-          <div style={{ fontSize: 18, fontWeight: 900, marginBottom: 10 }}>Loading your workspace…</div>
+          <div style={{ fontSize: 18, fontWeight: 900, marginBottom: 10 }}>
+            Loading your workspace…
+          </div>
           <div style={{ opacity: 0.8, color: "#9ca3af" }}>
             Fetching your saved data for <strong>{member?.memberId || "—"}</strong>
           </div>
@@ -1660,11 +1897,7 @@ export default function App({ selectedDay = todayStr() }) {
           </div>
           <div style={{ ...styles.error, maxWidth: 700 }}>{stateLoadError}</div>
           <div style={{ marginTop: 14, display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <button
-              type="button"
-              style={styles.modalBtnPrimary}
-              onClick={() => window.location.reload()}
-            >
+            <button type="button" style={styles.modalBtnPrimary} onClick={loadState}>
               Reload
             </button>
             <button type="button" style={styles.modalBtnDanger} onClick={handleLogout}>
@@ -2116,13 +2349,17 @@ export default function App({ selectedDay = todayStr() }) {
                   <div style={styles.pnlTopRow}>
                     <div style={styles.pnlCard}>
                       <div style={styles.pnlCardLabel}>All-time P&amp;L ($)</div>
-                      <div style={styles.pnlCardValue}>{fmtMoneySigned(Number(allTimeStats.pnlSum.toFixed(2)))}</div>
+                      <div style={styles.pnlCardValue}>
+                        {fmtMoneySigned(Number(allTimeStats.pnlSum.toFixed(2)))}
+                      </div>
                       <div style={styles.pnlCardSub}>Manual entries • synced by memberId</div>
                     </div>
 
                     <div style={styles.pnlCard}>
                       <div style={styles.pnlCardLabel}>All-time Avg RR</div>
-                      <div style={styles.pnlCardValue}>{allTimeStats.avgRR == null ? "—" : fmtRR(allTimeStats.avgRR)}</div>
+                      <div style={styles.pnlCardValue}>
+                        {allTimeStats.avgRR == null ? "—" : fmtRR(allTimeStats.avgRR)}
+                      </div>
                       <div style={styles.pnlCardSub}>
                         Based on {allTimeStats.rrCount} day{allTimeStats.rrCount === 1 ? "" : "s"} with RR entered
                       </div>
@@ -2194,7 +2431,9 @@ export default function App({ selectedDay = todayStr() }) {
                                 <div style={styles.pnlNoEntry}>No entry</div>
                               ) : (
                                 <div style={styles.pnlDayMid}>
-                                  <span style={styles.pnlPnlValue}>{fmtMoneySigned(Number(entry.pnl.toFixed(2)))}</span>
+                                  <span style={styles.pnlPnlValue}>
+                                    {fmtMoneySigned(Number(entry.pnl.toFixed(2)))}
+                                  </span>
                                   <span style={styles.pnlRRValue}>{rr == null ? "—" : fmtRR(rr)}</span>
                                 </div>
                               )}
