@@ -1,5 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
+import { db } from "./firebase";
+
+useEffect(() => {
+  const test = async () => {
+    const ref = doc(db, "test", "hello");
+    await setDoc(ref, { works: true, time: Date.now() });
+  };
+  test();
+}, []);
 
 // ✅ Single source of truth for prod:
 const PROD_WEBHOOK = "https://jacobtf007.app.n8n.cloud/webhook/trade_feedback";
