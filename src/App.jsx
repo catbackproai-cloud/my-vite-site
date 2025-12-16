@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+/* =========================================================
+   n8n Webhooks
+   ========================================================= */
+
 // ✅ Single source of truth for prod:
 const PROD_WEBHOOK = "https://jacobtf007.app.n8n.cloud/webhook/trade_feedback";
 
@@ -117,6 +121,89 @@ function fmtRR(n) {
   return `${Number(n.toFixed(2))}R`;
 }
 
+/* =====================
+   EXPORT / IMPORT (Manual Sync)
+   ===================== */
+
+function downloadTextFile(filename, text) {
+  const blob = new Blob([text], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 250);
+}
+
+// Export only MaxTradeAI-related keys to keep it safe/clean
+function exportMaxTradeAIState() {
+  const keys = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (!k) continue;
+
+    // Include your app keys (add/remove prefixes here as needed)
+    if (
+      k.startsWith("tradeChats:") ||
+      k.startsWith("tradeJournalV2:") ||
+      k.startsWith("tradeJournal:") ||
+      k === "mtai_pnl_v2" ||
+      k === "tradeCoach:lastDayWithData" ||
+      k === "lastTradeChats" ||
+      k === "tc_member_v1" ||
+      k === "tc_member_id"
+    ) {
+      keys.push(k);
+    }
+  }
+
+  const payload = {
+    app: "MaxTradeAI",
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    keys,
+    data: {},
+  };
+
+  for (const k of keys) {
+    payload.data[k] = localStorage.getItem(k);
+  }
+
+  return payload;
+}
+
+// Import: writes keys into localStorage (optionally skip overwriting)
+function importMaxTradeAIState(payload, { overwrite = true } = {}) {
+  if (!payload || payload.app !== "MaxTradeAI" || typeof payload.data !== "object") {
+    throw new Error("Invalid import file (not a MaxTradeAI export).");
+  }
+
+  const entries = Object.entries(payload.data);
+
+  for (const [k, v] of entries) {
+    if (!overwrite && localStorage.getItem(k) != null) continue;
+    localStorage.setItem(k, v);
+  }
+
+  return { imported: entries.length };
+}
+
+// Helper to read member object from a MaxTradeAI export payload
+function getMemberFromExportPayload(payload) {
+  try {
+    const raw = payload?.data?.[MEMBER_LS_KEY];
+    if (!raw) return null;
+    // raw is the localStorage value string (JSON)
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === "object") return parsed;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 export default function App({ selectedDay = todayStr() }) {
   const navigate = useNavigate();
 
@@ -161,6 +248,10 @@ export default function App({ selectedDay = todayStr() }) {
   // ⭐ header menu + profile modal state
   const [menuOpen, setMenuOpen] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+
+  // ⭐ Export/Import UI
+  const importInputRef = useRef(null);
+  const [importStatus, setImportStatus] = useState("");
 
   // ⭐ DAY + CALENDAR STATE (AI page)
   const [day, setDay] = useState(initialDay);
@@ -356,6 +447,77 @@ export default function App({ selectedDay = todayStr() }) {
       return copy;
     });
     setPnlModalOpen(false);
+  }
+
+  /* ---------------- EXPORT/IMPORT HANDLERS ---------------- */
+
+  function handleExportData() {
+    try {
+      const payload = exportMaxTradeAIState();
+
+      // Try to include memberId in filename for safety
+      let mid = "";
+      try {
+        const raw = localStorage.getItem(MEMBER_LS_KEY);
+        const parsed = raw ? JSON.parse(raw) : null;
+        mid = parsed?.memberId ? String(parsed.memberId) : "";
+      } catch {}
+
+      const nameSafeMid = mid ? String(mid).replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 24) : "";
+      const filename = `maxtradeai-export-${nameSafeMid || "member"}-${todayStr()}.json`;
+
+      downloadTextFile(filename, JSON.stringify(payload, null, 2));
+      setImportStatus("Exported successfully.");
+      setTimeout(() => setImportStatus(""), 2200);
+    } catch (e) {
+      setImportStatus(`Export failed: ${e?.message || e}`);
+    }
+  }
+
+  async function handleImportFile(file) {
+    if (!file) return;
+
+    // Must be logged in for safety
+    const currentMid = member?.memberId;
+    if (!currentMid) {
+      setImportStatus("Import blocked: please log in first.");
+      setTimeout(() => setImportStatus(""), 2600);
+      return;
+    }
+
+    try {
+      setImportStatus("Importing...");
+      const text = await file.text();
+      const payload = JSON.parse(text);
+
+      // HARD LOCK: backup must match currently logged in memberId
+      const backupMember = getMemberFromExportPayload(payload);
+      const backupMid = backupMember?.memberId;
+
+      if (!backupMid) {
+        throw new Error("Import blocked: backup is missing memberId.");
+      }
+      if (String(backupMid) !== String(currentMid)) {
+        throw new Error(
+          `Import blocked: this backup is for memberId "${backupMid}", but you're logged in as "${currentMid}".`
+        );
+      }
+
+      const { imported } = importMaxTradeAIState(payload, { overwrite: true });
+
+      setImportStatus(`Imported ${imported} items. Reloading...`);
+
+      // Reload to re-hydrate all your useEffects from localStorage
+      setTimeout(() => window.location.reload(), 650);
+    } catch (e) {
+      setImportStatus(`Import failed: ${e?.message || e}`);
+      setTimeout(() => setImportStatus(""), 3400);
+    } finally {
+      // reset input so same file can be re-selected
+      try {
+        if (importInputRef.current) importInputRef.current.value = "";
+      } catch {}
+    }
   }
 
   /* ---------------- STYLES ---------------- */
@@ -2164,6 +2326,49 @@ export default function App({ selectedDay = todayStr() }) {
             <div style={styles.modalRow}>
               <div style={styles.modalLabel}>Member ID</div>
               <div style={{ opacity: 0.95 }}>{member?.memberId || "—"}</div>
+            </div>
+
+            {/* Manual Sync */}
+            <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid rgba(51,65,85,0.7)" }}>
+              <div style={{ fontWeight: 800, marginBottom: 6, textAlign: "center" }}>
+                Data (Manual Sync)
+              </div>
+
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                <button
+                  type="button"
+                  style={styles.modalBtnPrimary}
+                  onClick={handleExportData}
+                >
+                  Export
+                </button>
+
+                <button
+                  type="button"
+                  style={styles.modalBtnGhost}
+                  onClick={() => importInputRef.current?.click()}
+                >
+                  Import
+                </button>
+
+                <input
+                  ref={importInputRef}
+                  type="file"
+                  accept="application/json"
+                  style={{ display: "none" }}
+                  onChange={(e) => handleImportFile(e.target.files?.[0] || null)}
+                />
+              </div>
+
+              {importStatus && (
+                <div style={{ marginTop: 10, fontSize: 12, opacity: 0.9, textAlign: "center", color: "#9ca3af" }}>
+                  {importStatus}
+                </div>
+              )}
+
+              <div style={{ marginTop: 10, fontSize: 11, opacity: 0.8, textAlign: "center", color: "#9ca3af" }}>
+                Export on Device A → Import on Device B (must be logged in as the same member).
+              </div>
             </div>
 
             <button type="button" style={styles.modalCloseBtn} onClick={() => setShowProfile(false)}>
