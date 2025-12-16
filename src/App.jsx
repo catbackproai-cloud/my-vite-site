@@ -1,7 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
-import { db } from "./firebase";
 
 // ✅ Single source of truth for prod:
 const PROD_WEBHOOK = "https://jacobtf007.app.n8n.cloud/webhook/trade_feedback";
@@ -120,24 +118,6 @@ function fmtRR(n) {
 }
 
 export default function App({ selectedDay = todayStr() }) {
-  // 🔥 FIREBASE CONNECTION TEST (SAFE)
-  useEffect(() => {
-    if (!member?.memberId) return;
-
-    const test = async () => {
-      try {
-        await setDoc(doc(db, "test", member.memberId), {
-          works: true,
-          at: serverTimestamp(),
-        });
-        console.log("✅ Firestore connected");
-      } catch (e) {
-        console.error("❌ Firestore error", e);
-      }
-    };
-
-    test();
-  }, [member]);
   const navigate = useNavigate();
 
   // ⭐ Pages (sidebar)
