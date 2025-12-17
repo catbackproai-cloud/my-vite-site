@@ -1,5 +1,10 @@
+// src/App.jsx
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+
+// ✅ Firestore
+import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
+import { db } from "./firebase";
 
 // ✅ Single source of truth for prod:
 const PROD_WEBHOOK = "https://jacobtf007.app.n8n.cloud/webhook/trade_feedback";
@@ -117,6 +122,24 @@ function fmtRR(n) {
   return `${Number(n.toFixed(2))}R`;
 }
 
+/**
+ * IMPORTANT:
+ * Firestore documents have a ~1MB limit.
+ * So we DO NOT store local image data URLs in Firestore.
+ * We store your notes + AI analysis + metadata (day/timeframe/instrument).
+ * (If you want cross-device screenshots later, we’ll add Firebase Storage.)
+ */
+function chatsForFirestore(chats) {
+  return (chats || []).map((c) => {
+    const {
+      localPreviewUrl, // never store
+      localDataUrl, // never store
+      ...rest
+    } = c || {};
+    return rest;
+  });
+}
+
 export default function App({ selectedDay = todayStr() }) {
   const navigate = useNavigate();
 
@@ -206,6 +229,125 @@ export default function App({ selectedDay = todayStr() }) {
 
   const buttonDisabled =
     !hasCompletedTrade && (!isValid || submitting || isPending);
+
+  // ✅ Firestore refs (per member)
+  const memberId = member?.memberId || null;
+
+  // Debounce timers for Firestore writes
+  const dayWriteTimerRef = useRef(null);
+  const pnlWriteTimerRef = useRef(null);
+
+  /* ---------------- FIRESTORE: QUICK TEST WRITE ---------------- */
+  useEffect(() => {
+    if (!memberId) return;
+
+    (async () => {
+      try {
+        await setDoc(
+          doc(db, "test", memberId),
+          { works: true, at: serverTimestamp() },
+          { merge: true }
+        );
+        console.log("✅ Firestore connected (test write ok)");
+      } catch (e) {
+        console.error("❌ Firestore test write error:", e?.code, e?.message, e);
+      }
+    })();
+  }, [memberId]);
+
+  /* ---------------- FIRESTORE: LOAD PNL ON LOGIN ---------------- */
+  useEffect(() => {
+    if (!memberId) return;
+
+    (async () => {
+      try {
+        const ref = doc(db, "users", memberId, "meta", "pnl");
+        const snap = await getDoc(ref);
+        if (snap.exists()) {
+          const data = snap.data() || {};
+          if (data?.pnl && typeof data.pnl === "object") {
+            setPnl(data.pnl);
+            try {
+              localStorage.setItem(PNL_KEY, JSON.stringify(data.pnl));
+            } catch {}
+          }
+        }
+      } catch (e) {
+        console.error("❌ Firestore PNL load error:", e?.code, e?.message, e);
+      }
+    })();
+  }, [memberId]);
+
+  /* ---------------- FIRESTORE: LOAD DAY DATA (CHATS + JOURNAL) ---------------- */
+  useEffect(() => {
+    // Always load local first (fast UI), then Firestore overwrites if found
+    try {
+      const key = `tradeChats:${day}`;
+      const saved = localStorage.getItem(key);
+      setChats(saved ? JSON.parse(saved) : []);
+    } catch {
+      setChats([]);
+    }
+
+    try {
+      const keyV2 = `tradeJournalV2:${day}`;
+      const rawV2 = localStorage.getItem(keyV2);
+      if (rawV2) {
+        const parsed = JSON.parse(rawV2);
+        setJournal({
+          notes: parsed.notes || "",
+          learned: parsed.learned || "",
+          improve: parsed.improve || "",
+        });
+      } else {
+        const legacyKey = `tradeJournal:${day}`;
+        const legacy = localStorage.getItem(legacyKey);
+        if (legacy) setJournal({ notes: legacy, learned: "", improve: "" });
+        else setJournal({ notes: "", learned: "", improve: "" });
+      }
+    } catch {
+      setJournal({ notes: "", learned: "", improve: "" });
+    }
+
+    // Clear form preview on day change
+    setForm((prev) => ({ ...prev, file: null }));
+    setPreviewUrl(null);
+    setError("");
+
+    // If logged in, load from Firestore for that day
+    if (!memberId) return;
+
+    (async () => {
+      try {
+        const ref = doc(db, "users", memberId, "days", day);
+        const snap = await getDoc(ref);
+        if (!snap.exists()) return;
+
+        const data = snap.data() || {};
+        if (Array.isArray(data.chats)) {
+          setChats(data.chats);
+          try {
+            localStorage.setItem(`tradeChats:${day}`, JSON.stringify(data.chats));
+          } catch {}
+        }
+
+        if (data.journal && typeof data.journal === "object") {
+          const j = data.journal || {};
+          const jPayload = {
+            notes: j.notes || "",
+            learned: j.learned || "",
+            improve: j.improve || "",
+          };
+          setJournal(jPayload);
+          try {
+            localStorage.setItem(`tradeJournalV2:${day}`, JSON.stringify(jPayload));
+          } catch {}
+        }
+      } catch (e) {
+        console.error("❌ Firestore day load error:", e?.code, e?.message, e);
+      }
+    })();
+  }, [day, memberId]);
 
   // Build calendar weeks (generic)
   function buildMonthWeeks(monthState) {
@@ -482,7 +624,7 @@ export default function App({ selectedDay = todayStr() }) {
       display: "flex",
       gap: 16,
       alignItems: "stretch",
-      flexWrap: "wrap", // makes sidebar stack naturally on small screens
+      flexWrap: "wrap",
     },
 
     // 🔹 SIDEBAR (always visible, no dropdown)
@@ -1209,21 +1351,7 @@ export default function App({ selectedDay = todayStr() }) {
     };
   }, [form.file]);
 
-  // Load saved chats per day
-  useEffect(() => {
-    try {
-      const key = `tradeChats:${day}`;
-      const saved = localStorage.getItem(key);
-      setChats(saved ? JSON.parse(saved) : []);
-      setForm((prev) => ({ ...prev, file: null }));
-      setPreviewUrl(null);
-      setError("");
-    } catch {
-      setChats([]);
-    }
-  }, [day]);
-
-  // Persist chats per day + mark last day with data
+  // Persist chats per day + mark last day with data (LOCAL)
   useEffect(() => {
     const key = `tradeChats:${day}`;
     safeSaveChats(key, chats);
@@ -1235,35 +1363,7 @@ export default function App({ selectedDay = todayStr() }) {
     }
   }, [chats, day]);
 
-  // Load journal per day
-  useEffect(() => {
-    try {
-      const keyV2 = `tradeJournalV2:${day}`;
-      const rawV2 = localStorage.getItem(keyV2);
-      if (rawV2) {
-        const parsed = JSON.parse(rawV2);
-        setJournal({
-          notes: parsed.notes || "",
-          learned: parsed.learned || "",
-          improve: parsed.improve || "",
-        });
-        return;
-      }
-
-      const legacyKey = `tradeJournal:${day}`;
-      const legacy = localStorage.getItem(legacyKey);
-      if (legacy) {
-        setJournal({ notes: legacy, learned: "", improve: "" });
-        return;
-      }
-
-      setJournal({ notes: "", learned: "", improve: "" });
-    } catch {
-      setJournal({ notes: "", learned: "", improve: "" });
-    }
-  }, [day]);
-
-  // Persist journal per day + mark last day with data
+  // Persist journal per day + mark last day with data (LOCAL)
   useEffect(() => {
     try {
       const keyV2 = `tradeJournalV2:${day}`;
@@ -1278,12 +1378,76 @@ export default function App({ selectedDay = todayStr() }) {
     } catch {}
   }, [journal, day]);
 
-  // Persist P&L calendar
+  // Persist P&L calendar (LOCAL)
   useEffect(() => {
     try {
       localStorage.setItem(PNL_KEY, JSON.stringify(pnl || {}));
     } catch {}
   }, [pnl]);
+
+  /* ---------------- FIRESTORE: SAVE DAY DATA (DEBOUNCED) ---------------- */
+  useEffect(() => {
+    if (!memberId) return;
+
+    // Don’t save while last chat is pending (avoids extra writes)
+    if (chats?.length && chats[chats.length - 1]?.pending) return;
+
+    if (dayWriteTimerRef.current) clearTimeout(dayWriteTimerRef.current);
+
+    dayWriteTimerRef.current = setTimeout(async () => {
+      try {
+        const ref = doc(db, "users", memberId, "days", day);
+
+        await setDoc(
+          ref,
+          {
+            day,
+            updatedAt: serverTimestamp(),
+            chats: chatsForFirestore(chats),
+            journal: {
+              notes: journal?.notes || "",
+              learned: journal?.learned || "",
+              improve: journal?.improve || "",
+            },
+          },
+          { merge: true }
+        );
+
+        // console.log("✅ Firestore saved day:", day);
+      } catch (e) {
+        console.error("❌ Firestore save day error:", e?.code, e?.message, e);
+      }
+    }, 650);
+
+    return () => {
+      if (dayWriteTimerRef.current) clearTimeout(dayWriteTimerRef.current);
+    };
+  }, [memberId, day, chats, journal]);
+
+  /* ---------------- FIRESTORE: SAVE PNL (DEBOUNCED) ---------------- */
+  useEffect(() => {
+    if (!memberId) return;
+
+    if (pnlWriteTimerRef.current) clearTimeout(pnlWriteTimerRef.current);
+
+    pnlWriteTimerRef.current = setTimeout(async () => {
+      try {
+        const ref = doc(db, "users", memberId, "meta", "pnl");
+        await setDoc(
+          ref,
+          { updatedAt: serverTimestamp(), pnl: pnl || {} },
+          { merge: true }
+        );
+        // console.log("✅ Firestore saved pnl");
+      } catch (e) {
+        console.error("❌ Firestore save pnl error:", e?.code, e?.message, e);
+      }
+    }, 650);
+
+    return () => {
+      if (pnlWriteTimerRef.current) clearTimeout(pnlWriteTimerRef.current);
+    };
+  }, [memberId, pnl]);
 
   /* ---------------- HANDLERS ---------------- */
 
@@ -1574,6 +1738,17 @@ export default function App({ selectedDay = todayStr() }) {
         P&amp;L is manual (paper-friendly). Click a day to enter:
         <br />
         <strong>Symbol</strong>, <strong>$ P&amp;L</strong>, and <strong>RR</strong>.
+        <br />
+        <br />
+        {memberId ? (
+          <span style={{ color: "#86efac" }}>
+            ✅ Cloud sync ON (member: {memberId.slice(0, 6)}…)
+          </span>
+        ) : (
+          <span style={{ color: "#fca5a5" }}>
+            ⚠️ Cloud sync OFF (no memberId)
+          </span>
+        )}
       </div>
     </div>
   );
