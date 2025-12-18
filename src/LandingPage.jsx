@@ -842,6 +842,37 @@ export default function LandingPage({ onEnterApp }) {
       a: "Yes. The prompts and training are built specifically around those concepts so it can talk in your language, not generic indicator spam.",
     },
   ];
+  // ✅ demo data for the P&L calendar graphic (prevents blank screen)
+  const pnlDays = [
+    { d: 1, tone: "pos", v: "+$210", rr: "1.8R" },
+    { d: 2, tone: "neg", v: "-$95", rr: "0.7R" },
+    { d: 3, tone: "flat", v: "$0", rr: "—" },
+    { d: 4, tone: "pos", v: "+$140", rr: "1.5R" },
+    { d: 5, tone: "neg", v: "-$60", rr: "0.9R" },
+    { d: 6, tone: "pos", v: "+$330", rr: "2.2R" },
+    { d: 7, tone: "pos", v: "+$85", rr: "1.2R" },
+    { d: 8, tone: "flat", v: "$0", rr: "—" },
+    { d: 9, tone: "neg", v: "-$120", rr: "0.6R" },
+    { d: 10, tone: "pos", v: "+$260", rr: "1.9R" },
+    { d: 11, tone: "pos", v: "+$110", rr: "1.4R" },
+    { d: 12, tone: "neg", v: "-$70", rr: "0.8R" },
+    { d: 13, tone: "pos", v: "+$180", rr: "1.6R" },
+    { d: 14, tone: "pos", v: "+$95", rr: "1.1R" },
+    { d: 15, tone: "flat", v: "$0", rr: "—" },
+    { d: 16, tone: "pos", v: "+$220", rr: "1.7R" },
+    { d: 17, tone: "neg", v: "-$130", rr: "0.7R" },
+    { d: 18, tone: "pos", v: "+$145", rr: "1.3R" },
+    { d: 19, tone: "pos", v: "+$305", rr: "2.0R" },
+    { d: 20, tone: "neg", v: "-$55", rr: "0.9R" },
+    { d: 21, tone: "pos", v: "+$125", rr: "1.2R" },
+    { d: 22, tone: "flat", v: "$0", rr: "—" },
+    { d: 23, tone: "pos", v: "+$90", rr: "1.0R" },
+    { d: 24, tone: "neg", v: "-$80", rr: "0.8R" },
+    { d: 25, tone: "pos", v: "+$175", rr: "1.5R" },
+    { d: 26, tone: "pos", v: "+$240", rr: "1.8R" },
+    { d: 27, tone: "neg", v: "-$110", rr: "0.6R" },
+    { d: 28, tone: "pos", v: "+$160", rr: "1.4R" },
+  ];
 
   return (
     <>
