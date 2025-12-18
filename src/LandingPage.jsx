@@ -1,3 +1,4 @@
+// src/LandingPage.jsx
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -559,6 +560,124 @@ export default function LandingPage({ onEnterApp }) {
       textDecorationStyle: "dotted",
     },
 
+    // ✅ P&L CALENDAR STYLES (missing before)
+    pnlGridWrap: {
+      width: "100%",
+      maxWidth: 940,
+      marginTop: 18,
+      borderRadius: 22,
+      background: "rgba(15,23,42,0.97)",
+      border: "1px solid rgba(30,64,175,0.85)",
+      boxShadow: "0 18px 45px rgba(15,23,42,0.9)",
+      padding: 16,
+      boxSizing: "border-box",
+      textAlign: "left",
+    },
+    pnlTopRow: {
+      display: "flex",
+      flexWrap: "wrap",
+      gap: 14,
+      justifyContent: "space-between",
+      alignItems: "flex-start",
+    },
+    pnlSummaryRow: {
+      marginTop: 14,
+      display: "flex",
+      flexWrap: "wrap",
+      gap: 12,
+      justifyContent: "center",
+    },
+    pnlSummaryCard: {
+      flex: "1 1 220px",
+      minWidth: 210,
+      borderRadius: 18,
+      padding: 14,
+      background:
+        "linear-gradient(135deg, rgba(2,6,23,0.85), rgba(15,23,42,0.95))",
+      border: "1px solid rgba(51,65,85,0.85)",
+      boxShadow: "0 12px 30px rgba(15,23,42,0.8)",
+    },
+    pnlSummaryLabel: {
+      fontSize: 11,
+      opacity: 0.8,
+      textTransform: "uppercase",
+      letterSpacing: 0.14,
+    },
+    pnlSummaryValue: {
+      marginTop: 6,
+      fontSize: 20,
+      fontWeight: 950,
+      color: "#e5e7eb",
+    },
+    pnlSummarySub: {
+      marginTop: 6,
+      fontSize: 11,
+      opacity: 0.78,
+      lineHeight: 1.4,
+    },
+    pnlDow: {
+      fontSize: 11,
+      opacity: 0.85,
+      textAlign: "center",
+      padding: "6px 0",
+      borderRadius: 10,
+      border: "1px solid rgba(30,64,175,0.55)",
+      background: "rgba(2,6,23,0.55)",
+    },
+    pnlCalendar: {
+      display: "grid",
+      gridTemplateColumns: "repeat(7, minmax(0, 1fr))",
+      gap: 8,
+    },
+    pnlCell: (tone) => {
+      let bg = "rgba(2,6,23,0.6)";
+      let border = "1px solid rgba(30,64,175,0.55)";
+
+      if (tone === "pos") {
+        bg =
+          "linear-gradient(135deg, rgba(34,197,94,0.22), rgba(2,6,23,0.65))";
+        border = "1px solid rgba(34,197,94,0.45)";
+      } else if (tone === "neg") {
+        bg =
+          "linear-gradient(135deg, rgba(244,63,94,0.22), rgba(2,6,23,0.65))";
+        border = "1px solid rgba(244,63,94,0.45)";
+      } else if (tone === "flat") {
+        bg =
+          "linear-gradient(135deg, rgba(56,189,248,0.18), rgba(2,6,23,0.65))";
+        border = "1px solid rgba(56,189,248,0.4)";
+      } else if (tone === "off") {
+        bg = "rgba(2,6,23,0.35)";
+        border = "1px dashed rgba(51,65,85,0.65)";
+      }
+
+      return {
+        borderRadius: 16,
+        padding: 10,
+        minHeight: 78,
+        background: bg,
+        border,
+        boxSizing: "border-box",
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "space-between",
+      };
+    },
+    pnlCellDay: {
+      fontSize: 11,
+      opacity: 0.78,
+      fontWeight: 700,
+    },
+    pnlCellValue: {
+      fontSize: 14,
+      fontWeight: 950,
+      letterSpacing: 0.1,
+    },
+    pnlCellRR: {
+      marginTop: 2,
+      fontSize: 11,
+      opacity: 0.82,
+    },
+
     // MODALS
     overlay: {
       position: "fixed",
@@ -842,36 +961,38 @@ export default function LandingPage({ onEnterApp }) {
       a: "Yes. The prompts and training are built specifically around those concepts so it can talk in your language, not generic indicator spam.",
     },
   ];
+
   // ✅ demo data for the P&L calendar graphic (prevents blank screen)
+  // ✅ Saturdays and Sundays are left blank (no trades logged)
   const pnlDays = [
     { d: 1, tone: "pos", v: "+$210", rr: "1.8R" },
     { d: 2, tone: "neg", v: "-$95", rr: "0.7R" },
     { d: 3, tone: "flat", v: "$0", rr: "—" },
     { d: 4, tone: "pos", v: "+$140", rr: "1.5R" },
     { d: 5, tone: "neg", v: "-$60", rr: "0.9R" },
-    { d: 6, tone: "pos", v: "+$330", rr: "2.2R" },
-    { d: 7, tone: "pos", v: "+$85", rr: "1.2R" },
-    { d: 8, tone: "flat", v: "$0", rr: "—" },
-    { d: 9, tone: "neg", v: "-$120", rr: "0.6R" },
-    { d: 10, tone: "pos", v: "+$260", rr: "1.9R" },
-    { d: 11, tone: "pos", v: "+$110", rr: "1.4R" },
-    { d: 12, tone: "neg", v: "-$70", rr: "0.8R" },
-    { d: 13, tone: "pos", v: "+$180", rr: "1.6R" },
-    { d: 14, tone: "pos", v: "+$95", rr: "1.1R" },
-    { d: 15, tone: "flat", v: "$0", rr: "—" },
-    { d: 16, tone: "pos", v: "+$220", rr: "1.7R" },
-    { d: 17, tone: "neg", v: "-$130", rr: "0.7R" },
-    { d: 18, tone: "pos", v: "+$145", rr: "1.3R" },
-    { d: 19, tone: "pos", v: "+$305", rr: "2.0R" },
-    { d: 20, tone: "neg", v: "-$55", rr: "0.9R" },
-    { d: 21, tone: "pos", v: "+$125", rr: "1.2R" },
-    { d: 22, tone: "flat", v: "$0", rr: "—" },
-    { d: 23, tone: "pos", v: "+$90", rr: "1.0R" },
-    { d: 24, tone: "neg", v: "-$80", rr: "0.8R" },
-    { d: 25, tone: "pos", v: "+$175", rr: "1.5R" },
-    { d: 26, tone: "pos", v: "+$240", rr: "1.8R" },
-    { d: 27, tone: "neg", v: "-$110", rr: "0.6R" },
-    { d: 28, tone: "pos", v: "+$160", rr: "1.4R" },
+    { d: 6, tone: "off", v: "—", rr: "" }, // Saturday
+    { d: 7, tone: "off", v: "—", rr: "" }, // Sunday
+    { d: 8, tone: "pos", v: "+$85", rr: "1.2R" },
+    { d: 9, tone: "flat", v: "$0", rr: "—" },
+    { d: 10, tone: "neg", v: "-$120", rr: "0.6R" },
+    { d: 11, tone: "pos", v: "+$260", rr: "1.9R" },
+    { d: 12, tone: "pos", v: "+$110", rr: "1.4R" },
+    { d: 13, tone: "off", v: "—", rr: "" }, // Saturday
+    { d: 14, tone: "off", v: "—", rr: "" }, // Sunday
+    { d: 15, tone: "neg", v: "-$70", rr: "0.8R" },
+    { d: 16, tone: "pos", v: "+$180", rr: "1.6R" },
+    { d: 17, tone: "pos", v: "+$95", rr: "1.1R" },
+    { d: 18, tone: "flat", v: "$0", rr: "—" },
+    { d: 19, tone: "pos", v: "+$220", rr: "1.7R" },
+    { d: 20, tone: "off", v: "—", rr: "" }, // Saturday
+    { d: 21, tone: "off", v: "—", rr: "" }, // Sunday
+    { d: 22, tone: "neg", v: "-$130", rr: "0.7R" },
+    { d: 23, tone: "pos", v: "+$145", rr: "1.3R" },
+    { d: 24, tone: "pos", v: "+$305", rr: "2.0R" },
+    { d: 25, tone: "neg", v: "-$55", rr: "0.9R" },
+    { d: 26, tone: "pos", v: "+$125", rr: "1.2R" },
+    { d: 27, tone: "off", v: "—", rr: "" }, // Saturday
+    { d: 28, tone: "off", v: "—", rr: "" }, // Sunday
   ];
 
   return (
@@ -1235,7 +1356,7 @@ export default function LandingPage({ onEnterApp }) {
           </div>
         </section>
 
-            {/* ✅ P&L CALENDAR (UPGRADED) */}
+        {/* ✅ P&L CALENDAR (UPGRADED) */}
         <section style={styles.section}>
           <div style={styles.sectionInner}>
             <div style={styles.sectionEyebrow}>Track performance, not just ideas</div>
@@ -1544,10 +1665,7 @@ export default function LandingPage({ onEnterApp }) {
               >
                 Privacy Policy
               </span>
-              <span
-                style={styles.footerLink}
-                onClick={() => setShowTerms(true)}
-              >
+              <span style={styles.footerLink} onClick={() => setShowTerms(true)}>
                 Terms of Use
               </span>
               <span
@@ -1579,9 +1697,9 @@ export default function LandingPage({ onEnterApp }) {
           <div style={styles.modalCard}>
             <div style={styles.modalTitle}>Continue to Stripe</div>
             <div style={styles.modalText}>
-              You&apos;ll enter your details directly in Stripe Checkout. This is
-              a <strong>{PRICE_SHORT}</strong> subscription for access to your
-              portal.
+              You&apos;ll enter your details directly in Stripe Checkout. This
+              is a <strong>{PRICE_SHORT}</strong> subscription for access to
+              your portal.
               <br />
               <br />
               <span style={{ fontSize: 11, opacity: 0.8 }}>
