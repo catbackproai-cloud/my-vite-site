@@ -2332,13 +2332,6 @@ export default function App({ selectedDay = todayStr() }) {
                           style={styles.journalTextareaSmall}
                         />
                       </div>
-
-                      <div style={styles.journalHintRow}>
-                        <span className="mt-safeWrap">
-                          ✅ Synced per member (Firestore) when logged in
-                        </span>
-                        <span className="mt-safeWrap">🔒 Local backup always kept on device</span>
-                      </div>
                     </div>
                   </div>
                 </div>
