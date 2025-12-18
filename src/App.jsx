@@ -19,8 +19,20 @@ const MEMBER_LS_KEY = "tc_member_v1";
 // ⭐ P&L Calendar storage (manual entry) (base key; final key is namespaced per member)
 const PNL_KEY_BASE = "mtai_pnl_v2";
 
+/* =========================
+   VISUAL THEME (NEW)
+   (no behavior changes)
+   ========================= */
+
 const CYAN = "#22d3ee";
 const CYAN_SOFT = "#38bdf8";
+
+// extra theme accents
+const INDIGO = "#3b82f6";
+const VIOLET = "#a78bfa";
+const BG_TOP = "#07101f";
+const BG_MID = "#030817";
+const BG_DEEP = "#020617";
 
 const gradeColor = (grade) => {
   switch (grade) {
@@ -206,8 +218,7 @@ export default function App({ selectedDay = todayStr() }) {
   });
 
   const [pnl, setPnl] = useState(() => {
-    const raw =
-      typeof window !== "undefined" ? localStorage.getItem(PNL_KEY) : null;
+    const raw = typeof window !== "undefined" ? localStorage.getItem(PNL_KEY) : null;
     return safeParseJSON(raw, {});
   });
 
@@ -220,8 +231,7 @@ export default function App({ selectedDay = todayStr() }) {
   const todayIso = todayStr();
 
   const isValid = useMemo(
-    () =>
-      !!form.strategyNotes && !!form.file && !!form.timeframe && !!form.instrument,
+    () => !!form.strategyNotes && !!form.file && !!form.timeframe && !!form.instrument,
     [form]
   );
 
@@ -229,22 +239,48 @@ export default function App({ selectedDay = todayStr() }) {
   const isPending = !!lastChat?.pending;
   const hasCompletedTrade = !!(lastChat && !lastChat.pending);
 
-  const buttonDisabled =
-    !hasCompletedTrade && (!isValid || submitting || isPending);
+  const buttonDisabled = !hasCompletedTrade && (!isValid || submitting || isPending);
 
   // Debounce timers for Firestore writes
   const dayWriteTimerRef = useRef(null);
   const pnlWriteTimerRef = useRef(null);
 
-  /* ---------------- MOBILE CSS (fix overlaps) ---------------- */
+  /* ---------------- MOBILE CSS (refined visuals + no overlap) ---------------- */
   const ResponsiveCSS = () => (
     <style>{`
       * { -webkit-tap-highlight-color: transparent; }
+      html, body { max-width: 100%; overflow-x: hidden; }
+
+      /* soft “glass” + crisp text rendering */
+      body {
+        text-rendering: geometricPrecision;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+
       .mt-shell { display:flex; gap:16px; align-items:stretch; flex-wrap:wrap; }
       .mt-content { flex: 1 1 520px; min-width: 0; }
       .mt-safeWrap { min-width:0; overflow-wrap:anywhere; word-break:break-word; }
+
       .mt-calPanel { max-width: min(92vw, 340px); width: min(92vw, 340px); }
-      html, body { max-width: 100%; overflow-x: hidden; }
+
+      /* subtle card hover lift */
+      .mt-cardHover {
+        transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+      }
+      .mt-cardHover:hover {
+        transform: translateY(-2px);
+      }
+
+      /* nicer scrollbars */
+      ::-webkit-scrollbar { width: 10px; height: 10px; }
+      ::-webkit-scrollbar-thumb {
+        background: rgba(148,163,184,0.18);
+        border: 1px solid rgba(148,163,184,0.12);
+        border-radius: 999px;
+      }
+      ::-webkit-scrollbar-track { background: rgba(2,6,23,0.35); }
+
       @media (max-width: 980px) {
         .mt-shell { flex-direction: column; }
         .mt-sidebar { width: 100% !important; min-width: 0 !important; flex: 1 1 auto !important; position: relative !important; top: auto !important; }
@@ -254,11 +290,11 @@ export default function App({ selectedDay = todayStr() }) {
         .mt-leftCol, .mt-rightCol { flex: 1 1 auto !important; min-width: 0 !important; }
       }
       @media (max-width: 520px) {
-        .mt-headerTitle { font-size: 14px !important; letter-spacing: .04em !important; }
+        .mt-headerTitle { font-size: 14px !important; letter-spacing: .08em !important; }
         .mt-workspaceTag { display: none !important; }
-        .mt-page { padding: 72px 12px 18px !important; }
-        .mt-coachCard, .mt-journalCard, .mt-pnlCalendarCard { padding: 14px !important; border-radius: 16px !important; }
-        .mt-sidebar { padding: 12px !important; border-radius: 16px !important; }
+        .mt-page { padding: 74px 12px 18px !important; }
+        .mt-coachCard, .mt-journalCard, .mt-pnlCalendarCard { padding: 14px !important; border-radius: 18px !important; }
+        .mt-sidebar { padding: 12px !important; border-radius: 18px !important; }
         .mt-datePill { min-width: 0 !important; width: 100% !important; }
       }
     `}</style>
@@ -269,11 +305,7 @@ export default function App({ selectedDay = todayStr() }) {
     if (!memberId) return;
     (async () => {
       try {
-        await setDoc(
-          doc(db, "test", memberId),
-          { works: true, at: serverTimestamp() },
-          { merge: true }
-        );
+        await setDoc(doc(db, "test", memberId), { works: true, at: serverTimestamp() }, { merge: true });
         console.log("✅ Firestore connected (test write ok)");
       } catch (e) {
         console.error("❌ Firestore test write error:", e?.code, e?.message, e);
@@ -431,23 +463,24 @@ export default function App({ selectedDay = todayStr() }) {
 
   // AI date dropdown calendar
   const monthWeeks = buildMonthWeeks(calendarMonth);
-  const calendarMonthLabel = new Date(
-    calendarMonth.year,
-    calendarMonth.month,
-    1
-  ).toLocaleDateString(undefined, { month: "long", year: "numeric" });
-
-  // P&L month calendar
-  const pnlWeeks = buildMonthWeeks(pnlMonth);
-  const pnlMonthLabel = new Date(pnlMonth.year, pnlMonth.month, 1).toLocaleDateString(
+  const calendarMonthLabel = new Date(calendarMonth.year, calendarMonth.month, 1).toLocaleDateString(
     undefined,
     { month: "long", year: "numeric" }
   );
 
-  const formattedDayLabel = parseLocalDateFromIso(day).toLocaleDateString(
-    undefined,
-    { weekday: "long", month: "short", day: "numeric", year: "numeric" }
-  );
+  // P&L month calendar
+  const pnlWeeks = buildMonthWeeks(pnlMonth);
+  const pnlMonthLabel = new Date(pnlMonth.year, pnlMonth.month, 1).toLocaleDateString(undefined, {
+    month: "long",
+    year: "numeric",
+  });
+
+  const formattedDayLabel = parseLocalDateFromIso(day).toLocaleDateString(undefined, {
+    weekday: "long",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
 
   function goToPrevMonth() {
     setCalendarMonth((prev) => {
@@ -486,15 +519,9 @@ export default function App({ selectedDay = todayStr() }) {
     setPnlEditingIso(iso);
     setPnlEditSymbol(existing?.symbol || "");
     setPnlEditPnl(
-      typeof existing?.pnl === "number" && Number.isFinite(existing.pnl)
-        ? String(existing.pnl)
-        : ""
+      typeof existing?.pnl === "number" && Number.isFinite(existing.pnl) ? String(existing.pnl) : ""
     );
-    setPnlEditRR(
-      typeof existing?.rr === "number" && Number.isFinite(existing.rr)
-        ? String(existing.rr)
-        : ""
-    );
+    setPnlEditRR(typeof existing?.rr === "number" && Number.isFinite(existing.rr) ? String(existing.rr) : "");
     setPnlModalOpen(true);
   }
 
@@ -549,31 +576,47 @@ export default function App({ selectedDay = todayStr() }) {
     setPnlModalOpen(false);
   }
 
-  /* ---------------- STYLES ---------------- */
+  /* ---------------- STYLES (refreshed look only) ---------------- */
 
   const styles = {
     page: {
       minHeight: "100vh",
-      background:
-        "radial-gradient(circle at top, #0b1120 0, #020617 45%, #020617 100%)",
+      background: `
+        radial-gradient(1200px 700px at 50% -10%, rgba(34,211,238,0.24), transparent 60%),
+        radial-gradient(900px 520px at 10% 15%, rgba(59,130,246,0.14), transparent 55%),
+        radial-gradient(900px 520px at 90% 25%, rgba(167,139,250,0.12), transparent 60%),
+        linear-gradient(180deg, ${BG_TOP} 0%, ${BG_MID} 38%, ${BG_DEEP} 100%)
+      `,
       color: "#e5e7eb",
       padding: "80px 16px 24px",
       boxSizing: "border-box",
       fontFamily:
-        '-apple-system, BlinkMacSystemFont, system-ui, "SF Pro Text", sans-serif',
+        '-apple-system, BlinkMacSystemFont, system-ui, "SF Pro Text", Inter, sans-serif',
       position: "relative",
       overflowX: "hidden",
     },
     pageGlow: {
       position: "fixed",
-      top: 40,
+      top: 24,
       left: "50%",
       transform: "translateX(-50%)",
-      width: 520,
-      height: 520,
-      background: "radial-gradient(circle, rgba(34,211,238,0.25), transparent)",
-      filter: "blur(40px)",
-      opacity: 0.8,
+      width: 780,
+      height: 780,
+      background:
+        "radial-gradient(circle, rgba(34,211,238,0.17), rgba(59,130,246,0.10), transparent 62%)",
+      filter: "blur(50px)",
+      opacity: 0.95,
+      pointerEvents: "none",
+      zIndex: 0,
+    },
+    pageGrid: {
+      position: "fixed",
+      inset: 0,
+      backgroundImage:
+        "linear-gradient(rgba(148,163,184,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,0.05) 1px, transparent 1px)",
+      backgroundSize: "48px 48px",
+      maskImage: "radial-gradient(circle at 50% 10%, black 0%, transparent 62%)",
+      opacity: 0.55,
       pointerEvents: "none",
       zIndex: 0,
     },
@@ -591,17 +634,27 @@ export default function App({ selectedDay = todayStr() }) {
       justifyContent: "space-between",
       padding: "0 16px",
       background:
-        "linear-gradient(to right, rgba(15,23,42,0.96), rgba(8,25,43,0.96))",
-      borderBottom: "1px solid rgba(15,23,42,0.9)",
-      backdropFilter: "blur(20px)",
+        "linear-gradient(90deg, rgba(2,6,23,0.75), rgba(8,25,43,0.62), rgba(2,6,23,0.70))",
+      borderBottom: "1px solid rgba(148,163,184,0.10)",
+      backdropFilter: "blur(22px)",
+      WebkitBackdropFilter: "blur(22px)",
       zIndex: 70,
-      boxShadow: "0 16px 60px rgba(15,23,42,0.9)",
+      boxShadow: "0 18px 70px rgba(2,6,23,0.8)",
       gap: 12,
+    },
+    siteHeaderTitleRow: { display: "flex", alignItems: "center", gap: 10 },
+    brandDot: {
+      width: 10,
+      height: 10,
+      borderRadius: 999,
+      background: `linear-gradient(135deg, ${CYAN}, ${VIOLET})`,
+      boxShadow: "0 0 0 5px rgba(34,211,238,0.12), 0 14px 45px rgba(34,211,238,0.25)",
+      flex: "0 0 auto",
     },
     siteHeaderTitle: {
       fontSize: 18,
-      fontWeight: 800,
-      letterSpacing: "0.06em",
+      fontWeight: 900,
+      letterSpacing: "0.10em",
       textTransform: "uppercase",
       color: "#f9fafb",
     },
@@ -610,24 +663,25 @@ export default function App({ selectedDay = todayStr() }) {
       alignItems: "center",
       gap: 10,
       fontSize: 12,
-      opacity: 0.85,
+      opacity: 0.9,
       position: "relative",
       color: "#9ca3af",
     },
     workspaceTag: {
-      padding: "4px 10px",
+      padding: "5px 10px",
       borderRadius: 999,
-      border: "1px solid rgba(148,163,184,0.5)",
+      border: "1px solid rgba(148,163,184,0.16)",
       background:
-        "linear-gradient(135deg, rgba(15,23,42,0.9), rgba(15,23,42,0.5))",
+        "linear-gradient(135deg, rgba(2,6,23,0.55), rgba(15,23,42,0.35))",
+      color: "rgba(226,232,240,0.85)",
     },
     menuButton: {
-      width: 30,
-      height: 30,
+      width: 34,
+      height: 34,
       borderRadius: 999,
-      border: "1px solid rgba(51,65,85,0.9)",
+      border: "1px solid rgba(148,163,184,0.16)",
       background:
-        "radial-gradient(circle at 0 0, rgba(34,211,238,0.18), #020617)",
+        "radial-gradient(circle at 20% 20%, rgba(34,211,238,0.22), rgba(2,6,23,0.92) 60%)",
       color: "#e5e7eb",
       display: "flex",
       alignItems: "center",
@@ -635,33 +689,40 @@ export default function App({ selectedDay = todayStr() }) {
       cursor: "pointer",
       fontSize: 18,
       padding: 0,
-      boxShadow: "0 10px 30px rgba(15,23,42,0.9)",
-      transition: "transform .18s ease, box-shadow .18s ease",
+      boxShadow: "0 14px 50px rgba(2,6,23,0.9)",
+      transition: "transform .18s ease, box-shadow .18s ease, border-color .18s ease",
     },
     menuButtonHover: {
       transform: "translateY(-1px)",
-      boxShadow: "0 14px 40px rgba(15,23,42,0.95)",
+      borderColor: "rgba(34,211,238,0.35)",
+      boxShadow: "0 18px 65px rgba(2,6,23,0.95)",
     },
     menuDropdown: {
       position: "absolute",
-      top: 36,
+      top: 40,
       right: 0,
       background:
-        "radial-gradient(circle at top left, #0f172a, #020617 80%)",
-      borderRadius: 14,
-      border: "1px solid rgba(51,65,85,0.9)",
-      boxShadow: "0 20px 60px rgba(15,23,42,0.95)",
-      padding: 6,
-      minWidth: 170,
+        "radial-gradient(120% 120% at 10% 0%, rgba(34,211,238,0.10), rgba(2,6,23,0.96) 55%)",
+      borderRadius: 16,
+      border: "1px solid rgba(148,163,184,0.14)",
+      boxShadow: "0 24px 80px rgba(2,6,23,0.95)",
+      padding: 8,
+      minWidth: 180,
       zIndex: 80,
+      backdropFilter: "blur(10px)",
     },
     menuItem: {
-      padding: "8px 10px",
-      borderRadius: 8,
+      padding: "10px 10px",
+      borderRadius: 10,
       fontSize: 13,
       cursor: "pointer",
       color: "#e5e7eb",
       transition: "background .15s ease, transform .12s ease",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: 10,
+      userSelect: "none",
     },
     menuItemDanger: { color: "#fecaca" },
 
@@ -678,52 +739,83 @@ export default function App({ selectedDay = todayStr() }) {
 
     // 🔹 SIDEBAR
     sidebar: {
-      width: 240,
-      minWidth: 240,
-      flex: "0 0 240px",
+      width: 248,
+      minWidth: 248,
+      flex: "0 0 248px",
       background:
-        "radial-gradient(circle at top left, rgba(2,6,23,1), rgba(2,6,23,0.92))",
-      borderRadius: 20,
-      border: "1px solid rgba(30,64,175,0.65)",
-      boxShadow: "0 20px 60px rgba(15,23,42,0.95)",
+        "radial-gradient(120% 120% at 0% 0%, rgba(34,211,238,0.08), rgba(2,6,23,0.92) 55%)",
+      borderRadius: 22,
+      border: "1px solid rgba(148,163,184,0.12)",
+      boxShadow: "0 24px 80px rgba(2,6,23,0.92)",
       padding: 14,
       height: "fit-content",
       position: "sticky",
       top: 72,
       alignSelf: "flex-start",
+      overflow: "hidden",
+    },
+    sidebarTopGlow: {
+      position: "absolute",
+      top: -140,
+      left: -140,
+      width: 280,
+      height: 280,
+      borderRadius: 999,
+      background: "radial-gradient(circle, rgba(34,211,238,0.18), transparent 70%)",
+      filter: "blur(26px)",
+      pointerEvents: "none",
     },
     sidebarTitle: {
       fontSize: 12,
-      opacity: 0.75,
-      letterSpacing: "0.08em",
+      opacity: 0.78,
+      letterSpacing: "0.12em",
       textTransform: "uppercase",
-      marginBottom: 10,
-      color: "#9ca3af",
+      marginBottom: 12,
+      color: "rgba(148,163,184,0.92)",
+      fontWeight: 800,
+      position: "relative",
+      zIndex: 1,
     },
     navItem: (active) => ({
-      padding: "10px 10px",
-      borderRadius: 12,
+      padding: "11px 12px",
+      borderRadius: 14,
       cursor: "pointer",
       fontSize: 13,
-      color: active ? "#020617" : "#e5e7eb",
+      color: active ? "#07101f" : "rgba(226,232,240,0.92)",
       background: active
         ? `linear-gradient(135deg, ${CYAN}, ${CYAN_SOFT})`
-        : "transparent",
-      border: active ? "1px solid transparent" : "1px solid rgba(51,65,85,0.6)",
-      boxShadow: active ? "0 18px 55px rgba(34,211,238,0.25)" : "none",
-      fontWeight: active ? 900 : 700,
+        : "linear-gradient(135deg, rgba(148,163,184,0.06), rgba(2,6,23,0))",
+      border: active ? "1px solid rgba(34,211,238,0.45)" : "1px solid rgba(148,163,184,0.10)",
+      boxShadow: active ? "0 18px 60px rgba(34,211,238,0.26)" : "0 10px 35px rgba(2,6,23,0.65)",
+      fontWeight: active ? 900 : 800,
       letterSpacing: active ? "0.02em" : "0",
-      marginBottom: 8,
-      transition:
-        "transform .15s ease, box-shadow .15s ease, background .15s ease",
+      marginBottom: 10,
+      transition: "transform .15s ease, box-shadow .15s ease, background .15s ease, border-color .15s ease",
       userSelect: "none",
+      position: "relative",
+      overflow: "hidden",
     }),
+    navItemAccent: (active) => ({
+      position: "absolute",
+      left: 10,
+      top: "50%",
+      transform: "translateY(-50%)",
+      width: 8,
+      height: 8,
+      borderRadius: 999,
+      background: active ? "#07101f" : "rgba(34,211,238,0.55)",
+      boxShadow: active ? "0 0 0 6px rgba(7,16,31,0.10)" : "0 0 0 6px rgba(34,211,238,0.08)",
+      pointerEvents: "none",
+    }),
+    navItemText: { paddingLeft: 16 },
     navHint: {
       fontSize: 11,
-      opacity: 0.75,
-      color: "#9ca3af",
-      marginTop: 10,
-      lineHeight: 1.35,
+      opacity: 0.8,
+      color: "rgba(148,163,184,0.90)",
+      marginTop: 12,
+      lineHeight: 1.45,
+      position: "relative",
+      zIndex: 1,
     },
 
     content: { flex: "1 1 520px", minWidth: 0 },
@@ -732,53 +824,57 @@ export default function App({ selectedDay = todayStr() }) {
     dateRow: {
       width: "100%",
       maxWidth: 1100,
-      margin: "0 auto 20px",
+      margin: "0 auto 22px",
       display: "flex",
       justifyContent: "center",
       position: "relative",
     },
     datePill: {
       minWidth: 260,
-      padding: "9px 16px",
+      padding: "10px 16px",
       borderRadius: 999,
       background:
-        "linear-gradient(#020617,#020617) padding-box, linear-gradient(135deg, rgba(34,211,238,0.5), rgba(56,189,248,0.25)) border-box",
+        "linear-gradient(rgba(2,6,23,0.70), rgba(2,6,23,0.70)) padding-box, linear-gradient(135deg, rgba(34,211,238,0.45), rgba(167,139,250,0.18)) border-box",
       border: "1px solid transparent",
       fontSize: 13,
       display: "flex",
       alignItems: "center",
       justifyContent: "space-between",
       cursor: "pointer",
-      boxShadow: "0 12px 40px rgba(15,23,42,0.9)",
+      boxShadow: "0 18px 60px rgba(2,6,23,0.85)",
       color: "#e5e7eb",
       transition: "transform .16s ease, box-shadow .16s ease, border .16s ease",
       userSelect: "none",
       width: "100%",
-      maxWidth: 520,
+      maxWidth: 540,
+      backdropFilter: "blur(12px)",
     },
     datePillHover: {
       transform: "translateY(-1px)",
-      boxShadow: "0 16px 50px rgba(15,23,42,0.95)",
-      border: "1px solid rgba(34,211,238,0.85)",
+      boxShadow: "0 22px 70px rgba(2,6,23,0.92)",
+      border: "1px solid rgba(34,211,238,0.65)",
     },
     datePillText: {
       whiteSpace: "nowrap",
       overflow: "hidden",
       textOverflow: "ellipsis",
+      fontWeight: 800,
+      letterSpacing: "0.01em",
     },
     datePillIcon: { fontSize: 11, opacity: 0.9, marginLeft: 8 },
 
     calendarPanel: {
       position: "absolute",
-      top: "115%",
+      top: "118%",
       zIndex: 60,
       background:
-        "radial-gradient(circle at top, #020617, #020617 55%, #020617 100%)",
+        "radial-gradient(120% 120% at 0% 0%, rgba(34,211,238,0.10), rgba(2,6,23,0.94) 55%)",
       borderRadius: 18,
-      border: "1px solid rgba(51,65,85,0.9)",
+      border: "1px solid rgba(148,163,184,0.14)",
       padding: 12,
-      boxShadow: "0 20px 70px rgba(15,23,42,0.95)",
-      width: 320,
+      boxShadow: "0 24px 80px rgba(2,6,23,0.95)",
+      width: 330,
+      backdropFilter: "blur(14px)",
     },
     calendarHeader: {
       display: "flex",
@@ -788,50 +884,59 @@ export default function App({ selectedDay = todayStr() }) {
       fontSize: 13,
       color: "#e5e7eb",
     },
-    calendarHeaderTitle: { fontWeight: 700 },
+    calendarHeaderTitle: { fontWeight: 900, letterSpacing: "0.02em" },
     calendarNavBtn: {
-      width: 26,
-      height: 26,
+      width: 28,
+      height: 28,
       borderRadius: 999,
-      border: "1px solid rgba(55,65,81,0.9)",
-      background: "#020617",
+      border: "1px solid rgba(148,163,184,0.14)",
+      background: "rgba(2,6,23,0.75)",
       color: "#e5e7eb",
-      fontSize: 13,
+      fontSize: 14,
       cursor: "pointer",
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
+      boxShadow: "0 10px 30px rgba(2,6,23,0.8)",
     },
     weekdayRow: {
       display: "grid",
       gridTemplateColumns: "repeat(7, 1fr)",
       gap: 4,
       fontSize: 11,
-      opacity: 0.7,
+      opacity: 0.75,
       marginBottom: 4,
       color: "#9ca3af",
+      fontWeight: 800,
     },
     weekdayCell: { textAlign: "center", padding: "4px 0" },
     calendarWeek: {
       display: "grid",
       gridTemplateColumns: "repeat(7, 1fr)",
-      gap: 4,
-      marginTop: 2,
+      gap: 6,
+      marginTop: 4,
     },
     dayCellEmpty: { padding: "6px 0", fontSize: 12 },
     dayCellBase: {
-      padding: "6px 0",
+      padding: "7px 0",
       fontSize: 12,
       textAlign: "center",
-      borderRadius: 8,
+      borderRadius: 10,
       cursor: "pointer",
-      border: "1px solid transparent",
+      border: "1px solid rgba(148,163,184,0.10)",
       color: "#e5e7eb",
-      transition: "background .12s ease, border .12s ease, color .12s ease",
+      transition: "background .12s ease, border .12s ease, color .12s ease, transform .12s ease",
       userSelect: "none",
+      background: "rgba(2,6,23,0.55)",
+      boxShadow: "0 10px 26px rgba(2,6,23,0.65)",
     },
-    dayCellSelected: { background: CYAN, color: "#020617", borderColor: CYAN },
-    dayCellToday: { borderColor: "rgba(34,211,238,0.6)" },
+    dayCellSelected: {
+      background: `linear-gradient(135deg, ${CYAN}, ${CYAN_SOFT})`,
+      color: "#07101f",
+      borderColor: "rgba(34,211,238,0.65)",
+      fontWeight: 900,
+    },
+    dayCellToday: { borderColor: "rgba(34,211,238,0.55)" },
 
     // 🔹 MAIN LAYOUT
     mainShell: {
@@ -860,16 +965,30 @@ export default function App({ selectedDay = todayStr() }) {
 
     coachCard: {
       background:
-        "radial-gradient(circle at top left, #020617, #020617 60%, #020617 100%)",
-      borderRadius: 20,
-      boxShadow: "0 20px 60px rgba(15,23,42,0.95)",
+        "radial-gradient(120% 120% at 0% 0%, rgba(34,211,238,0.08), rgba(2,6,23,0.92) 60%)",
+      borderRadius: 22,
+      boxShadow: "0 28px 90px rgba(2,6,23,0.92)",
       padding: 20,
       display: "flex",
       flexDirection: "column",
       gap: 12,
       minHeight: 0,
-      border: "1px solid rgba(30,64,175,0.7)",
+      border: "1px solid rgba(148,163,184,0.12)",
       minWidth: 0,
+      backdropFilter: "blur(10px)",
+      position: "relative",
+      overflow: "hidden",
+    },
+    cardTopSheen: {
+      position: "absolute",
+      top: -80,
+      right: -120,
+      width: 280,
+      height: 280,
+      borderRadius: 999,
+      background: "radial-gradient(circle, rgba(167,139,250,0.14), transparent 70%)",
+      filter: "blur(18px)",
+      pointerEvents: "none",
     },
     coachHeaderRow: {
       display: "flex",
@@ -878,43 +997,47 @@ export default function App({ selectedDay = todayStr() }) {
       gap: 8,
       flexWrap: "wrap",
       minWidth: 0,
+      position: "relative",
+      zIndex: 1,
     },
     coachTitle: {
       fontSize: 20,
-      fontWeight: 800,
-      letterSpacing: "0.04em",
+      fontWeight: 950,
+      letterSpacing: "0.10em",
       textTransform: "uppercase",
       color: "#f9fafb",
     },
     coachSub: {
       fontSize: 12,
-      opacity: 0.75,
-      marginTop: 4,
-      maxWidth: 520,
-      color: "#9ca3af",
+      opacity: 0.86,
+      marginTop: 6,
+      maxWidth: 560,
+      color: "rgba(148,163,184,0.95)",
+      lineHeight: 1.45,
     },
     dayBadge: {
       fontSize: 11,
-      opacity: 0.9,
-      border: "1px solid rgba(55,65,81,0.9)",
+      opacity: 0.95,
+      border: "1px solid rgba(148,163,184,0.16)",
       borderRadius: 999,
-      padding: "4px 10px",
+      padding: "5px 10px",
       whiteSpace: "nowrap",
       alignSelf: "flex-start",
-      color: "#e5e7eb",
+      color: "rgba(226,232,240,0.92)",
       background:
-        "linear-gradient(135deg, rgba(15,23,42,0.95), rgba(15,23,42,0.6))",
+        "linear-gradient(135deg, rgba(2,6,23,0.55), rgba(15,23,42,0.35))",
+      boxShadow: "0 10px 30px rgba(2,6,23,0.75)",
     },
 
     // 🔹 STATUS BOX
     statusBox: {
       marginTop: 4,
       background:
-        "radial-gradient(circle at top left, #020617, #020617 70%, #020617 100%)",
-      borderRadius: 18,
-      border: "1px solid rgba(31,41,55,0.9)",
+        "radial-gradient(120% 120% at 0% 0%, rgba(59,130,246,0.08), rgba(2,6,23,0.92) 60%)",
+      borderRadius: 20,
+      border: "1px solid rgba(148,163,184,0.12)",
       padding: 16,
-      minHeight: 230,
+      minHeight: 240,
       boxSizing: "border-box",
       display: "flex",
       flexDirection: "column",
@@ -922,13 +1045,15 @@ export default function App({ selectedDay = todayStr() }) {
       position: "relative",
       overflow: "hidden",
       minWidth: 0,
+      boxShadow: "0 22px 70px rgba(2,6,23,0.85)",
+      backdropFilter: "blur(8px)",
     },
     statusGlow: {
       position: "absolute",
       inset: 0,
-      opacity: 0.26,
+      opacity: 0.24,
       background:
-        "radial-gradient(circle at top center, rgba(34,211,238,0.28), transparent 55%)",
+        "radial-gradient(700px 260px at 50% 0%, rgba(34,211,238,0.30), transparent 55%)",
       pointerEvents: "none",
     },
     statusContent: {
@@ -939,11 +1064,12 @@ export default function App({ selectedDay = todayStr() }) {
     },
     statusPlaceholderTitle: {
       fontSize: 16,
-      fontWeight: 700,
+      fontWeight: 900,
       marginBottom: 4,
       color: "#e5e7eb",
+      letterSpacing: "0.01em",
     },
-    statusPlaceholderText: { fontSize: 13, opacity: 0.8, color: "#9ca3af" },
+    statusPlaceholderText: { fontSize: 13, opacity: 0.85, color: "rgba(148,163,184,0.95)" },
     statusHeaderRow: {
       display: "flex",
       justifyContent: "space-between",
@@ -960,268 +1086,295 @@ export default function App({ selectedDay = todayStr() }) {
       fontSize: 12,
       minWidth: 0,
     },
-    statusLabel: { fontSize: 13, fontWeight: 700, color: "#e5e7eb" },
-    statusMeta: { fontSize: 11, opacity: 0.75, color: "#9ca3af" },
+    statusLabel: { fontSize: 13, fontWeight: 950, color: "#e5e7eb", letterSpacing: "0.02em" },
+    statusMeta: { fontSize: 11, opacity: 0.82, color: "rgba(148,163,184,0.95)" },
     gradePill: {
       fontSize: 14,
-      fontWeight: 900,
-      padding: "3px 10px",
+      fontWeight: 950,
+      padding: "4px 10px",
       borderRadius: 999,
       background:
-        "linear-gradient(135deg, rgba(34,211,238,0.05), rgba(56,189,248,0.12))",
-      border: "1px solid rgba(148,163,184,0.9)",
+        "linear-gradient(135deg, rgba(34,211,238,0.10), rgba(56,189,248,0.16))",
+      border: "1px solid rgba(148,163,184,0.16)",
       boxShadow:
-        "0 0 0 1px rgba(15,23,42,0.9), 0 0 30px rgba(34,211,238,0.4)",
+        "0 0 0 1px rgba(2,6,23,0.85), 0 0 35px rgba(34,211,238,0.28)",
       whiteSpace: "nowrap",
+      letterSpacing: "0.03em",
     },
     statusImg: {
       width: "100%",
-      maxWidth: 340,
-      borderRadius: 12,
-      border: "1px solid rgba(30,64,175,0.9)",
-      marginBottom: 8,
-      marginTop: 6,
+      maxWidth: 360,
+      borderRadius: 14,
+      border: "1px solid rgba(148,163,184,0.14)",
+      marginBottom: 10,
+      marginTop: 8,
       alignSelf: "flex-start",
-      boxShadow: "0 20px 60px rgba(15,23,42,0.95)",
+      boxShadow: "0 26px 90px rgba(2,6,23,0.92)",
     },
     sectionTitle: {
-      fontWeight: 800,
-      marginTop: 8,
-      marginBottom: 4,
+      fontWeight: 950,
+      marginTop: 10,
+      marginBottom: 6,
       fontSize: 13,
-      color: "#e5e7eb",
+      color: "rgba(226,232,240,0.95)",
+      letterSpacing: "0.01em",
     },
-    ul: { margin: 0, paddingLeft: 18, opacity: 0.95, fontSize: 13, color: "#d1d5db" },
-    smallMeta: { fontSize: 11, opacity: 0.7, marginTop: 8, color: "#9ca3af" },
+    ul: {
+      margin: 0,
+      paddingLeft: 18,
+      opacity: 0.98,
+      fontSize: 13,
+      color: "rgba(226,232,240,0.92)",
+      lineHeight: 1.5,
+    },
+    smallMeta: { fontSize: 11, opacity: 0.78, marginTop: 10, color: "rgba(148,163,184,0.95)" },
 
     // 🔹 FORM BELOW STATUS
-    formSection: { marginTop: 10, display: "flex", flexDirection: "column", gap: 8 },
+    formSection: { marginTop: 10, display: "flex", flexDirection: "column", gap: 8, position: "relative", zIndex: 1 },
     composerRow: { display: "flex", gap: 10, alignItems: "stretch", flexWrap: "wrap" },
-    composerLeft: { flex: "0 0 190px", minWidth: 150 },
+    composerLeft: { flex: "0 0 200px", minWidth: 150 },
     composerRight: { flex: "1 1 260px", minWidth: 260 },
 
     dropMini: {
       background:
-        "radial-gradient(circle at top left, #020617, #020617 70%, #020617 100%)",
-      border: "1px dashed rgba(51,65,85,0.95)",
-      borderRadius: 14,
-      padding: 10,
+        "radial-gradient(120% 120% at 0% 0%, rgba(34,211,238,0.10), rgba(2,6,23,0.90) 60%)",
+      border: "1px dashed rgba(148,163,184,0.22)",
+      borderRadius: 16,
+      padding: 12,
       height: "100%",
-      minHeight: 90,
+      minHeight: 96,
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
-      gap: 8,
+      gap: 10,
       cursor: "pointer",
       fontSize: 12,
-      color: "rgba(226,232,240,0.9)",
+      color: "rgba(226,232,240,0.92)",
       transition:
         "border-color .2s ease, background .2s ease, box-shadow .2s ease, transform .15s ease",
       position: "relative",
       boxSizing: "border-box",
-      boxShadow: "0 16px 40px rgba(15,23,42,0.9)",
+      boxShadow: "0 18px 55px rgba(2,6,23,0.85)",
       minWidth: 0,
+      backdropFilter: "blur(10px)",
+      overflow: "hidden",
     },
     dropMiniActive: {
-      borderColor: CYAN,
-      background: "radial-gradient(circle at top, rgba(34,211,238,0.12), #020617)",
+      borderColor: "rgba(34,211,238,0.65)",
+      background:
+        "radial-gradient(120% 120% at 0% 0%, rgba(34,211,238,0.16), rgba(2,6,23,0.88) 60%)",
       transform: "translateY(-1px)",
-      boxShadow: "0 20px 60px rgba(15,23,42,0.95)",
+      boxShadow: "0 24px 80px rgba(2,6,23,0.95)",
     },
     previewThumb: {
-      maxWidth: 88,
-      maxHeight: 66,
-      borderRadius: 10,
-      border: "1px solid rgba(31,41,55,0.9)",
+      maxWidth: 92,
+      maxHeight: 70,
+      borderRadius: 12,
+      border: "1px solid rgba(148,163,184,0.16)",
       objectFit: "cover",
+      boxShadow: "0 16px 55px rgba(2,6,23,0.85)",
     },
     dropMiniLabel: { display: "flex", flexDirection: "column", gap: 3, minWidth: 0 },
-    dropMiniTitle: { fontWeight: 700, fontSize: 12 },
-    dropMiniHint: { fontSize: 11, opacity: 0.8, color: "#9ca3af" },
+    dropMiniTitle: { fontWeight: 950, fontSize: 12, letterSpacing: "0.01em" },
+    dropMiniHint: { fontSize: 11, opacity: 0.85, color: "rgba(148,163,184,0.95)" },
     miniCloseBtn: {
       position: "absolute",
-      top: 7,
-      right: 7,
-      width: 20,
-      height: 20,
+      top: 8,
+      right: 8,
+      width: 22,
+      height: 22,
       borderRadius: "9999px",
-      border: "none",
-      background: "rgba(15,23,42,0.95)",
+      border: "1px solid rgba(148,163,184,0.16)",
+      background: "rgba(2,6,23,0.70)",
       color: "#f9fafb",
       fontSize: 12,
-      fontWeight: 800,
+      fontWeight: 950,
       lineHeight: "18px",
       textAlign: "center",
       cursor: "pointer",
-      boxShadow: "0 0 0 1px rgba(148,163,184,0.7)",
+      boxShadow: "0 12px 40px rgba(2,6,23,0.9)",
     },
 
-    label: { fontSize: 12, opacity: 0.8, marginBottom: 4, color: "#9ca3af" },
+    label: { fontSize: 12, opacity: 0.9, marginBottom: 4, color: "rgba(148,163,184,0.95)", fontWeight: 800 },
     fieldRow: { display: "flex", gap: 8, marginBottom: 6, flexWrap: "wrap" },
     fieldHalf: { flex: "1 1 0", minWidth: 140 },
 
     input: {
       width: "100%",
       background:
-        "radial-gradient(circle at top left, #020617, #020617 70%, #020617 100%)",
-      border: "1px solid rgba(31,41,55,0.9)",
-      borderRadius: 12,
+        "linear-gradient(rgba(2,6,23,0.75), rgba(2,6,23,0.75)) padding-box, linear-gradient(135deg, rgba(148,163,184,0.14), rgba(34,211,238,0.14)) border-box",
+      border: "1px solid transparent",
+      borderRadius: 14,
       color: "#e5e7eb",
-      padding: "8px 11px",
+      padding: "9px 12px",
       fontSize: 13,
       outline: "none",
       boxSizing: "border-box",
-      transition:
-        "border-color .15s ease, box-shadow .15s ease, background .15s ease",
+      transition: "border-color .15s ease, box-shadow .15s ease, transform .12s ease",
+      boxShadow: "0 14px 45px rgba(2,6,23,0.75)",
+      backdropFilter: "blur(10px)",
     },
 
     selectWrapper: { position: "relative", width: "100%" },
     select: {
       width: "100%",
       background:
-        "radial-gradient(circle at top left, #020617, #020617 70%, #020617 100%)",
-      border: "1px solid rgba(31,41,55,0.9)",
-      borderRadius: 12,
+        "linear-gradient(rgba(2,6,23,0.75), rgba(2,6,23,0.75)) padding-box, linear-gradient(135deg, rgba(148,163,184,0.14), rgba(34,211,238,0.14)) border-box",
+      border: "1px solid transparent",
+      borderRadius: 14,
       color: "#e5e7eb",
-      padding: "8px 30px 8px 11px",
+      padding: "9px 32px 9px 12px",
       fontSize: 13,
       outline: "none",
       boxSizing: "border-box",
       appearance: "none",
       WebkitAppearance: "none",
       MozAppearance: "none",
-      transition:
-        "border-color .15s ease, box-shadow .15s ease, background .15s ease",
+      transition: "border-color .15s ease, box-shadow .15s ease, transform .12s ease",
+      boxShadow: "0 14px 45px rgba(2,6,23,0.75)",
+      backdropFilter: "blur(10px)",
     },
     selectArrow: {
       position: "absolute",
-      right: 10,
+      right: 12,
       top: "50%",
       transform: "translateY(-50%)",
       fontSize: 10,
       pointerEvents: "none",
-      opacity: 0.7,
-      color: "#9ca3af",
+      opacity: 0.75,
+      color: "rgba(148,163,184,0.95)",
     },
 
     textarea: {
       width: "100%",
-      minHeight: 90,
+      minHeight: 92,
       background:
-        "radial-gradient(circle at top left, #020617, #020617 70%, #020617 100%)",
-      border: "1px solid rgba(31,41,55,0.9)",
-      borderRadius: 14,
+        "linear-gradient(rgba(2,6,23,0.75), rgba(2,6,23,0.75)) padding-box, linear-gradient(135deg, rgba(148,163,184,0.14), rgba(34,211,238,0.14)) border-box",
+      border: "1px solid transparent",
+      borderRadius: 16,
       color: "#e5e7eb",
-      padding: "10px 12px",
+      padding: "11px 12px",
       outline: "none",
       resize: "vertical",
       fontSize: 14,
       boxSizing: "border-box",
-      transition:
-        "border-color .15s ease, box-shadow .15s ease, background .15s ease",
+      transition: "border-color .15s ease, box-shadow .15s ease, transform .12s ease",
+      boxShadow: "0 16px 55px rgba(2,6,23,0.80)",
+      backdropFilter: "blur(10px)",
+      lineHeight: 1.45,
     },
 
     button: {
-      marginTop: 4,
+      marginTop: 6,
       width: "100%",
       background: buttonDisabled
-        ? "linear-gradient(135deg, rgba(15,23,42,0.95), rgba(15,23,42,0.95))"
+        ? "linear-gradient(135deg, rgba(148,163,184,0.10), rgba(2,6,23,0.75))"
         : `linear-gradient(135deg, ${CYAN}, ${CYAN_SOFT})`,
-      color: "#020617",
-      border: "none",
+      color: "#07101f",
+      border: "1px solid rgba(34,211,238,0.18)",
       borderRadius: 999,
-      padding: "11px 16px",
-      fontWeight: 800,
+      padding: "12px 16px",
+      fontWeight: 950,
       cursor: buttonDisabled ? "not-allowed" : "pointer",
-      opacity: buttonDisabled ? 0.7 : 1,
+      opacity: buttonDisabled ? 0.75 : 1,
       fontSize: 14,
-      letterSpacing: "0.05em",
+      letterSpacing: "0.10em",
       textTransform: "uppercase",
-      boxShadow: buttonDisabled
-        ? "0 0 0 rgba(15,23,42,0.9)"
-        : "0 18px 55px rgba(34,211,238,0.45)",
-      transition:
-        "background .18s ease, opacity .18s ease, transform .18s ease, box-shadow .18s ease",
+      boxShadow: buttonDisabled ? "none" : "0 22px 75px rgba(34,211,238,0.42)",
+      transition: "transform .18s ease, box-shadow .18s ease, filter .18s ease",
+      position: "relative",
+      overflow: "hidden",
     },
-    buttonHover: { transform: "translateY(-1px)", boxShadow: "0 22px 70px rgba(34,211,238,0.6)" },
+    buttonHover: { transform: "translateY(-1px)", boxShadow: "0 28px 92px rgba(34,211,238,0.55)" },
     error: {
       marginTop: 6,
       padding: 10,
-      borderRadius: 12,
-      background: "rgba(127,29,29,0.9)",
+      borderRadius: 14,
+      background: "rgba(127,29,29,0.85)",
       color: "#fee2e2",
       whiteSpace: "pre-wrap",
       fontSize: 12,
-      border: "1px solid rgba(248,113,113,0.7)",
+      border: "1px solid rgba(248,113,113,0.55)",
+      boxShadow: "0 16px 60px rgba(2,6,23,0.85)",
     },
-    hint: { marginTop: 4, fontSize: 11, opacity: 0.75, color: "#fecaca" },
+    hint: { marginTop: 6, fontSize: 11, opacity: 0.82, color: "#fecaca" },
 
     // 🔹 JOURNAL
     journalCard: {
       background:
-        "radial-gradient(circle at top right, #020617, #020617 70%, #020617 100%)",
-      borderRadius: 20,
-      boxShadow: "0 20px 60px rgba(15,23,42,0.95)",
+        "radial-gradient(120% 120% at 0% 0%, rgba(167,139,250,0.08), rgba(2,6,23,0.92) 60%)",
+      borderRadius: 22,
+      boxShadow: "0 28px 90px rgba(2,6,23,0.92)",
       padding: 20,
       display: "flex",
       flexDirection: "column",
       gap: 10,
       minHeight: 0,
-      border: "1px solid rgba(30,64,175,0.9)",
+      border: "1px solid rgba(148,163,184,0.12)",
       minWidth: 0,
+      backdropFilter: "blur(10px)",
+      position: "relative",
+      overflow: "hidden",
     },
-    journalHeaderRow: { display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8, flexWrap: "wrap" },
-    journalTitle: { fontSize: 18, fontWeight: 800, color: "#f9fafb" },
-    journalSub: { fontSize: 11, opacity: 0.8, marginTop: 4, maxWidth: 380, color: "#9ca3af" },
+    journalSheen: {
+      position: "absolute",
+      top: -90,
+      left: -120,
+      width: 300,
+      height: 300,
+      borderRadius: 999,
+      background: "radial-gradient(circle, rgba(34,211,238,0.10), transparent 70%)",
+      filter: "blur(18px)",
+      pointerEvents: "none",
+    },
+    journalHeaderRow: { display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8, flexWrap: "wrap", position: "relative", zIndex: 1 },
+    journalTitle: { fontSize: 18, fontWeight: 950, color: "#f9fafb", letterSpacing: "0.02em" },
+    journalSub: { fontSize: 11, opacity: 0.86, marginTop: 6, maxWidth: 380, color: "rgba(148,163,184,0.95)", lineHeight: 1.45 },
     journalBadge: {
       fontSize: 11,
-      padding: "4px 8px",
+      padding: "5px 10px",
       borderRadius: 999,
-      border: "1px solid rgba(55,65,81,0.9)",
-      background: "linear-gradient(135deg, rgba(15,23,42,0.95), rgba(15,23,42,0.6))",
+      border: "1px solid rgba(148,163,184,0.14)",
+      background: "linear-gradient(135deg, rgba(2,6,23,0.55), rgba(15,23,42,0.35))",
       opacity: 0.95,
       whiteSpace: "nowrap",
-      color: "#e5e7eb",
+      color: "rgba(226,232,240,0.92)",
+      boxShadow: "0 12px 40px rgba(2,6,23,0.8)",
     },
-    journalLabel: { fontSize: 12, opacity: 0.8, marginBottom: 4, color: "#9ca3af" },
+    journalLabel: { fontSize: 12, opacity: 0.9, marginBottom: 4, color: "rgba(148,163,184,0.95)", fontWeight: 800 },
     journalTextareaBig: {
       width: "100%",
       minHeight: 140,
       background:
-        "radial-gradient(circle at top left, #020617, #020617 70%, #020617 100%)",
-      border: "1px solid rgba(31,41,55,0.9)",
-      borderRadius: 14,
+        "linear-gradient(rgba(2,6,23,0.75), rgba(2,6,23,0.75)) padding-box, linear-gradient(135deg, rgba(148,163,184,0.14), rgba(167,139,250,0.14)) border-box",
+      border: "1px solid transparent",
+      borderRadius: 16,
       color: "#e5e7eb",
-      padding: "10px 12px",
+      padding: "11px 12px",
       outline: "none",
       resize: "vertical",
       fontSize: 14,
       boxSizing: "border-box",
+      boxShadow: "0 16px 55px rgba(2,6,23,0.80)",
+      backdropFilter: "blur(10px)",
+      lineHeight: 1.45,
     },
     journalTextareaSmall: {
       width: "100%",
-      minHeight: 70,
+      minHeight: 72,
       background:
-        "radial-gradient(circle at top left, #020617, #020617 70%, #020617 100%)",
-      border: "1px solid rgba(31,41,55,0.9)",
-      borderRadius: 14,
+        "linear-gradient(rgba(2,6,23,0.75), rgba(2,6,23,0.75)) padding-box, linear-gradient(135deg, rgba(148,163,184,0.14), rgba(167,139,250,0.14)) border-box",
+      border: "1px solid transparent",
+      borderRadius: 16,
       color: "#e5e7eb",
-      padding: "8px 10px",
+      padding: "10px 12px",
       outline: "none",
       resize: "vertical",
       fontSize: 13,
       boxSizing: "border-box",
-    },
-    journalHintRow: {
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "space-between",
-      gap: 8,
-      fontSize: 11,
-      opacity: 0.8,
-      marginTop: 6,
-      color: "#9ca3af",
-      flexWrap: "wrap",
+      boxShadow: "0 16px 55px rgba(2,6,23,0.80)",
+      backdropFilter: "blur(10px)",
+      lineHeight: 1.45,
     },
 
     // 🔹 P&L CALENDAR PAGE
@@ -1231,66 +1384,98 @@ export default function App({ selectedDay = todayStr() }) {
       flex: "1 1 260px",
       minWidth: 260,
       background:
-        "radial-gradient(circle at top left, #020617, #020617 60%, #020617 100%)",
-      borderRadius: 18,
-      border: "1px solid rgba(30,64,175,0.7)",
-      boxShadow: "0 20px 60px rgba(15,23,42,0.95)",
+        "radial-gradient(120% 120% at 0% 0%, rgba(34,211,238,0.10), rgba(2,6,23,0.92) 60%)",
+      borderRadius: 20,
+      border: "1px solid rgba(148,163,184,0.12)",
+      boxShadow: "0 28px 90px rgba(2,6,23,0.92)",
       padding: 16,
       display: "flex",
       flexDirection: "column",
       gap: 6,
       minWidth: 0,
+      backdropFilter: "blur(10px)",
+      position: "relative",
+      overflow: "hidden",
     },
-    pnlCardLabel: { fontSize: 12, opacity: 0.75, color: "#9ca3af" },
-    pnlCardValue: { fontSize: 24, fontWeight: 900, letterSpacing: "0.02em", color: "#f9fafb" },
-    pnlCardSub: { fontSize: 12, opacity: 0.8, color: "#9ca3af" },
+    pnlCardSheen: {
+      position: "absolute",
+      top: -120,
+      right: -140,
+      width: 320,
+      height: 320,
+      borderRadius: 999,
+      background: "radial-gradient(circle, rgba(59,130,246,0.12), transparent 70%)",
+      filter: "blur(18px)",
+      pointerEvents: "none",
+    },
+    pnlCardLabel: { fontSize: 12, opacity: 0.82, color: "rgba(148,163,184,0.95)", fontWeight: 800, position: "relative", zIndex: 1 },
+    pnlCardValue: { fontSize: 26, fontWeight: 950, letterSpacing: "0.01em", color: "#f9fafb", position: "relative", zIndex: 1 },
+    pnlCardSub: { fontSize: 12, opacity: 0.86, color: "rgba(148,163,184,0.95)", position: "relative", zIndex: 1 },
 
     pnlCalendarCard: {
       background:
-        "radial-gradient(circle at top left, #020617, #020617 60%, #020617 100%)",
-      borderRadius: 20,
-      border: "1px solid rgba(30,64,175,0.7)",
-      boxShadow: "0 20px 60px rgba(15,23,42,0.95)",
+        "radial-gradient(120% 120% at 0% 0%, rgba(167,139,250,0.08), rgba(2,6,23,0.92) 60%)",
+      borderRadius: 22,
+      border: "1px solid rgba(148,163,184,0.12)",
+      boxShadow: "0 28px 90px rgba(2,6,23,0.92)",
       padding: 16,
       minWidth: 0,
+      backdropFilter: "blur(10px)",
+      position: "relative",
+      overflow: "hidden",
     },
-    pnlCalHeader: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10, gap: 8, flexWrap: "wrap" },
-    pnlCalTitle: { fontSize: 16, fontWeight: 900, color: "#f9fafb", letterSpacing: "0.03em", textTransform: "uppercase" },
+    pnlCalendarSheen: {
+      position: "absolute",
+      top: -140,
+      left: -140,
+      width: 320,
+      height: 320,
+      borderRadius: 999,
+      background: "radial-gradient(circle, rgba(34,211,238,0.12), transparent 70%)",
+      filter: "blur(18px)",
+      pointerEvents: "none",
+    },
+    pnlCalHeader: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10, gap: 8, flexWrap: "wrap", position: "relative", zIndex: 1 },
+    pnlCalTitle: { fontSize: 16, fontWeight: 950, color: "#f9fafb", letterSpacing: "0.10em", textTransform: "uppercase" },
     pnlCalNav: { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" },
     pnlNavBtn: {
-      width: 30,
-      height: 30,
+      width: 32,
+      height: 32,
       borderRadius: 999,
-      border: "1px solid rgba(55,65,81,0.9)",
-      background: "#020617",
+      border: "1px solid rgba(148,163,184,0.14)",
+      background: "rgba(2,6,23,0.70)",
       color: "#e5e7eb",
       fontSize: 14,
       cursor: "pointer",
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
+      boxShadow: "0 12px 40px rgba(2,6,23,0.85)",
     },
-    pnlMonthLabel: { fontSize: 13, fontWeight: 700, color: "#e5e7eb", opacity: 0.9, minWidth: 160, textAlign: "center" },
-    pnlMonthMeta: { fontSize: 12, opacity: 0.8, color: "#9ca3af" },
+    pnlMonthLabel: { fontSize: 13, fontWeight: 900, color: "#e5e7eb", opacity: 0.92, minWidth: 160, textAlign: "center", letterSpacing: "0.02em" },
+    pnlMonthMeta: { fontSize: 12, opacity: 0.86, color: "rgba(148,163,184,0.95)", lineHeight: 1.45 },
 
     pnlWeekdayRow: {
       display: "grid",
       gridTemplateColumns: "repeat(7, 1fr)",
       gap: 8,
       fontSize: 11,
-      opacity: 0.75,
+      opacity: 0.78,
       marginBottom: 8,
-      color: "#9ca3af",
+      color: "rgba(148,163,184,0.95)",
+      fontWeight: 900,
+      position: "relative",
+      zIndex: 1,
     },
-    pnlWeek: { display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 8, marginTop: 8 },
-    pnlCellEmpty: { height: 78, borderRadius: 14, border: "1px solid rgba(31,41,55,0.35)", opacity: 0.25 },
+    pnlWeek: { display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 8, marginTop: 8, position: "relative", zIndex: 1 },
+    pnlCellEmpty: { height: 80, borderRadius: 16, border: "1px solid rgba(148,163,184,0.08)", opacity: 0.25, background: "rgba(2,6,23,0.35)" },
 
     pnlDayCell: (bg, borderColor) => ({
-      height: 78,
-      borderRadius: 14,
+      height: 80,
+      borderRadius: 16,
       border: `1px solid ${borderColor}`,
       background: bg,
-      boxShadow: "0 10px 35px rgba(15,23,42,0.55)",
+      boxShadow: "0 14px 50px rgba(2,6,23,0.80)",
       padding: 10,
       cursor: "pointer",
       display: "flex",
@@ -1300,108 +1485,129 @@ export default function App({ selectedDay = todayStr() }) {
       transition: "transform .12s ease, box-shadow .12s ease, border-color .12s ease",
       minWidth: 0,
       overflow: "hidden",
+      backdropFilter: "blur(10px)",
     }),
     pnlDayTop: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, minWidth: 0 },
-    pnlDayNum: { fontSize: 12, fontWeight: 900, color: "#e5e7eb", opacity: 0.95 },
+    pnlDayNum: { fontSize: 12, fontWeight: 950, color: "#e5e7eb", opacity: 0.95 },
     pnlSymbolTag: {
       fontSize: 10,
-      fontWeight: 900,
-      letterSpacing: "0.06em",
+      fontWeight: 950,
+      letterSpacing: "0.10em",
       opacity: 0.95,
       padding: "2px 8px",
       borderRadius: 999,
-      border: "1px solid rgba(255,255,255,0.18)",
+      border: "1px solid rgba(148,163,184,0.14)",
       background: "rgba(2,6,23,0.35)",
-      color: "#e5e7eb",
+      color: "rgba(226,232,240,0.92)",
       whiteSpace: "nowrap",
       maxWidth: 120,
       overflow: "hidden",
       textOverflow: "ellipsis",
     },
     pnlDayMid: { display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8, minWidth: 0 },
-    pnlPnlValue: { fontSize: 14, fontWeight: 900, letterSpacing: "0.02em", color: "#f9fafb" },
-    pnlRRValue: { fontSize: 11, fontWeight: 800, opacity: 0.95, color: "#e5e7eb" },
-    pnlNoEntry: { fontSize: 11, opacity: 0.75, color: "#9ca3af", fontWeight: 700 },
+    pnlPnlValue: { fontSize: 14, fontWeight: 950, letterSpacing: "0.01em", color: "#f9fafb" },
+    pnlRRValue: { fontSize: 11, fontWeight: 900, opacity: 0.95, color: "rgba(226,232,240,0.92)" },
+    pnlNoEntry: { fontSize: 11, opacity: 0.8, color: "rgba(148,163,184,0.95)", fontWeight: 900 },
 
     // 🔹 MODALS
     overlay: {
       position: "fixed",
       inset: 0,
-      background: "rgba(15,23,42,0.85)",
+      background: "rgba(2,6,23,0.78)",
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
       zIndex: 90,
       padding: 16,
-      backdropFilter: "blur(14px)",
+      backdropFilter: "blur(16px)",
+      WebkitBackdropFilter: "blur(16px)",
     },
     modalCard: {
       width: "100%",
-      maxWidth: 420,
+      maxWidth: 440,
       background:
-        "radial-gradient(circle at top, #020617, #020617 60%, #020617 100%)",
-      borderRadius: 20,
-      border: "1px solid rgba(30,64,175,0.9)",
+        "radial-gradient(120% 120% at 0% 0%, rgba(34,211,238,0.10), rgba(2,6,23,0.94) 60%)",
+      borderRadius: 22,
+      border: "1px solid rgba(148,163,184,0.14)",
       padding: 20,
-      boxShadow: "0 24px 80px rgba(15,23,42,0.98)",
+      boxShadow: "0 30px 110px rgba(2,6,23,0.98)",
       fontSize: 13,
       color: "#e5e7eb",
+      position: "relative",
+      overflow: "hidden",
+      backdropFilter: "blur(12px)",
     },
-    modalTitle: { fontSize: 18, fontWeight: 800, marginBottom: 6, textAlign: "center", color: "#f9fafb" },
-    modalText: { fontSize: 12, opacity: 0.8, marginBottom: 12, textAlign: "center", color: "#9ca3af" },
-    modalRow: { marginBottom: 10, fontSize: 13 },
-    modalLabel: { fontWeight: 700, opacity: 0.9, color: "#e5e7eb", marginBottom: 4 },
+    modalSheen: {
+      position: "absolute",
+      top: -120,
+      right: -140,
+      width: 320,
+      height: 320,
+      borderRadius: 999,
+      background: "radial-gradient(circle, rgba(167,139,250,0.14), transparent 70%)",
+      filter: "blur(18px)",
+      pointerEvents: "none",
+    },
+    modalTitle: { fontSize: 18, fontWeight: 950, marginBottom: 6, textAlign: "center", color: "#f9fafb", letterSpacing: "0.02em", position: "relative", zIndex: 1 },
+    modalText: { fontSize: 12, opacity: 0.86, marginBottom: 12, textAlign: "center", color: "rgba(148,163,184,0.95)", lineHeight: 1.45, position: "relative", zIndex: 1 },
+    modalRow: { marginBottom: 10, fontSize: 13, position: "relative", zIndex: 1 },
+    modalLabel: { fontWeight: 900, opacity: 0.9, color: "#e5e7eb", marginBottom: 4 },
     modalCloseBtn: {
       marginTop: 14,
       width: "100%",
       borderRadius: 999,
-      border: "1px solid rgba(55,65,81,0.9)",
-      padding: "8px 12px",
-      fontSize: 13,
-      fontWeight: 700,
-      background:
-        "linear-gradient(135deg, rgba(15,23,42,0.95), rgba(15,23,42,0.7))",
-      color: "#e5e7eb",
-      cursor: "pointer",
-    },
-    modalBtnRow: { display: "flex", gap: 10, marginTop: 14, flexWrap: "wrap" },
-    modalBtnPrimary: {
-      flex: 1,
-      borderRadius: 999,
-      border: "none",
+      border: "1px solid rgba(148,163,184,0.14)",
       padding: "10px 12px",
       fontSize: 13,
       fontWeight: 900,
+      background: "rgba(2,6,23,0.65)",
+      color: "#e5e7eb",
       cursor: "pointer",
-      color: "#020617",
+      boxShadow: "0 16px 60px rgba(2,6,23,0.9)",
+      position: "relative",
+      zIndex: 1,
+    },
+    modalBtnRow: { display: "flex", gap: 10, marginTop: 14, flexWrap: "wrap", position: "relative", zIndex: 1 },
+    modalBtnPrimary: {
+      flex: 1,
+      borderRadius: 999,
+      border: "1px solid rgba(34,211,238,0.18)",
+      padding: "11px 12px",
+      fontSize: 13,
+      fontWeight: 950,
+      cursor: "pointer",
+      color: "#07101f",
       background: `linear-gradient(135deg, ${CYAN}, ${CYAN_SOFT})`,
-      boxShadow: "0 18px 55px rgba(34,211,238,0.35)",
+      boxShadow: "0 22px 75px rgba(34,211,238,0.40)",
       minWidth: 140,
+      letterSpacing: "0.06em",
     },
     modalBtnGhost: {
       flex: 1,
       borderRadius: 999,
-      border: "1px solid rgba(55,65,81,0.9)",
-      padding: "10px 12px",
+      border: "1px solid rgba(148,163,184,0.14)",
+      padding: "11px 12px",
       fontSize: 13,
-      fontWeight: 800,
+      fontWeight: 950,
       cursor: "pointer",
-      background:
-        "linear-gradient(135deg, rgba(15,23,42,0.95), rgba(15,23,42,0.7))",
+      background: "rgba(2,6,23,0.65)",
       color: "#e5e7eb",
       minWidth: 140,
+      boxShadow: "0 16px 60px rgba(2,6,23,0.9)",
     },
     modalBtnDanger: {
       flex: 1,
       borderRadius: 999,
-      border: "1px solid rgba(248,113,113,0.6)",
-      padding: "10px 12px",
+      border: "1px solid rgba(248,113,113,0.45)",
+      padding: "11px 12px",
       fontSize: 13,
-      fontWeight: 900,
+      fontWeight: 950,
       cursor: "pointer",
-      background: "rgba(127,29,29,0.85)",
+      background: "rgba(127,29,29,0.78)",
       color: "#fee2e2",
       minWidth: 140,
+      boxShadow: "0 18px 70px rgba(2,6,23,0.92)",
+      letterSpacing: "0.04em",
     },
   };
 
@@ -1501,11 +1707,7 @@ export default function App({ selectedDay = todayStr() }) {
     pnlWriteTimerRef.current = setTimeout(async () => {
       try {
         const ref = doc(db, "users", memberId, "meta", "pnl");
-        await setDoc(
-          ref,
-          { updatedAt: serverTimestamp(), pnl: pnl || {} },
-          { merge: true }
-        );
+        await setDoc(ref, { updatedAt: serverTimestamp(), pnl: pnl || {} }, { merge: true });
       } catch (e) {
         console.error("❌ Firestore save pnl error:", e?.code, e?.message, e);
       }
@@ -1749,34 +1951,35 @@ export default function App({ selectedDay = todayStr() }) {
     if (typeof p !== "number" || !Number.isFinite(p)) {
       return {
         bg: isToday
-          ? "radial-gradient(circle at top, rgba(34,211,238,0.16), rgba(2,6,23,0.95) 60%)"
-          : "radial-gradient(circle at top, rgba(148,163,184,0.08), rgba(2,6,23,0.95) 60%)",
-        border: isToday ? "rgba(34,211,238,0.55)" : "rgba(51,65,85,0.55)",
+          ? "radial-gradient(120% 120% at 0% 0%, rgba(34,211,238,0.16), rgba(2,6,23,0.85) 60%)"
+          : "radial-gradient(120% 120% at 0% 0%, rgba(148,163,184,0.08), rgba(2,6,23,0.85) 60%)",
+        border: isToday ? "rgba(34,211,238,0.45)" : "rgba(148,163,184,0.12)",
       };
     }
 
     if (p > 0) {
       return {
-        bg: "radial-gradient(circle at top, rgba(34,197,94,0.18), rgba(2,6,23,0.95) 62%)",
-        border: "rgba(34,197,94,0.55)",
+        bg: "radial-gradient(120% 120% at 0% 0%, rgba(34,197,94,0.20), rgba(2,6,23,0.88) 62%)",
+        border: "rgba(34,197,94,0.45)",
       };
     }
     if (p < 0) {
       return {
-        bg: "radial-gradient(circle at top, rgba(248,113,113,0.16), rgba(2,6,23,0.95) 62%)",
-        border: "rgba(248,113,113,0.55)",
+        bg: "radial-gradient(120% 120% at 0% 0%, rgba(248,113,113,0.18), rgba(2,6,23,0.88) 62%)",
+        border: "rgba(248,113,113,0.42)",
       };
     }
     return {
-      bg: "radial-gradient(circle at top, rgba(250,204,21,0.14), rgba(2,6,23,0.95) 62%)",
-      border: "rgba(250,204,21,0.5)",
+      bg: "radial-gradient(120% 120% at 0% 0%, rgba(250,204,21,0.16), rgba(2,6,23,0.88) 62%)",
+      border: "rgba(250,204,21,0.40)",
     };
   }
 
   /* ---------------- RENDER ---------------- */
 
   const Sidebar = () => (
-    <div className="mt-sidebar mt-safeWrap" style={styles.sidebar}>
+    <div className="mt-sidebar mt-safeWrap mt-cardHover" style={styles.sidebar}>
+      <div style={styles.sidebarTopGlow} />
       <div style={styles.sidebarTitle}>Navigation</div>
 
       <div
@@ -1786,7 +1989,8 @@ export default function App({ selectedDay = todayStr() }) {
           setShowCalendar(false);
         }}
       >
-        AI feedback + journal
+        <span style={styles.navItemAccent(activePage === PAGES.AI)} />
+        <div style={styles.navItemText}>AI feedback + journal</div>
       </div>
 
       <div
@@ -1796,7 +2000,8 @@ export default function App({ selectedDay = todayStr() }) {
           setShowCalendar(false);
         }}
       >
-        P&amp;L calendar
+        <span style={styles.navItemAccent(activePage === PAGES.PNL)} />
+        <div style={styles.navItemText}>P&amp;L calendar</div>
       </div>
 
       <div style={styles.navHint}>
@@ -1813,8 +2018,9 @@ export default function App({ selectedDay = todayStr() }) {
 
       {/* 🔹 GLOBAL HEADER */}
       <div style={styles.siteHeader}>
-        <div className="mt-headerTitle" style={styles.siteHeaderTitle}>
-          MaxTradeAI
+        <div className="mt-headerTitle" style={styles.siteHeaderTitleRow}>
+          <span style={styles.brandDot} />
+          <div style={styles.siteHeaderTitle}>MaxTradeAI</div>
         </div>
 
         <div style={styles.siteHeaderActions}>
@@ -1843,26 +2049,21 @@ export default function App({ selectedDay = todayStr() }) {
                   setShowProfile(true);
                   setMenuOpen(false);
                 }}
-                onMouseEnter={(e) =>
-                  (e.currentTarget.style.background = "rgba(15,23,42,0.95)")
-                }
-                onMouseLeave={(e) =>
-                  (e.currentTarget.style.background = "transparent")
-                }
+                onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(148,163,184,0.10)")}
+                onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
               >
-                Profile
+                <span>Profile</span>
+                <span style={{ opacity: 0.7 }}>›</span>
               </div>
+
               <div
                 style={{ ...styles.menuItem, ...styles.menuItemDanger }}
                 onClick={handleLogout}
-                onMouseEnter={(e) =>
-                  (e.currentTarget.style.background = "rgba(127,29,29,0.9)")
-                }
-                onMouseLeave={(e) =>
-                  (e.currentTarget.style.background = "transparent")
-                }
+                onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(127,29,29,0.70)")}
+                onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
               >
-                Log out
+                <span>Log out</span>
+                <span style={{ opacity: 0.7 }}>⎋</span>
               </div>
             </div>
           )}
@@ -1872,6 +2073,7 @@ export default function App({ selectedDay = todayStr() }) {
       {/* PAGE CONTENT */}
       <div className="mt-page" style={styles.page}>
         <div style={styles.pageGlow} />
+        <div style={styles.pageGrid} />
         <div style={styles.pageInner}>
           <div className="mt-shell" style={styles.shell}>
             <Sidebar />
@@ -1906,21 +2108,11 @@ export default function App({ selectedDay = todayStr() }) {
                   {showCalendar && (
                     <div className="mt-calPanel" style={styles.calendarPanel}>
                       <div style={styles.calendarHeader}>
-                        <button
-                          type="button"
-                          style={styles.calendarNavBtn}
-                          onClick={goToPrevMonth}
-                        >
+                        <button type="button" style={styles.calendarNavBtn} onClick={goToPrevMonth}>
                           ‹
                         </button>
-                        <div style={styles.calendarHeaderTitle}>
-                          {calendarMonthLabel}
-                        </div>
-                        <button
-                          type="button"
-                          style={styles.calendarNavBtn}
-                          onClick={goToNextMonth}
-                        >
+                        <div style={styles.calendarHeaderTitle}>{calendarMonthLabel}</div>
+                        <button type="button" style={styles.calendarNavBtn} onClick={goToNextMonth}>
                           ›
                         </button>
                       </div>
@@ -1949,6 +2141,8 @@ export default function App({ selectedDay = todayStr() }) {
                                 key={di}
                                 style={style}
                                 onClick={() => handlePickDate(cell.iso)}
+                                onMouseEnter={(e) => (e.currentTarget.style.transform = "translateY(-1px)")}
+                                onMouseLeave={(e) => (e.currentTarget.style.transform = "translateY(0)")}
                               >
                                 {cell.day}
                               </div>
@@ -1965,7 +2159,9 @@ export default function App({ selectedDay = todayStr() }) {
               {activePage === PAGES.AI && (
                 <div className="mt-mainShell" style={styles.mainShell}>
                   <div className="mt-leftCol" style={styles.leftCol}>
-                    <div className="mt-coachCard" style={styles.coachCard}>
+                    <div className="mt-coachCard mt-cardHover" style={styles.coachCard}>
+                      <div style={styles.cardTopSheen} />
+
                       <div style={styles.coachHeaderRow}>
                         <div className="mt-safeWrap">
                           <div style={styles.coachTitle}>Trade Coach</div>
@@ -2021,7 +2217,7 @@ export default function App({ selectedDay = todayStr() }) {
                                     style={{
                                       ...styles.gradePill,
                                       backgroundColor: gradeColor(grade),
-                                      color: "#020617",
+                                      color: "#07101f",
                                     }}
                                   >
                                     {grade}
@@ -2030,17 +2226,13 @@ export default function App({ selectedDay = todayStr() }) {
                               </div>
 
                               {typeof confidence === "number" && (
-                                <div style={styles.statusMeta}>
-                                  {Math.round(confidence * 100)}% confident
-                                </div>
+                                <div style={styles.statusMeta}>{Math.round(confidence * 100)}% confident</div>
                               )}
 
-                              {imgSrc && (
-                                <img src={imgSrc} alt="Trade screenshot" style={styles.statusImg} />
-                              )}
+                              {imgSrc && <img src={imgSrc} alt="Trade screenshot" style={styles.statusImg} />}
 
                               {oneLineVerdict && (
-                                <div className="mt-safeWrap" style={{ opacity: 0.96, fontSize: 13 }}>
+                                <div className="mt-safeWrap" style={{ opacity: 0.98, fontSize: 13, lineHeight: 1.5 }}>
                                   {oneLineVerdict}
                                 </div>
                               )}
@@ -2087,7 +2279,7 @@ export default function App({ selectedDay = todayStr() }) {
                               {lessonLearned && (
                                 <>
                                   <div style={styles.sectionTitle}>Lesson learned</div>
-                                  <div className="mt-safeWrap" style={{ fontSize: 13, opacity: 0.92 }}>
+                                  <div className="mt-safeWrap" style={{ fontSize: 13, opacity: 0.94, lineHeight: 1.5 }}>
                                     {lessonLearned}
                                   </div>
                                 </>
@@ -2218,70 +2410,68 @@ export default function App({ selectedDay = todayStr() }) {
                                     <option value="15m">15m</option>
                                     <option value="30m">30m</option>
                                     <option value="1H">1H</option>
+                                    <option value="2H">2H</option>
                                     <option value="4H">4H</option>
-                                    <option value="1D">1D</option>
+                                    <option value="1D">Daily</option>
+                                    <option value="1W">Weekly</option>
                                   </select>
                                   <div style={styles.selectArrow}>▼</div>
                                 </div>
                               </div>
                             </div>
 
-                            <div style={styles.label}>Your thought process</div>
-                            <textarea
-                              value={form.strategyNotes}
-                              onChange={(e) => onChange("strategyNotes", e.target.value)}
-                              placeholder="Bias + DOL… session… liquidity… entry/stop/target… why now? emotions?"
-                              style={styles.textarea}
-                            />
+                            <div>
+                              <div style={styles.label}>Your trade idea (strategy + entry/SL/TP)</div>
+                              <textarea
+                                value={form.strategyNotes}
+                                onChange={(e) => onChange("strategyNotes", e.target.value)}
+                                placeholder="Example: Bullish bias from HTF… liquidity sweep… entry on FVG… SL below… TP at… emotions…"
+                                style={styles.textarea}
+                              />
+                            </div>
 
                             <button
                               type="submit"
+                              disabled={buttonDisabled}
                               style={{
                                 ...styles.button,
                                 ...(btnHover && !buttonDisabled ? styles.buttonHover : {}),
                               }}
-                              disabled={buttonDisabled}
                               onMouseEnter={() => setBtnHover(true)}
                               onMouseLeave={() => setBtnHover(false)}
                             >
                               {primaryButtonLabel}
                             </button>
 
-                            {error && <div style={styles.error}>{error}</div>}
-
-                            {!hasCompletedTrade && (
-                              <div style={styles.hint}>
-                                * You must upload a screenshot, pick instrument + timeframe, and write a
-                                short explanation.
-                              </div>
+                            {!!error && (
+                              <>
+                                <div style={styles.error}>{error}</div>
+                                <div style={styles.hint}>
+                                  If this keeps happening, refresh and try a smaller image.
+                                </div>
+                              </>
                             )}
 
-                            {hasCompletedTrade && (
-                              <div style={styles.smallMeta}>
-                                Tip: Press “Submit another trade” to keep the same day and add another
-                                screenshot.
-                              </div>
-                            )}
-
-                            {hasCompletedTrade && (
+                            {(chats?.length > 0 || form.strategyNotes || form.file) && (
                               <button
                                 type="button"
                                 onClick={handleResetTrade}
                                 style={{
-                                  marginTop: 10,
+                                  marginTop: 8,
                                   width: "100%",
                                   borderRadius: 999,
-                                  border: "1px solid rgba(55,65,81,0.9)",
-                                  padding: "9px 12px",
+                                  border: "1px solid rgba(148,163,184,0.14)",
+                                  padding: "10px 12px",
                                   fontSize: 13,
-                                  fontWeight: 800,
+                                  fontWeight: 950,
                                   cursor: "pointer",
-                                  background:
-                                    "linear-gradient(135deg, rgba(15,23,42,0.95), rgba(15,23,42,0.7))",
+                                  background: "rgba(2,6,23,0.55)",
                                   color: "#e5e7eb",
+                                  boxShadow: "0 16px 60px rgba(2,6,23,0.9)",
+                                  letterSpacing: "0.04em",
                                 }}
                               >
-                                Clear day’s trades
+                                Reset day
                               </button>
                             )}
                           </div>
@@ -2290,35 +2480,41 @@ export default function App({ selectedDay = todayStr() }) {
                     </div>
                   </div>
 
-                  {/* ===================== RIGHT COLUMN: JOURNAL ===================== */}
+                  {/* RIGHT COL: JOURNAL */}
                   <div className="mt-rightCol" style={styles.rightCol}>
-                    <div className="mt-journalCard" style={styles.journalCard}>
+                    <div className="mt-journalCard mt-cardHover" style={styles.journalCard}>
+                      <div style={styles.journalSheen} />
+
                       <div style={styles.journalHeaderRow}>
                         <div className="mt-safeWrap">
                           <div style={styles.journalTitle}>Journal</div>
                           <div style={styles.journalSub}>
-                            Quick reflection for {day}. Saved automatically.
+                            Quick reflection for {day}. This saves per member + per day.
                           </div>
                         </div>
-                        <div style={styles.journalBadge}>Auto-save</div>
+                        <div style={styles.journalBadge}>Auto-saved</div>
                       </div>
 
                       <div>
-                        <div style={styles.journalLabel}>Notes</div>
+                        <div style={styles.journalLabel}>Notes (what happened)</div>
                         <textarea
                           value={journal.notes}
-                          onChange={(e) => setJournal((p) => ({ ...p, notes: e.target.value }))}
-                          placeholder="What happened today? What was the plan?"
+                          onChange={(e) =>
+                            setJournal((prev) => ({ ...prev, notes: e.target.value }))
+                          }
+                          placeholder="What did price do? What session? What was the trigger?"
                           style={styles.journalTextareaBig}
                         />
                       </div>
 
                       <div>
-                        <div style={styles.journalLabel}>What I learned</div>
+                        <div style={styles.journalLabel}>What you learned</div>
                         <textarea
                           value={journal.learned}
-                          onChange={(e) => setJournal((p) => ({ ...p, learned: e.target.value }))}
-                          placeholder="One lesson you want to keep forever."
+                          onChange={(e) =>
+                            setJournal((prev) => ({ ...prev, learned: e.target.value }))
+                          }
+                          placeholder="One key insight you can repeat."
                           style={styles.journalTextareaSmall}
                         />
                       </div>
@@ -2327,8 +2523,10 @@ export default function App({ selectedDay = todayStr() }) {
                         <div style={styles.journalLabel}>What to improve</div>
                         <textarea
                           value={journal.improve}
-                          onChange={(e) => setJournal((p) => ({ ...p, improve: e.target.value }))}
-                          placeholder="One adjustment for next session."
+                          onChange={(e) =>
+                            setJournal((prev) => ({ ...prev, improve: e.target.value }))
+                          }
+                          placeholder="One thing to tighten up next time."
                           style={styles.journalTextareaSmall}
                         />
                       </div>
@@ -2341,32 +2539,39 @@ export default function App({ selectedDay = todayStr() }) {
               {activePage === PAGES.PNL && (
                 <div style={styles.pnlShell}>
                   <div style={styles.pnlTopRow}>
-                    <div style={styles.pnlCard}>
+                    <div style={styles.pnlCard} className="mt-cardHover">
+                      <div style={styles.pnlCardSheen} />
                       <div style={styles.pnlCardLabel}>All-time P&amp;L</div>
                       <div style={styles.pnlCardValue}>{fmtMoneySigned(allTimeStats.pnlSum)}</div>
                       <div style={styles.pnlCardSub}>
-                        Avg RR: {allTimeStats.avgRR == null ? "—" : fmtRR(allTimeStats.avgRR)}{" "}
-                        {allTimeStats.rrCount ? `(${allTimeStats.rrCount} days)` : ""}
+                        Avg RR:{" "}
+                        {typeof allTimeStats.avgRR === "number"
+                          ? fmtRR(allTimeStats.avgRR)
+                          : "—"}{" "}
+                        • Trades w/ RR: {allTimeStats.rrCount}
                       </div>
                     </div>
 
-                    <div style={styles.pnlCard}>
-                      <div style={styles.pnlCardLabel}>This month</div>
+                    <div style={styles.pnlCard} className="mt-cardHover">
+                      <div style={styles.pnlCardSheen} />
+                      <div style={styles.pnlCardLabel}>{pnlMonthLabel} P&amp;L</div>
                       <div style={styles.pnlCardValue}>{fmtMoneySigned(monthStats.pnlSum)}</div>
                       <div style={styles.pnlCardSub}>
-                        Avg RR: {monthStats.avgRR == null ? "—" : fmtRR(monthStats.avgRR)}{" "}
-                        {monthStats.rrCount ? `(${monthStats.rrCount} days)` : ""}
+                        Avg RR:{" "}
+                        {typeof monthStats.avgRR === "number" ? fmtRR(monthStats.avgRR) : "—"} •
+                        Trades w/ RR: {monthStats.rrCount}
                       </div>
                     </div>
                   </div>
 
-                  <div className="mt-pnlCalendarCard" style={styles.pnlCalendarCard}>
+                  <div style={styles.pnlCalendarCard} className="mt-cardHover">
+                    <div style={styles.pnlCalendarSheen} />
                     <div style={styles.pnlCalHeader}>
                       <div>
-                        <div style={styles.pnlCalTitle}>P&amp;L Calendar</div>
+                        <div style={styles.pnlCalTitle}>P&amp;L calendar</div>
                         <div style={styles.pnlMonthMeta}>
-                          Click a day to enter <strong>Symbol</strong>, <strong>$ P&amp;L</strong>, and{" "}
-                          <strong>RR</strong>.
+                          Click any day to enter <strong>Symbol</strong>, <strong>$ P&amp;L</strong>,
+                          and <strong>RR</strong>.
                         </div>
                       </div>
 
@@ -2402,18 +2607,20 @@ export default function App({ selectedDay = todayStr() }) {
                               key={di}
                               style={styles.pnlDayCell(theme.bg, theme.border)}
                               onClick={() => openPnlModal(cell.iso)}
+                              onMouseEnter={(e) => (e.currentTarget.style.transform = "translateY(-1px)")}
+                              onMouseLeave={(e) => (e.currentTarget.style.transform = "translateY(0)")}
                               role="button"
                               tabIndex={0}
                               onKeyDown={(e) => {
-                                if (e.key === "Enter" || e.key === " ") {
-                                  e.preventDefault();
-                                  openPnlModal(cell.iso);
-                                }
+                                if (e.key === "Enter" || e.key === " ") openPnlModal(cell.iso);
                               }}
+                              aria-label={`Edit P&L for ${cell.iso}`}
                             >
                               <div style={styles.pnlDayTop}>
                                 <div style={styles.pnlDayNum}>{cell.day}</div>
-                                {entry?.symbol ? <div style={styles.pnlSymbolTag}>{entry.symbol}</div> : <div />}
+                                {!!entry?.symbol && (
+                                  <div style={styles.pnlSymbolTag}>{entry.symbol}</div>
+                                )}
                               </div>
 
                               <div style={styles.pnlDayMid}>
@@ -2435,10 +2642,6 @@ export default function App({ selectedDay = todayStr() }) {
                         })}
                       </div>
                     ))}
-
-                    <div style={{ marginTop: 10, fontSize: 11, opacity: 0.75, color: "#9ca3af" }}>
-                      P&amp;L is manual (you type it in). It syncs per member when logged in.
-                    </div>
                   </div>
                 </div>
               )}
@@ -2449,24 +2652,54 @@ export default function App({ selectedDay = todayStr() }) {
 
       {/* ===================== PROFILE MODAL ===================== */}
       {showProfile && (
-        <div style={styles.overlay} onClick={() => setShowProfile(false)} role="presentation">
-          <div style={styles.modalCard} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+        <div
+          style={styles.overlay}
+          onClick={() => setShowProfile(false)}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") setShowProfile(false);
+          }}
+        >
+          <div
+            style={styles.modalCard}
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Profile"
+          >
+            <div style={styles.modalSheen} />
             <div style={styles.modalTitle}>Profile</div>
-            <div style={styles.modalText}>This is the member currently loaded on this device.</div>
+            <div style={styles.modalText}>
+              This is the account currently loaded on this device.
+            </div>
 
             <div style={styles.modalRow}>
               <div style={styles.modalLabel}>Member ID</div>
-              <div className="mt-safeWrap">{member?.memberId || "—"}</div>
+              <div className="mt-safeWrap" style={{ opacity: 0.95 }}>
+                {member?.memberId || "—"}
+              </div>
             </div>
 
             <div style={styles.modalRow}>
               <div style={styles.modalLabel}>Name</div>
-              <div className="mt-safeWrap">{member?.name || "—"}</div>
+              <div className="mt-safeWrap" style={{ opacity: 0.95 }}>
+                {member?.name || "—"}
+              </div>
             </div>
 
             <div style={styles.modalRow}>
               <div style={styles.modalLabel}>Email</div>
-              <div className="mt-safeWrap">{member?.email || "—"}</div>
+              <div className="mt-safeWrap" style={{ opacity: 0.95 }}>
+                {member?.email || "—"}
+              </div>
+            </div>
+
+            <div style={styles.modalRow}>
+              <div style={styles.modalLabel}>Plan</div>
+              <div className="mt-safeWrap" style={{ opacity: 0.95 }}>
+                {member?.plan || "personal"}
+              </div>
             </div>
 
             <button type="button" style={styles.modalCloseBtn} onClick={() => setShowProfile(false)}>
@@ -2476,14 +2709,28 @@ export default function App({ selectedDay = todayStr() }) {
         </div>
       )}
 
-      {/* ===================== PNL MODAL ===================== */}
+      {/* ===================== P&L ENTRY MODAL ===================== */}
       {pnlModalOpen && (
-        <div style={styles.overlay} onClick={() => setPnlModalOpen(false)} role="presentation">
-          <div style={styles.modalCard} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+        <div
+          style={styles.overlay}
+          onClick={() => setPnlModalOpen(false)}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") setPnlModalOpen(false);
+          }}
+        >
+          <div
+            style={styles.modalCard}
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Edit P&L entry"
+          >
+            <div style={styles.modalSheen} />
             <div style={styles.modalTitle}>Edit P&amp;L</div>
             <div style={styles.modalText}>
-              {pnlEditingIso} • Enter <strong>Symbol</strong>, <strong>$ P&amp;L</strong>, and optional{" "}
-              <strong>RR</strong>. (Leave all blank to delete.)
+              {pnlEditingIso || ""} • Leave everything blank to delete.
             </div>
 
             <div style={styles.modalRow}>
@@ -2491,8 +2738,9 @@ export default function App({ selectedDay = todayStr() }) {
               <input
                 value={pnlEditSymbol}
                 onChange={(e) => setPnlEditSymbol(e.target.value)}
-                placeholder="e.g. NQ, ES, GBPUSD"
+                placeholder="e.g., NQ, ES, GBPUSD"
                 style={styles.input}
+                maxLength={14}
               />
             </div>
 
@@ -2501,9 +2749,9 @@ export default function App({ selectedDay = todayStr() }) {
               <input
                 value={pnlEditPnl}
                 onChange={(e) => setPnlEditPnl(e.target.value)}
-                placeholder="e.g. 120 or -55.5"
-                inputMode="decimal"
+                placeholder="e.g., 125 or -80"
                 style={styles.input}
+                inputMode="decimal"
               />
             </div>
 
@@ -2512,9 +2760,9 @@ export default function App({ selectedDay = todayStr() }) {
               <input
                 value={pnlEditRR}
                 onChange={(e) => setPnlEditRR(e.target.value)}
-                placeholder="e.g. 2.5"
-                inputMode="decimal"
+                placeholder="e.g., 2 or 1.5"
                 style={styles.input}
+                inputMode="decimal"
               />
             </div>
 
@@ -2522,14 +2770,18 @@ export default function App({ selectedDay = todayStr() }) {
               <button type="button" style={styles.modalBtnPrimary} onClick={savePnlEntry}>
                 Save
               </button>
-              <button type="button" style={styles.modalBtnGhost} onClick={() => setPnlModalOpen(false)}>
+              <button
+                type="button"
+                style={styles.modalBtnGhost}
+                onClick={() => setPnlModalOpen(false)}
+              >
                 Cancel
               </button>
             </div>
 
             <div style={styles.modalBtnRow}>
               <button type="button" style={styles.modalBtnDanger} onClick={deletePnlEntry}>
-                Delete day
+                Delete entry
               </button>
             </div>
           </div>
