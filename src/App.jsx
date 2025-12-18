@@ -15,10 +15,9 @@ const WEBHOOK_URL =
   PROD_WEBHOOK;
 
 const MEMBER_LS_KEY = "tc_member_v1";
-const LAST_DAY_KEY = "tradeCoach:lastDayWithData";
 
-// ⭐ P&L Calendar storage (manual entry)
-const PNL_KEY = "mtai_pnl_v2"; // bumped key to avoid old R-based entries clashing
+// ⭐ P&L Calendar storage (manual entry) (base key; final key is namespaced per member)
+const PNL_KEY_BASE = "mtai_pnl_v2";
 
 const CYAN = "#22d3ee";
 const CYAN_SOFT = "#38bdf8";
@@ -101,7 +100,7 @@ function toMonthKey(iso) {
 function clampSymbol(s) {
   const v = String(s || "").trim();
   if (!v) return "";
-  return v.slice(0, 14).toUpperCase(); // keep it clean + consistent
+  return v.slice(0, 14).toUpperCase();
 }
 
 const moneyFmt = new Intl.NumberFormat(undefined, {
@@ -126,16 +125,10 @@ function fmtRR(n) {
  * IMPORTANT:
  * Firestore documents have a ~1MB limit.
  * So we DO NOT store local image data URLs in Firestore.
- * We store your notes + AI analysis + metadata (day/timeframe/instrument).
- * (If you want cross-device screenshots later, we’ll add Firebase Storage.)
  */
 function chatsForFirestore(chats) {
   return (chats || []).map((c) => {
-    const {
-      localPreviewUrl, // never store
-      localDataUrl, // never store
-      ...rest
-    } = c || {};
+    const { localPreviewUrl, localDataUrl, ...rest } = c || {};
     return rest;
   });
 }
@@ -171,7 +164,17 @@ export default function App({ selectedDay = todayStr() }) {
     }
   });
 
-  // initial day = last day with data (if any) else selectedDay
+  // ✅ Firestore refs (per member)
+  const memberId = member?.memberId || null;
+
+  // ✅ Namespaced local keys so users on the same device never see each other's data
+  const scope = memberId || "anon";
+  const LAST_DAY_KEY = `tradeCoach:lastDayWithData:${scope}`;
+  const PNL_KEY = `${PNL_KEY_BASE}:${scope}`;
+  const dayChatsKey = (iso) => `tradeChats:${scope}:${iso}`;
+  const dayJournalKeyV2 = (iso) => `tradeJournalV2:${scope}:${iso}`;
+
+  // initial day = last day with data (for THIS member) else selectedDay
   const initialDay = (() => {
     try {
       const saved = localStorage.getItem(LAST_DAY_KEY);
@@ -205,7 +208,6 @@ export default function App({ selectedDay = todayStr() }) {
   const [pnl, setPnl] = useState(() => {
     const raw =
       typeof window !== "undefined" ? localStorage.getItem(PNL_KEY) : null;
-    // shape: { "YYYY-MM-DD": { symbol: string, pnl: number, rr: number } }
     return safeParseJSON(raw, {});
   });
 
@@ -230,17 +232,41 @@ export default function App({ selectedDay = todayStr() }) {
   const buttonDisabled =
     !hasCompletedTrade && (!isValid || submitting || isPending);
 
-  // ✅ Firestore refs (per member)
-  const memberId = member?.memberId || null;
-
   // Debounce timers for Firestore writes
   const dayWriteTimerRef = useRef(null);
   const pnlWriteTimerRef = useRef(null);
 
+  /* ---------------- MOBILE CSS (fix overlaps) ---------------- */
+  const ResponsiveCSS = () => (
+    <style>{`
+      * { -webkit-tap-highlight-color: transparent; }
+      .mt-shell { display:flex; gap:16px; align-items:stretch; flex-wrap:wrap; }
+      .mt-content { flex: 1 1 520px; min-width: 0; }
+      .mt-safeWrap { min-width:0; overflow-wrap:anywhere; word-break:break-word; }
+      .mt-calPanel { max-width: min(92vw, 340px); width: min(92vw, 340px); }
+      html, body { max-width: 100%; overflow-x: hidden; }
+      @media (max-width: 980px) {
+        .mt-shell { flex-direction: column; }
+        .mt-sidebar { width: 100% !important; min-width: 0 !important; flex: 1 1 auto !important; position: relative !important; top: auto !important; }
+      }
+      @media (max-width: 860px) {
+        .mt-mainShell { flex-direction: column; }
+        .mt-leftCol, .mt-rightCol { flex: 1 1 auto !important; min-width: 0 !important; }
+      }
+      @media (max-width: 520px) {
+        .mt-headerTitle { font-size: 14px !important; letter-spacing: .04em !important; }
+        .mt-workspaceTag { display: none !important; }
+        .mt-page { padding: 72px 12px 18px !important; }
+        .mt-coachCard, .mt-journalCard, .mt-pnlCalendarCard { padding: 14px !important; border-radius: 16px !important; }
+        .mt-sidebar { padding: 12px !important; border-radius: 16px !important; }
+        .mt-datePill { min-width: 0 !important; width: 100% !important; }
+      }
+    `}</style>
+  );
+
   /* ---------------- FIRESTORE: QUICK TEST WRITE ---------------- */
   useEffect(() => {
     if (!memberId) return;
-
     (async () => {
       try {
         await setDoc(
@@ -254,6 +280,27 @@ export default function App({ selectedDay = todayStr() }) {
       }
     })();
   }, [memberId]);
+
+  /* ---------------- WHEN MEMBER CHANGES: LOAD THEIR LOCAL DEFAULTS ---------------- */
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(LAST_DAY_KEY);
+      setDay(saved || selectedDay);
+      setShowCalendar(false);
+      const d = parseLocalDateFromIso(saved || selectedDay);
+      setCalendarMonth({ year: d.getFullYear(), month: d.getMonth() });
+    } catch {
+      setDay(selectedDay);
+    }
+
+    try {
+      const raw = localStorage.getItem(PNL_KEY);
+      setPnl(safeParseJSON(raw, {}));
+    } catch {
+      setPnl({});
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scope]);
 
   /* ---------------- FIRESTORE: LOAD PNL ON LOGIN ---------------- */
   useEffect(() => {
@@ -270,28 +317,36 @@ export default function App({ selectedDay = todayStr() }) {
             try {
               localStorage.setItem(PNL_KEY, JSON.stringify(data.pnl));
             } catch {}
+          } else {
+            setPnl({});
+            try {
+              localStorage.setItem(PNL_KEY, JSON.stringify({}));
+            } catch {}
           }
+        } else {
+          setPnl({});
+          try {
+            localStorage.setItem(PNL_KEY, JSON.stringify({}));
+          } catch {}
         }
       } catch (e) {
         console.error("❌ Firestore PNL load error:", e?.code, e?.message, e);
       }
     })();
-  }, [memberId]);
+  }, [memberId, PNL_KEY]);
 
   /* ---------------- FIRESTORE: LOAD DAY DATA (CHATS + JOURNAL) ---------------- */
   useEffect(() => {
-    // Always load local first (fast UI), then Firestore overwrites if found
+    // Always load local first
     try {
-      const key = `tradeChats:${day}`;
-      const saved = localStorage.getItem(key);
+      const saved = localStorage.getItem(dayChatsKey(day));
       setChats(saved ? JSON.parse(saved) : []);
     } catch {
       setChats([]);
     }
 
     try {
-      const keyV2 = `tradeJournalV2:${day}`;
-      const rawV2 = localStorage.getItem(keyV2);
+      const rawV2 = localStorage.getItem(dayJournalKeyV2(day));
       if (rawV2) {
         const parsed = JSON.parse(rawV2);
         setJournal({
@@ -300,10 +355,7 @@ export default function App({ selectedDay = todayStr() }) {
           improve: parsed.improve || "",
         });
       } else {
-        const legacyKey = `tradeJournal:${day}`;
-        const legacy = localStorage.getItem(legacyKey);
-        if (legacy) setJournal({ notes: legacy, learned: "", improve: "" });
-        else setJournal({ notes: "", learned: "", improve: "" });
+        setJournal({ notes: "", learned: "", improve: "" });
       }
     } catch {
       setJournal({ notes: "", learned: "", improve: "" });
@@ -314,7 +366,6 @@ export default function App({ selectedDay = todayStr() }) {
     setPreviewUrl(null);
     setError("");
 
-    // If logged in, load from Firestore for that day
     if (!memberId) return;
 
     (async () => {
@@ -327,7 +378,7 @@ export default function App({ selectedDay = todayStr() }) {
         if (Array.isArray(data.chats)) {
           setChats(data.chats);
           try {
-            localStorage.setItem(`tradeChats:${day}`, JSON.stringify(data.chats));
+            localStorage.setItem(dayChatsKey(day), JSON.stringify(data.chats));
           } catch {}
         }
 
@@ -340,16 +391,17 @@ export default function App({ selectedDay = todayStr() }) {
           };
           setJournal(jPayload);
           try {
-            localStorage.setItem(`tradeJournalV2:${day}`, JSON.stringify(jPayload));
+            localStorage.setItem(dayJournalKeyV2(day), JSON.stringify(jPayload));
           } catch {}
         }
       } catch (e) {
         console.error("❌ Firestore day load error:", e?.code, e?.message, e);
       }
     })();
-  }, [day, memberId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [day, memberId, scope]);
 
-  // Build calendar weeks (generic)
+  // Build calendar weeks
   function buildMonthWeeks(monthState) {
     const { year, month } = monthState;
     const first = new Date(year, month, 1);
@@ -450,11 +502,10 @@ export default function App({ selectedDay = todayStr() }) {
     if (!pnlEditingIso) return;
 
     const sym = clampSymbol(pnlEditSymbol);
-
     const pnlTrim = (pnlEditPnl || "").trim();
     const rrTrim = (pnlEditRR || "").trim();
 
-    // If all empty -> delete day
+    // delete if all empty
     if (!sym && !pnlTrim && !rrTrim) {
       setPnl((prev) => {
         const copy = { ...(prev || {}) };
@@ -468,7 +519,6 @@ export default function App({ selectedDay = todayStr() }) {
     const pnlNum = pnlTrim === "" ? null : Number(pnlTrim);
     const rrNum = rrTrim === "" ? null : Number(rrTrim);
 
-    // Guard invalid numbers (just don't save)
     if (
       (pnlTrim !== "" && (!Number.isFinite(pnlNum) || Number.isNaN(pnlNum))) ||
       (rrTrim !== "" && (!Number.isFinite(rrNum) || Number.isNaN(rrNum)))
@@ -476,8 +526,7 @@ export default function App({ selectedDay = todayStr() }) {
       return;
     }
 
-    // Require P&L if they want an entry (keeps the calendar meaningful)
-    if (pnlTrim === "") return;
+    if (pnlTrim === "") return; // require pnl
 
     setPnl((prev) => ({
       ...(prev || {}),
@@ -530,7 +579,7 @@ export default function App({ selectedDay = todayStr() }) {
     },
     pageInner: { position: "relative", zIndex: 1 },
 
-    // 🔹 GLOBAL FIXED HEADER (NO hamburger)
+    // 🔹 GLOBAL FIXED HEADER
     siteHeader: {
       position: "fixed",
       top: 0,
@@ -616,7 +665,7 @@ export default function App({ selectedDay = todayStr() }) {
     },
     menuItemDanger: { color: "#fecaca" },
 
-    // 🔹 SHELL: SIDEBAR + CONTENT
+    // 🔹 SHELL
     shell: {
       width: "100%",
       maxWidth: 1240,
@@ -627,7 +676,7 @@ export default function App({ selectedDay = todayStr() }) {
       flexWrap: "wrap",
     },
 
-    // 🔹 SIDEBAR (always visible, no dropdown)
+    // 🔹 SIDEBAR
     sidebar: {
       width: 240,
       minWidth: 240,
@@ -679,7 +728,7 @@ export default function App({ selectedDay = todayStr() }) {
 
     content: { flex: "1 1 520px", minWidth: 0 },
 
-    // 🔹 DATE DROPDOWN ROW (AI page)
+    // 🔹 DATE DROPDOWN ROW
     dateRow: {
       width: "100%",
       maxWidth: 1100,
@@ -704,6 +753,8 @@ export default function App({ selectedDay = todayStr() }) {
       color: "#e5e7eb",
       transition: "transform .16s ease, box-shadow .16s ease, border .16s ease",
       userSelect: "none",
+      width: "100%",
+      maxWidth: 520,
     },
     datePillHover: {
       transform: "translateY(-1px)",
@@ -782,7 +833,7 @@ export default function App({ selectedDay = todayStr() }) {
     dayCellSelected: { background: CYAN, color: "#020617", borderColor: CYAN },
     dayCellToday: { borderColor: "rgba(34,211,238,0.6)" },
 
-    // 🔹 MAIN 2/3 – 1/3 LAYOUT (AI page)
+    // 🔹 MAIN LAYOUT
     mainShell: {
       width: "100%",
       maxWidth: 1100,
@@ -797,12 +848,14 @@ export default function App({ selectedDay = todayStr() }) {
       display: "flex",
       flexDirection: "column",
       gap: 12,
+      minWidth: 0,
     },
     rightCol: {
       flex: "1 1 260px",
       display: "flex",
       flexDirection: "column",
       gap: 12,
+      minWidth: 0,
     },
 
     coachCard: {
@@ -816,12 +869,15 @@ export default function App({ selectedDay = todayStr() }) {
       gap: 12,
       minHeight: 0,
       border: "1px solid rgba(30,64,175,0.7)",
+      minWidth: 0,
     },
     coachHeaderRow: {
       display: "flex",
       justifyContent: "space-between",
       alignItems: "baseline",
       gap: 8,
+      flexWrap: "wrap",
+      minWidth: 0,
     },
     coachTitle: {
       fontSize: 20,
@@ -834,7 +890,7 @@ export default function App({ selectedDay = todayStr() }) {
       fontSize: 12,
       opacity: 0.75,
       marginTop: 4,
-      maxWidth: 380,
+      maxWidth: 520,
       color: "#9ca3af",
     },
     dayBadge: {
@@ -865,6 +921,7 @@ export default function App({ selectedDay = todayStr() }) {
       gap: 8,
       position: "relative",
       overflow: "hidden",
+      minWidth: 0,
     },
     statusGlow: {
       position: "absolute",
@@ -878,6 +935,7 @@ export default function App({ selectedDay = todayStr() }) {
       position: "relative",
       zIndex: 1,
       transition: "opacity .22s ease, transform .22s ease",
+      minWidth: 0,
     },
     statusPlaceholderTitle: {
       fontSize: 16,
@@ -892,12 +950,15 @@ export default function App({ selectedDay = todayStr() }) {
       alignItems: "center",
       gap: 8,
       marginBottom: 6,
+      flexWrap: "wrap",
+      minWidth: 0,
     },
     statusHeaderLeft: {
       display: "flex",
       flexDirection: "column",
       gap: 2,
       fontSize: 12,
+      minWidth: 0,
     },
     statusLabel: { fontSize: 13, fontWeight: 700, color: "#e5e7eb" },
     statusMeta: { fontSize: 11, opacity: 0.75, color: "#9ca3af" },
@@ -911,6 +972,7 @@ export default function App({ selectedDay = todayStr() }) {
       border: "1px solid rgba(148,163,184,0.9)",
       boxShadow:
         "0 0 0 1px rgba(15,23,42,0.9), 0 0 30px rgba(34,211,238,0.4)",
+      whiteSpace: "nowrap",
     },
     statusImg: {
       width: "100%",
@@ -958,6 +1020,7 @@ export default function App({ selectedDay = todayStr() }) {
       position: "relative",
       boxSizing: "border-box",
       boxShadow: "0 16px 40px rgba(15,23,42,0.9)",
+      minWidth: 0,
     },
     dropMiniActive: {
       borderColor: CYAN,
@@ -972,7 +1035,7 @@ export default function App({ selectedDay = todayStr() }) {
       border: "1px solid rgba(31,41,55,0.9)",
       objectFit: "cover",
     },
-    dropMiniLabel: { display: "flex", flexDirection: "column", gap: 3 },
+    dropMiniLabel: { display: "flex", flexDirection: "column", gap: 3, minWidth: 0 },
     dropMiniTitle: { fontWeight: 700, fontSize: 12 },
     dropMiniHint: { fontSize: 11, opacity: 0.8, color: "#9ca3af" },
     miniCloseBtn: {
@@ -1074,7 +1137,9 @@ export default function App({ selectedDay = todayStr() }) {
       fontSize: 14,
       letterSpacing: "0.05em",
       textTransform: "uppercase",
-      boxShadow: buttonDisabled ? "0 0 0 rgba(15,23,42,0.9)" : "0 18px 55px rgba(34,211,238,0.45)",
+      boxShadow: buttonDisabled
+        ? "0 0 0 rgba(15,23,42,0.9)"
+        : "0 18px 55px rgba(34,211,238,0.45)",
       transition:
         "background .18s ease, opacity .18s ease, transform .18s ease, box-shadow .18s ease",
     },
@@ -1103,10 +1168,11 @@ export default function App({ selectedDay = todayStr() }) {
       gap: 10,
       minHeight: 0,
       border: "1px solid rgba(30,64,175,0.9)",
+      minWidth: 0,
     },
-    journalHeaderRow: { display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 },
+    journalHeaderRow: { display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8, flexWrap: "wrap" },
     journalTitle: { fontSize: 18, fontWeight: 800, color: "#f9fafb" },
-    journalSub: { fontSize: 11, opacity: 0.8, marginTop: 4, maxWidth: 260, color: "#9ca3af" },
+    journalSub: { fontSize: 11, opacity: 0.8, marginTop: 4, maxWidth: 380, color: "#9ca3af" },
     journalBadge: {
       fontSize: 11,
       padding: "4px 8px",
@@ -1155,10 +1221,11 @@ export default function App({ selectedDay = todayStr() }) {
       opacity: 0.8,
       marginTop: 6,
       color: "#9ca3af",
+      flexWrap: "wrap",
     },
 
     // 🔹 P&L CALENDAR PAGE
-    pnlShell: { width: "100%", maxWidth: 1100, margin: "0 auto", display: "flex", flexDirection: "column", gap: 12 },
+    pnlShell: { width: "100%", maxWidth: 1100, margin: "0 auto", display: "flex", flexDirection: "column", gap: 12, minWidth: 0 },
     pnlTopRow: { display: "flex", gap: 12, flexWrap: "wrap", alignItems: "stretch" },
     pnlCard: {
       flex: "1 1 260px",
@@ -1172,6 +1239,7 @@ export default function App({ selectedDay = todayStr() }) {
       display: "flex",
       flexDirection: "column",
       gap: 6,
+      minWidth: 0,
     },
     pnlCardLabel: { fontSize: 12, opacity: 0.75, color: "#9ca3af" },
     pnlCardValue: { fontSize: 24, fontWeight: 900, letterSpacing: "0.02em", color: "#f9fafb" },
@@ -1184,10 +1252,11 @@ export default function App({ selectedDay = todayStr() }) {
       border: "1px solid rgba(30,64,175,0.7)",
       boxShadow: "0 20px 60px rgba(15,23,42,0.95)",
       padding: 16,
+      minWidth: 0,
     },
     pnlCalHeader: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10, gap: 8, flexWrap: "wrap" },
     pnlCalTitle: { fontSize: 16, fontWeight: 900, color: "#f9fafb", letterSpacing: "0.03em", textTransform: "uppercase" },
-    pnlCalNav: { display: "flex", alignItems: "center", gap: 8 },
+    pnlCalNav: { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" },
     pnlNavBtn: {
       width: 30,
       height: 30,
@@ -1229,8 +1298,10 @@ export default function App({ selectedDay = todayStr() }) {
       justifyContent: "space-between",
       userSelect: "none",
       transition: "transform .12s ease, box-shadow .12s ease, border-color .12s ease",
+      minWidth: 0,
+      overflow: "hidden",
     }),
-    pnlDayTop: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 },
+    pnlDayTop: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, minWidth: 0 },
     pnlDayNum: { fontSize: 12, fontWeight: 900, color: "#e5e7eb", opacity: 0.95 },
     pnlSymbolTag: {
       fontSize: 10,
@@ -1247,7 +1318,7 @@ export default function App({ selectedDay = todayStr() }) {
       overflow: "hidden",
       textOverflow: "ellipsis",
     },
-    pnlDayMid: { display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8 },
+    pnlDayMid: { display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8, minWidth: 0 },
     pnlPnlValue: { fontSize: 14, fontWeight: 900, letterSpacing: "0.02em", color: "#f9fafb" },
     pnlRRValue: { fontSize: 11, fontWeight: 800, opacity: 0.95, color: "#e5e7eb" },
     pnlNoEntry: { fontSize: 11, opacity: 0.75, color: "#9ca3af", fontWeight: 700 },
@@ -1351,9 +1422,9 @@ export default function App({ selectedDay = todayStr() }) {
     };
   }, [form.file]);
 
-  // Persist chats per day + mark last day with data (LOCAL)
+  // Persist chats per day + mark last day with data (LOCAL, per-member)
   useEffect(() => {
-    const key = `tradeChats:${day}`;
+    const key = dayChatsKey(day);
     safeSaveChats(key, chats);
 
     if (chats && chats.length > 0) {
@@ -1361,13 +1432,13 @@ export default function App({ selectedDay = todayStr() }) {
         localStorage.setItem(LAST_DAY_KEY, day);
       } catch {}
     }
-  }, [chats, day]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chats, day, scope]);
 
-  // Persist journal per day + mark last day with data (LOCAL)
+  // Persist journal per day + mark last day with data (LOCAL, per-member)
   useEffect(() => {
     try {
-      const keyV2 = `tradeJournalV2:${day}`;
-      localStorage.setItem(keyV2, JSON.stringify(journal));
+      localStorage.setItem(dayJournalKeyV2(day), JSON.stringify(journal));
 
       const hasJournal =
         (journal.notes || "").trim() ||
@@ -1376,20 +1447,19 @@ export default function App({ selectedDay = todayStr() }) {
 
       if (hasJournal) localStorage.setItem(LAST_DAY_KEY, day);
     } catch {}
-  }, [journal, day]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [journal, day, scope]);
 
-  // Persist P&L calendar (LOCAL)
+  // Persist P&L calendar (LOCAL, per-member)
   useEffect(() => {
     try {
       localStorage.setItem(PNL_KEY, JSON.stringify(pnl || {}));
     } catch {}
-  }, [pnl]);
+  }, [pnl, PNL_KEY]);
 
   /* ---------------- FIRESTORE: SAVE DAY DATA (DEBOUNCED) ---------------- */
   useEffect(() => {
     if (!memberId) return;
-
-    // Don’t save while last chat is pending (avoids extra writes)
     if (chats?.length && chats[chats.length - 1]?.pending) return;
 
     if (dayWriteTimerRef.current) clearTimeout(dayWriteTimerRef.current);
@@ -1412,8 +1482,6 @@ export default function App({ selectedDay = todayStr() }) {
           },
           { merge: true }
         );
-
-        // console.log("✅ Firestore saved day:", day);
       } catch (e) {
         console.error("❌ Firestore save day error:", e?.code, e?.message, e);
       }
@@ -1438,7 +1506,6 @@ export default function App({ selectedDay = todayStr() }) {
           { updatedAt: serverTimestamp(), pnl: pnl || {} },
           { merge: true }
         );
-        // console.log("✅ Firestore saved pnl");
       } catch (e) {
         console.error("❌ Firestore save pnl error:", e?.code, e?.message, e);
       }
@@ -1677,10 +1744,8 @@ export default function App({ selectedDay = todayStr() }) {
   function cellThemeForIso(iso) {
     const entry = allEntries?.[iso];
     const p = entry?.pnl;
-
     const isToday = iso === todayIso;
 
-    // No entry
     if (typeof p !== "number" || !Number.isFinite(p)) {
       return {
         bg: isToday
@@ -1711,7 +1776,7 @@ export default function App({ selectedDay = todayStr() }) {
   /* ---------------- RENDER ---------------- */
 
   const Sidebar = () => (
-    <div style={styles.sidebar}>
+    <div className="mt-sidebar mt-safeWrap" style={styles.sidebar}>
       <div style={styles.sidebarTitle}>Navigation</div>
 
       <div
@@ -1735,32 +1800,28 @@ export default function App({ selectedDay = todayStr() }) {
       </div>
 
       <div style={styles.navHint}>
-        P&amp;L is manual (paper-friendly). Click a day to enter:
+        P&amp;L is manual. Click a day to enter:
         <br />
         <strong>Symbol</strong>, <strong>$ P&amp;L</strong>, and <strong>RR</strong>.
-        <br />
-        <br />
-        {memberId ? (
-          <span style={{ color: "#86efac" }}>
-            ✅ Cloud sync ON (member: {memberId.slice(0, 6)}…)
-          </span>
-        ) : (
-          <span style={{ color: "#fca5a5" }}>
-            ⚠️ Cloud sync OFF (no memberId)
-          </span>
-        )}
       </div>
     </div>
   );
 
   return (
     <>
-      {/* 🔹 GLOBAL HEADER (fixed, very top of site) */}
+      <ResponsiveCSS />
+
+      {/* 🔹 GLOBAL HEADER */}
       <div style={styles.siteHeader}>
-        <div style={styles.siteHeaderTitle}>MaxTradeAI</div>
+        <div className="mt-headerTitle" style={styles.siteHeaderTitle}>
+          MaxTradeAI
+        </div>
 
         <div style={styles.siteHeaderActions}>
-          <span style={styles.workspaceTag}>Personal workspace</span>
+          <span className="mt-workspaceTag" style={styles.workspaceTag}>
+            Personal workspace
+          </span>
+
           <button
             type="button"
             style={{
@@ -1809,19 +1870,18 @@ export default function App({ selectedDay = todayStr() }) {
       </div>
 
       {/* PAGE CONTENT */}
-      <div style={styles.page}>
+      <div className="mt-page" style={styles.page}>
         <div style={styles.pageGlow} />
         <div style={styles.pageInner}>
-          <div style={styles.shell}>
-            {/* Sidebar always visible */}
+          <div className="mt-shell" style={styles.shell}>
             <Sidebar />
 
-            {/* Main content */}
-            <div style={styles.content}>
-              {/* 🔹 DATE DROPDOWN (only on AI page) */}
+            <div className="mt-content" style={styles.content}>
+              {/* DATE DROPDOWN (AI page) */}
               {activePage === PAGES.AI && (
                 <div style={styles.dateRow}>
                   <div
+                    className="mt-datePill mt-safeWrap"
                     style={{
                       ...styles.datePill,
                       ...(dateHover ? styles.datePillHover : {}),
@@ -1830,7 +1890,10 @@ export default function App({ selectedDay = todayStr() }) {
                       setShowCalendar((open) => !open);
                       if (!showCalendar) {
                         const d = parseLocalDateFromIso(day);
-                        setCalendarMonth({ year: d.getFullYear(), month: d.getMonth() });
+                        setCalendarMonth({
+                          year: d.getFullYear(),
+                          month: d.getMonth(),
+                        });
                       }
                     }}
                     onMouseEnter={() => setDateHover(true)}
@@ -1841,13 +1904,23 @@ export default function App({ selectedDay = todayStr() }) {
                   </div>
 
                   {showCalendar && (
-                    <div style={styles.calendarPanel}>
+                    <div className="mt-calPanel" style={styles.calendarPanel}>
                       <div style={styles.calendarHeader}>
-                        <button type="button" style={styles.calendarNavBtn} onClick={goToPrevMonth}>
+                        <button
+                          type="button"
+                          style={styles.calendarNavBtn}
+                          onClick={goToPrevMonth}
+                        >
                           ‹
                         </button>
-                        <div style={styles.calendarHeaderTitle}>{calendarMonthLabel}</div>
-                        <button type="button" style={styles.calendarNavBtn} onClick={goToNextMonth}>
+                        <div style={styles.calendarHeaderTitle}>
+                          {calendarMonthLabel}
+                        </div>
+                        <button
+                          type="button"
+                          style={styles.calendarNavBtn}
+                          onClick={goToNextMonth}
+                        >
                           ›
                         </button>
                       </div>
@@ -1872,7 +1945,11 @@ export default function App({ selectedDay = todayStr() }) {
                             else if (isToday) style = { ...style, ...styles.dayCellToday };
 
                             return (
-                              <div key={di} style={style} onClick={() => handlePickDate(cell.iso)}>
+                              <div
+                                key={di}
+                                style={style}
+                                onClick={() => handlePickDate(cell.iso)}
+                              >
                                 {cell.day}
                               </div>
                             );
@@ -1886,15 +1963,14 @@ export default function App({ selectedDay = todayStr() }) {
 
               {/* ===================== PAGE: AI FEEDBACK + JOURNAL ===================== */}
               {activePage === PAGES.AI && (
-                <div style={styles.mainShell}>
-                  {/* LEFT: TRADE COACH */}
-                  <div style={styles.leftCol}>
-                    <div style={styles.coachCard}>
+                <div className="mt-mainShell" style={styles.mainShell}>
+                  <div className="mt-leftCol" style={styles.leftCol}>
+                    <div className="mt-coachCard" style={styles.coachCard}>
                       <div style={styles.coachHeaderRow}>
-                        <div>
+                        <div className="mt-safeWrap">
                           <div style={styles.coachTitle}>Trade Coach</div>
                           <div style={styles.coachSub}>
-                            Upload chart → choose pair & timeframe → explain your idea → AI feedback.
+                            Upload chart → choose pair &amp; timeframe → explain your idea → AI feedback.
                             <br />
                             <strong>
                               The more detail you give (bias, liquidity, session, entry, stop, target,
@@ -1905,7 +1981,6 @@ export default function App({ selectedDay = todayStr() }) {
                         <div style={styles.dayBadge}>Day: {day}</div>
                       </div>
 
-                      {/* STATUS BOX */}
                       <div style={styles.statusBox}>
                         <div style={styles.statusGlow} />
                         <div style={{ ...styles.statusContent, ...statusAnimatedStyle }}>
@@ -1965,7 +2040,9 @@ export default function App({ selectedDay = todayStr() }) {
                               )}
 
                               {oneLineVerdict && (
-                                <div style={{ opacity: 0.96, fontSize: 13 }}>{oneLineVerdict}</div>
+                                <div className="mt-safeWrap" style={{ opacity: 0.96, fontSize: 13 }}>
+                                  {oneLineVerdict}
+                                </div>
                               )}
 
                               {whatWentRight.length > 0 && (
@@ -1973,7 +2050,9 @@ export default function App({ selectedDay = todayStr() }) {
                                   <div style={styles.sectionTitle}>What went right</div>
                                   <ul style={styles.ul}>
                                     {whatWentRight.map((x, i) => (
-                                      <li key={i}>{x}</li>
+                                      <li key={i} className="mt-safeWrap">
+                                        {x}
+                                      </li>
                                     ))}
                                   </ul>
                                 </>
@@ -1984,7 +2063,9 @@ export default function App({ selectedDay = todayStr() }) {
                                   <div style={styles.sectionTitle}>What went wrong</div>
                                   <ul style={styles.ul}>
                                     {whatWentWrong.map((x, i) => (
-                                      <li key={i}>{x}</li>
+                                      <li key={i} className="mt-safeWrap">
+                                        {x}
+                                      </li>
                                     ))}
                                   </ul>
                                 </>
@@ -1995,7 +2076,9 @@ export default function App({ selectedDay = todayStr() }) {
                                   <div style={styles.sectionTitle}>Improvements</div>
                                   <ul style={styles.ul}>
                                     {improvements.map((x, i) => (
-                                      <li key={i}>{x}</li>
+                                      <li key={i} className="mt-safeWrap">
+                                        {x}
+                                      </li>
                                     ))}
                                   </ul>
                                 </>
@@ -2004,71 +2087,79 @@ export default function App({ selectedDay = todayStr() }) {
                               {lessonLearned && (
                                 <>
                                   <div style={styles.sectionTitle}>Lesson learned</div>
-                                  <div style={{ opacity: 0.96, fontSize: 13, color: "#d1d5db" }}>
+                                  <div className="mt-safeWrap" style={{ fontSize: 13, opacity: 0.92 }}>
                                     {lessonLearned}
                                   </div>
                                 </>
                               )}
 
-                              {(lastChat.serverTimestamp || lastChat.timestamp) && (
-                                <div style={styles.smallMeta}>
-                                  {new Date(
-                                    lastChat.serverTimestamp || lastChat.timestamp
-                                  ).toLocaleString()}
-                                </div>
-                              )}
+                              <div style={styles.smallMeta}>
+                                Saved to your account (member: {memberId || "anon"}) • {day}
+                              </div>
                             </>
                           )}
                         </div>
                       </div>
 
-                      {/* FORM */}
-                      <form onSubmit={hasCompletedTrade ? undefined : handleSubmit} style={styles.formSection}>
-                        <div style={styles.composerRow}>
+                      {/* ===================== COMPOSER (UPLOAD + INPUTS) ===================== */}
+                      <form onSubmit={handleSubmit} style={styles.formSection}>
+                        <div className="mt-safeWrap" style={styles.composerRow}>
+                          {/* LEFT: drop zone */}
                           <div style={styles.composerLeft}>
                             <div
                               style={{
                                 ...styles.dropMini,
                                 ...(dragActive ? styles.dropMiniActive : {}),
                               }}
-                              onClick={() => fileInputRef.current?.click()}
                               onDragEnter={(e) => {
                                 preventDefaults(e);
                                 setDragActive(true);
                               }}
-                              onDragOver={preventDefaults}
+                              onDragOver={(e) => {
+                                preventDefaults(e);
+                                setDragActive(true);
+                              }}
                               onDragLeave={(e) => {
                                 preventDefaults(e);
                                 setDragActive(false);
                               }}
                               onDrop={handleDrop}
+                              onClick={() => fileInputRef.current?.click()}
+                              role="button"
+                              tabIndex={0}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === " ") {
+                                  e.preventDefault();
+                                  fileInputRef.current?.click();
+                                }
+                              }}
+                              aria-label="Upload screenshot"
                             >
                               {previewUrl ? (
                                 <>
-                                  <img src={previewUrl} alt="preview" style={styles.previewThumb} />
+                                  <img src={previewUrl} alt="Preview" style={styles.previewThumb} />
                                   <div style={styles.dropMiniLabel}>
-                                    <span style={styles.dropMiniTitle}>Screenshot added</span>
-                                    <span style={styles.dropMiniHint}>
-                                      Click to replace • drag a new chart here
-                                    </span>
+                                    <div style={styles.dropMiniTitle}>Screenshot ready</div>
+                                    <div style={styles.dropMiniHint}>Tap to replace</div>
                                   </div>
                                   <button
                                     type="button"
                                     style={styles.miniCloseBtn}
                                     onClick={(e) => {
+                                      e.preventDefault();
                                       e.stopPropagation();
                                       onChange("file", null);
+                                      setPreviewUrl(null);
                                     }}
+                                    aria-label="Remove screenshot"
                                   >
                                     ×
                                   </button>
                                 </>
                               ) : (
                                 <div style={styles.dropMiniLabel}>
-                                  <span style={styles.dropMiniTitle}>+ Add screenshot</span>
-                                  <span style={styles.dropMiniHint}>
-                                    Click or drag chart here (.png / .jpg)
-                                  </span>
+                                  <div style={styles.dropMiniTitle}>Drop screenshot</div>
+                                  <div style={styles.dropMiniHint}>or tap to upload</div>
                                 </div>
                               )}
 
@@ -2076,135 +2167,177 @@ export default function App({ selectedDay = todayStr() }) {
                                 ref={fileInputRef}
                                 type="file"
                                 accept="image/*"
-                                onChange={(e) => onChange("file", e.target.files?.[0] || null)}
                                 style={{ display: "none" }}
+                                onChange={(e) => {
+                                  const f = e.target.files?.[0];
+                                  if (f && f.type.startsWith("image/")) onChange("file", f);
+                                }}
                               />
                             </div>
                           </div>
 
+                          {/* RIGHT: selects + notes */}
                           <div style={styles.composerRight}>
                             <div style={styles.fieldRow}>
                               <div style={styles.fieldHalf}>
-                                <div style={styles.label}>What were you trading?</div>
-                                <input
-                                  type="text"
-                                  style={styles.input}
-                                  placeholder="e.g. NASDAQ, S&P 500, GBP/USD, XAU/USD"
-                                  value={form.instrument}
-                                  onChange={(e) => onChange("instrument", e.target.value)}
-                                />
+                                <div style={styles.label}>Instrument</div>
+                                <div style={styles.selectWrapper}>
+                                  <select
+                                    value={form.instrument}
+                                    onChange={(e) => onChange("instrument", e.target.value)}
+                                    style={styles.select}
+                                  >
+                                    <option value="">Select…</option>
+                                    <option value="NASDAQ">Nasdaq</option>
+                                    <option value="S&P500">S&amp;P 500</option>
+                                    <option value="DOW">Dow</option>
+                                    <option value="GOLD">Gold</option>
+                                    <option value="GBP/USD">GBP/USD</option>
+                                    <option value="EUR/USD">EUR/USD</option>
+                                    <option value="USD/JPY">USD/JPY</option>
+                                    <option value="BTCUSD">BTCUSD</option>
+                                    <option value="ETHUSD">ETHUSD</option>
+                                    <option value="OTHER">Other</option>
+                                  </select>
+                                  <div style={styles.selectArrow}>▼</div>
+                                </div>
                               </div>
+
                               <div style={styles.fieldHalf}>
                                 <div style={styles.label}>Timeframe</div>
                                 <div style={styles.selectWrapper}>
                                   <select
-                                    style={styles.select}
                                     value={form.timeframe}
                                     onChange={(e) => onChange("timeframe", e.target.value)}
+                                    style={styles.select}
                                   >
-                                    <option value="">Select timeframe</option>
+                                    <option value="">Select…</option>
                                     <option value="1m">1m</option>
                                     <option value="3m">3m</option>
                                     <option value="5m">5m</option>
                                     <option value="15m">15m</option>
                                     <option value="30m">30m</option>
                                     <option value="1H">1H</option>
-                                    <option value="2H">2H</option>
                                     <option value="4H">4H</option>
-                                    <option value="Daily">Daily</option>
+                                    <option value="1D">1D</option>
                                   </select>
-                                  <span style={styles.selectArrow}>▾</span>
+                                  <div style={styles.selectArrow}>▼</div>
                                 </div>
                               </div>
                             </div>
 
-                            <div style={styles.label}>
-                              Strategy / thought process — what setup were you taking?
-                            </div>
+                            <div style={styles.label}>Your thought process</div>
                             <textarea
                               value={form.strategyNotes}
                               onChange={(e) => onChange("strategyNotes", e.target.value)}
-                              placeholder="Explain your idea: HTF bias, BOS/CHoCH, FVG/OB, liquidity grab, session, target, risk plan, management rules..."
-                              required
+                              placeholder="Bias + DOL… session… liquidity… entry/stop/target… why now? emotions?"
                               style={styles.textarea}
                             />
-                          </div>
-                        </div>
 
-                        <button
-                          type={hasCompletedTrade ? "button" : "submit"}
-                          disabled={buttonDisabled}
-                          style={{
-                            ...styles.button,
-                            ...(btnHover && !buttonDisabled ? styles.buttonHover : {}),
-                          }}
-                          onClick={hasCompletedTrade ? handleResetTrade : undefined}
-                          onMouseEnter={() => !buttonDisabled && setBtnHover(true)}
-                          onMouseLeave={() => setBtnHover(false)}
-                        >
-                          {primaryButtonLabel}
-                        </button>
+                            <button
+                              type="submit"
+                              style={{
+                                ...styles.button,
+                                ...(btnHover && !buttonDisabled ? styles.buttonHover : {}),
+                              }}
+                              disabled={buttonDisabled}
+                              onMouseEnter={() => setBtnHover(true)}
+                              onMouseLeave={() => setBtnHover(false)}
+                            >
+                              {primaryButtonLabel}
+                            </button>
 
-                        {error && (
-                          <div style={styles.error}>
-                            Error: {error}
-                            {!WEBHOOK_URL && (
+                            {error && <div style={styles.error}>{error}</div>}
+
+                            {!hasCompletedTrade && (
                               <div style={styles.hint}>
-                                Tip: define VITE_N8N_TRADE_FEEDBACK_WEBHOOK in .env.local and in your
-                                deploy env.
+                                * You must upload a screenshot, pick instrument + timeframe, and write a
+                                short explanation.
                               </div>
                             )}
+
+                            {hasCompletedTrade && (
+                              <div style={styles.smallMeta}>
+                                Tip: Press “Submit another trade” to keep the same day and add another
+                                screenshot.
+                              </div>
+                            )}
+
+                            {hasCompletedTrade && (
+                              <button
+                                type="button"
+                                onClick={handleResetTrade}
+                                style={{
+                                  marginTop: 10,
+                                  width: "100%",
+                                  borderRadius: 999,
+                                  border: "1px solid rgba(55,65,81,0.9)",
+                                  padding: "9px 12px",
+                                  fontSize: 13,
+                                  fontWeight: 800,
+                                  cursor: "pointer",
+                                  background:
+                                    "linear-gradient(135deg, rgba(15,23,42,0.95), rgba(15,23,42,0.7))",
+                                  color: "#e5e7eb",
+                                }}
+                              >
+                                Clear day’s trades
+                              </button>
+                            )}
                           </div>
-                        )}
+                        </div>
                       </form>
                     </div>
                   </div>
 
-                  {/* RIGHT: JOURNAL */}
-                  <div style={styles.rightCol}>
-                    <div style={styles.journalCard}>
+                  {/* ===================== RIGHT COLUMN: JOURNAL ===================== */}
+                  <div className="mt-rightCol" style={styles.rightCol}>
+                    <div className="mt-journalCard" style={styles.journalCard}>
                       <div style={styles.journalHeaderRow}>
-                        <div>
+                        <div className="mt-safeWrap">
                           <div style={styles.journalTitle}>Journal</div>
                           <div style={styles.journalSub}>
-                            Your personal notes for this day. Saved automatically for each date you select.
+                            Quick reflection for {day}. Saved automatically.
                           </div>
                         </div>
-                        <div style={styles.journalBadge}>Entry for {day}</div>
+                        <div style={styles.journalBadge}>Auto-save</div>
                       </div>
 
                       <div>
                         <div style={styles.journalLabel}>Notes</div>
                         <textarea
-                          style={styles.journalTextareaBig}
                           value={journal.notes}
-                          onChange={(e) => setJournal((prev) => ({ ...prev, notes: e.target.value }))}
-                          placeholder="Text here..."
+                          onChange={(e) => setJournal((p) => ({ ...p, notes: e.target.value }))}
+                          placeholder="What happened today? What was the plan?"
+                          style={styles.journalTextareaBig}
                         />
                       </div>
 
                       <div>
-                        <div style={styles.journalLabel}>What did you learn today?</div>
+                        <div style={styles.journalLabel}>What I learned</div>
                         <textarea
-                          style={styles.journalTextareaSmall}
                           value={journal.learned}
-                          onChange={(e) => setJournal((prev) => ({ ...prev, learned: e.target.value }))}
-                          placeholder="Key lessons, patterns, or rules you want to remember."
+                          onChange={(e) => setJournal((p) => ({ ...p, learned: e.target.value }))}
+                          placeholder="One lesson you want to keep forever."
+                          style={styles.journalTextareaSmall}
                         />
                       </div>
 
                       <div>
-                        <div style={styles.journalLabel}>What do you need to improve?</div>
+                        <div style={styles.journalLabel}>What to improve</div>
                         <textarea
-                          style={styles.journalTextareaSmall}
                           value={journal.improve}
-                          onChange={(e) => setJournal((prev) => ({ ...prev, improve: e.target.value }))}
-                          placeholder="Risk, discipline, entries, exits, patience, etc."
+                          onChange={(e) => setJournal((p) => ({ ...p, improve: e.target.value }))}
+                          placeholder="One adjustment for next session."
+                          style={styles.journalTextareaSmall}
                         />
                       </div>
 
                       <div style={styles.journalHintRow}>
-                        <span>Auto-saved per day — switch dates above to see past entries.</span>
+                        <span className="mt-safeWrap">
+                          ✅ Synced per member (Firestore) when logged in
+                        </span>
+                        <span className="mt-safeWrap">🔒 Local backup always kept on device</span>
                       </div>
                     </div>
                   </div>
@@ -2216,33 +2349,31 @@ export default function App({ selectedDay = todayStr() }) {
                 <div style={styles.pnlShell}>
                   <div style={styles.pnlTopRow}>
                     <div style={styles.pnlCard}>
-                      <div style={styles.pnlCardLabel}>All-time P&amp;L ($)</div>
-                      <div style={styles.pnlCardValue}>
-                        {fmtMoneySigned(Number(allTimeStats.pnlSum.toFixed(2)))}
+                      <div style={styles.pnlCardLabel}>All-time P&amp;L</div>
+                      <div style={styles.pnlCardValue}>{fmtMoneySigned(allTimeStats.pnlSum)}</div>
+                      <div style={styles.pnlCardSub}>
+                        Avg RR: {allTimeStats.avgRR == null ? "—" : fmtRR(allTimeStats.avgRR)}{" "}
+                        {allTimeStats.rrCount ? `(${allTimeStats.rrCount} days)` : ""}
                       </div>
-                      <div style={styles.pnlCardSub}>Manual entries • paper-friendly</div>
                     </div>
 
                     <div style={styles.pnlCard}>
-                      <div style={styles.pnlCardLabel}>All-time Avg RR</div>
-                      <div style={styles.pnlCardValue}>
-                        {allTimeStats.avgRR == null ? "—" : fmtRR(allTimeStats.avgRR)}
-                      </div>
+                      <div style={styles.pnlCardLabel}>This month</div>
+                      <div style={styles.pnlCardValue}>{fmtMoneySigned(monthStats.pnlSum)}</div>
                       <div style={styles.pnlCardSub}>
-                        Based on {allTimeStats.rrCount} day{allTimeStats.rrCount === 1 ? "" : "s"} with RR entered
+                        Avg RR: {monthStats.avgRR == null ? "—" : fmtRR(monthStats.avgRR)}{" "}
+                        {monthStats.rrCount ? `(${monthStats.rrCount} days)` : ""}
                       </div>
                     </div>
                   </div>
 
-                  <div style={styles.pnlCalendarCard}>
+                  <div className="mt-pnlCalendarCard" style={styles.pnlCalendarCard}>
                     <div style={styles.pnlCalHeader}>
                       <div>
                         <div style={styles.pnlCalTitle}>P&amp;L Calendar</div>
                         <div style={styles.pnlMonthMeta}>
-                          {pnlMonthLabel}:{" "}
-                          <strong>{fmtMoneySigned(Number(monthStats.pnlSum.toFixed(2)))}</strong>{" "}
-                          • Avg RR:{" "}
-                          <strong>{monthStats.avgRR == null ? "—" : fmtRR(monthStats.avgRR)}</strong>
+                          Click a day to enter <strong>Symbol</strong>, <strong>$ P&amp;L</strong>, and{" "}
+                          <strong>RR</strong>.
                         </div>
                       </div>
 
@@ -2273,54 +2404,48 @@ export default function App({ selectedDay = todayStr() }) {
                           const entry = allEntries?.[cell.iso];
                           const theme = cellThemeForIso(cell.iso);
 
-                          const hasPnl =
-                            typeof entry?.pnl === "number" && Number.isFinite(entry.pnl);
-
-                          const symbol = clampSymbol(entry?.symbol || "");
-                          const rr =
-                            typeof entry?.rr === "number" && Number.isFinite(entry.rr)
-                              ? entry.rr
-                              : null;
-
                           return (
                             <div
                               key={di}
                               style={styles.pnlDayCell(theme.bg, theme.border)}
                               onClick={() => openPnlModal(cell.iso)}
-                              onMouseEnter={(e) => {
-                                e.currentTarget.style.transform = "translateY(-1px)";
-                                e.currentTarget.style.boxShadow = "0 16px 50px rgba(15,23,42,0.75)";
+                              role="button"
+                              tabIndex={0}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === " ") {
+                                  e.preventDefault();
+                                  openPnlModal(cell.iso);
+                                }
                               }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.transform = "translateY(0)";
-                                e.currentTarget.style.boxShadow = "0 10px 35px rgba(15,23,42,0.55)";
-                              }}
-                              title="Click to add / edit"
                             >
                               <div style={styles.pnlDayTop}>
-                                <span style={styles.pnlDayNum}>{cell.day}</span>
-                                <span style={styles.pnlSymbolTag}>
-                                  {symbol || "—"}
-                                </span>
+                                <div style={styles.pnlDayNum}>{cell.day}</div>
+                                {entry?.symbol ? <div style={styles.pnlSymbolTag}>{entry.symbol}</div> : <div />}
                               </div>
 
-                              {!hasPnl ? (
-                                <div style={styles.pnlNoEntry}>No entry</div>
-                              ) : (
-                                <div style={styles.pnlDayMid}>
-                                  <span style={styles.pnlPnlValue}>
-                                    {fmtMoneySigned(Number(entry.pnl.toFixed(2)))}
-                                  </span>
-                                  <span style={styles.pnlRRValue}>
-                                    {rr == null ? "—" : fmtRR(rr)}
-                                  </span>
-                                </div>
-                              )}
+                              <div style={styles.pnlDayMid}>
+                                {typeof entry?.pnl === "number" && Number.isFinite(entry.pnl) ? (
+                                  <>
+                                    <div style={styles.pnlPnlValue}>{fmtMoneySigned(entry.pnl)}</div>
+                                    <div style={styles.pnlRRValue}>
+                                      {typeof entry?.rr === "number" && Number.isFinite(entry.rr)
+                                        ? fmtRR(entry.rr)
+                                        : "—"}
+                                    </div>
+                                  </>
+                                ) : (
+                                  <div style={styles.pnlNoEntry}>No entry</div>
+                                )}
+                              </div>
                             </div>
                           );
                         })}
                       </div>
                     ))}
+
+                    <div style={{ marginTop: 10, fontSize: 11, opacity: 0.75, color: "#9ca3af" }}>
+                      P&amp;L is manual (you type it in). It syncs per member when logged in.
+                    </div>
                   </div>
                 </div>
               )}
@@ -2329,16 +2454,26 @@ export default function App({ selectedDay = todayStr() }) {
         </div>
       </div>
 
-      {/* PROFILE MODAL */}
+      {/* ===================== PROFILE MODAL ===================== */}
       {showProfile && (
-        <div style={styles.overlay}>
-          <div style={styles.modalCard}>
+        <div style={styles.overlay} onClick={() => setShowProfile(false)} role="presentation">
+          <div style={styles.modalCard} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
             <div style={styles.modalTitle}>Profile</div>
-            <div style={styles.modalText}>Basic info for your MaxTradeAI workspace.</div>
+            <div style={styles.modalText}>This is the member currently loaded on this device.</div>
 
             <div style={styles.modalRow}>
               <div style={styles.modalLabel}>Member ID</div>
-              <div style={{ opacity: 0.95 }}>{member?.memberId || "—"}</div>
+              <div className="mt-safeWrap">{member?.memberId || "—"}</div>
+            </div>
+
+            <div style={styles.modalRow}>
+              <div style={styles.modalLabel}>Name</div>
+              <div className="mt-safeWrap">{member?.name || "—"}</div>
+            </div>
+
+            <div style={styles.modalRow}>
+              <div style={styles.modalLabel}>Email</div>
+              <div className="mt-safeWrap">{member?.email || "—"}</div>
             </div>
 
             <button type="button" style={styles.modalCloseBtn} onClick={() => setShowProfile(false)}>
@@ -2348,66 +2483,54 @@ export default function App({ selectedDay = todayStr() }) {
         </div>
       )}
 
-      {/* P&L EDIT MODAL */}
+      {/* ===================== PNL MODAL ===================== */}
       {pnlModalOpen && (
-        <div style={styles.overlay} onClick={() => setPnlModalOpen(false)}>
-          <div style={styles.modalCard} onClick={(e) => e.stopPropagation()}>
-            <div style={styles.modalTitle}>Edit Day</div>
+        <div style={styles.overlay} onClick={() => setPnlModalOpen(false)} role="presentation">
+          <div style={styles.modalCard} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+            <div style={styles.modalTitle}>Edit P&amp;L</div>
             <div style={styles.modalText}>
-              {pnlEditingIso
-                ? parseLocalDateFromIso(pnlEditingIso).toLocaleDateString(undefined, {
-                    weekday: "long",
-                    year: "numeric",
-                    month: "short",
-                    day: "numeric",
-                  })
-                : ""}
+              {pnlEditingIso} • Enter <strong>Symbol</strong>, <strong>$ P&amp;L</strong>, and optional{" "}
+              <strong>RR</strong>. (Leave all blank to delete.)
             </div>
 
             <div style={styles.modalRow}>
-              <div style={styles.modalLabel}>Symbol (what was traded)</div>
+              <div style={styles.modalLabel}>Symbol</div>
               <input
-                type="text"
                 value={pnlEditSymbol}
                 onChange={(e) => setPnlEditSymbol(e.target.value)}
-                placeholder="Ex: NQ, ES, GBPUSD, XAUUSD"
+                placeholder="e.g. NQ, ES, GBPUSD"
                 style={styles.input}
               />
             </div>
 
             <div style={styles.modalRow}>
-              <div style={styles.modalLabel}>P&amp;L for the day ($)</div>
+              <div style={styles.modalLabel}>$ P&amp;L (required)</div>
               <input
-                type="number"
-                step="0.01"
                 value={pnlEditPnl}
                 onChange={(e) => setPnlEditPnl(e.target.value)}
-                placeholder="Ex: 120, -45.50, 0"
+                placeholder="e.g. 120 or -55.5"
+                inputMode="decimal"
                 style={styles.input}
               />
-              <div style={{ fontSize: 11, opacity: 0.75, marginTop: 6, color: "#9ca3af" }}>
-                Tip: Leave everything blank to delete the day.
-              </div>
             </div>
 
             <div style={styles.modalRow}>
-              <div style={styles.modalLabel}>RR ratio (optional)</div>
+              <div style={styles.modalLabel}>RR (optional)</div>
               <input
-                type="number"
-                step="0.01"
                 value={pnlEditRR}
                 onChange={(e) => setPnlEditRR(e.target.value)}
-                placeholder="Ex: 2, 1.5, 0.8"
+                placeholder="e.g. 2.5"
+                inputMode="decimal"
                 style={styles.input}
               />
             </div>
 
             <div style={styles.modalBtnRow}>
-              <button type="button" style={styles.modalBtnGhost} onClick={() => setPnlModalOpen(false)}>
-                Cancel
-              </button>
               <button type="button" style={styles.modalBtnPrimary} onClick={savePnlEntry}>
                 Save
+              </button>
+              <button type="button" style={styles.modalBtnGhost} onClick={() => setPnlModalOpen(false)}>
+                Cancel
               </button>
             </div>
 
