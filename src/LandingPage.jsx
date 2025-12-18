@@ -560,7 +560,7 @@ export default function LandingPage({ onEnterApp }) {
       textDecorationStyle: "dotted",
     },
 
-    // ✅ P&L CALENDAR STYLES (missing before)
+    // ✅ P&L CALENDAR STYLES
     pnlGridWrap: {
       width: "100%",
       maxWidth: 940,
@@ -963,36 +963,43 @@ export default function LandingPage({ onEnterApp }) {
   ];
 
   // ✅ demo data for the P&L calendar graphic (prevents blank screen)
-  // ✅ Saturdays and Sundays are left blank (no trades logged)
+  // ✅ Saturdays and Sundays are blank. (Anything that was on Sundays has been moved to Fridays.)
   const pnlDays = [
+    // Week 1: Mon-Fri trades, Sat/Sun blank
     { d: 1, tone: "pos", v: "+$210", rr: "1.8R" },
     { d: 2, tone: "neg", v: "-$95", rr: "0.7R" },
     { d: 3, tone: "flat", v: "$0", rr: "—" },
     { d: 4, tone: "pos", v: "+$140", rr: "1.5R" },
-    { d: 5, tone: "neg", v: "-$60", rr: "0.9R" },
-    { d: 6, tone: "off", v: "—", rr: "" }, // Saturday
-    { d: 7, tone: "off", v: "—", rr: "" }, // Sunday
-    { d: 8, tone: "pos", v: "+$85", rr: "1.2R" },
-    { d: 9, tone: "flat", v: "$0", rr: "—" },
-    { d: 10, tone: "neg", v: "-$120", rr: "0.6R" },
-    { d: 11, tone: "pos", v: "+$260", rr: "1.9R" },
-    { d: 12, tone: "pos", v: "+$110", rr: "1.4R" },
-    { d: 13, tone: "off", v: "—", rr: "" }, // Saturday
-    { d: 14, tone: "off", v: "—", rr: "" }, // Sunday
-    { d: 15, tone: "neg", v: "-$70", rr: "0.8R" },
-    { d: 16, tone: "pos", v: "+$180", rr: "1.6R" },
-    { d: 17, tone: "pos", v: "+$95", rr: "1.1R" },
-    { d: 18, tone: "flat", v: "$0", rr: "—" },
-    { d: 19, tone: "pos", v: "+$220", rr: "1.7R" },
-    { d: 20, tone: "off", v: "—", rr: "" }, // Saturday
-    { d: 21, tone: "off", v: "—", rr: "" }, // Sunday
-    { d: 22, tone: "neg", v: "-$130", rr: "0.7R" },
-    { d: 23, tone: "pos", v: "+$145", rr: "1.3R" },
-    { d: 24, tone: "pos", v: "+$305", rr: "2.0R" },
-    { d: 25, tone: "neg", v: "-$55", rr: "0.9R" },
-    { d: 26, tone: "pos", v: "+$125", rr: "1.2R" },
-    { d: 27, tone: "off", v: "—", rr: "" }, // Saturday
-    { d: 28, tone: "off", v: "—", rr: "" }, // Sunday
+    { d: 5, tone: "pos", v: "+$85", rr: "1.2R" }, // moved from Sunday → Friday
+    { d: 6, tone: "off", v: "—", rr: "" }, // Saturday blank
+    { d: 7, tone: "off", v: "—", rr: "" }, // Sunday blank
+
+    // Week 2
+    { d: 8, tone: "neg", v: "-$60", rr: "0.9R" },
+    { d: 9, tone: "pos", v: "+$330", rr: "2.2R" },
+    { d: 10, tone: "flat", v: "$0", rr: "—" },
+    { d: 11, tone: "neg", v: "-$120", rr: "0.6R" },
+    { d: 12, tone: "pos", v: "+$260", rr: "1.9R" }, // moved from Sunday → Friday
+    { d: 13, tone: "off", v: "—", rr: "" }, // Saturday blank
+    { d: 14, tone: "off", v: "—", rr: "" }, // Sunday blank
+
+    // Week 3
+    { d: 15, tone: "pos", v: "+$110", rr: "1.4R" },
+    { d: 16, tone: "neg", v: "-$70", rr: "0.8R" },
+    { d: 17, tone: "pos", v: "+$180", rr: "1.6R" },
+    { d: 18, tone: "pos", v: "+$95", rr: "1.1R" },
+    { d: 19, tone: "pos", v: "+$220", rr: "1.7R" }, // moved from Sunday → Friday
+    { d: 20, tone: "off", v: "—", rr: "" }, // Saturday blank
+    { d: 21, tone: "off", v: "—", rr: "" }, // Sunday blank
+
+    // Week 4
+    { d: 22, tone: "flat", v: "$0", rr: "—" },
+    { d: 23, tone: "neg", v: "-$130", rr: "0.7R" },
+    { d: 24, tone: "pos", v: "+$145", rr: "1.3R" },
+    { d: 25, tone: "pos", v: "+$305", rr: "2.0R" },
+    { d: 26, tone: "pos", v: "+$125", rr: "1.2R" }, // moved from Sunday → Friday
+    { d: 27, tone: "off", v: "—", rr: "" }, // Saturday blank
+    { d: 28, tone: "off", v: "—", rr: "" }, // Sunday blank
   ];
 
   return (
@@ -1359,12 +1366,16 @@ export default function LandingPage({ onEnterApp }) {
         {/* ✅ P&L CALENDAR (UPGRADED) */}
         <section style={styles.section}>
           <div style={styles.sectionInner}>
-            <div style={styles.sectionEyebrow}>Track performance, not just ideas</div>
-            <h2 style={styles.sectionTitle}>The P&amp;L calendar shows the truth.</h2>
+            <div style={styles.sectionEyebrow}>
+              Track performance, not just ideas
+            </div>
+            <h2 style={styles.sectionTitle}>
+              The P&amp;L calendar shows the truth.
+            </h2>
             <p style={styles.sectionSub}>
-              Log <strong>profit/loss</strong> and <strong>risk-to-reward</strong> daily,
-              then see patterns instantly: overtrading days, revenge days, and which
-              setups create your best results.
+              Log <strong>profit/loss</strong> and <strong>risk-to-reward</strong>{" "}
+              daily, then see patterns instantly: overtrading days, revenge
+              days, and which setups create your best results.
             </p>
 
             <div style={styles.pnlGridWrap}>
@@ -1373,16 +1384,25 @@ export default function LandingPage({ onEnterApp }) {
                   <div style={{ fontWeight: 950, fontSize: 14 }}>
                     Your month at a glance
                   </div>
-                  <div style={{ fontSize: 12, opacity: 0.82, marginTop: 3, lineHeight: 1.45 }}>
-                    Green days = profitable. Red days = losing. Blue/flat = break-even.
-                    The goal is to make your <strong>process</strong> consistent so the
-                    calendar turns consistently green over time.
+                  <div
+                    style={{
+                      fontSize: 12,
+                      opacity: 0.82,
+                      marginTop: 3,
+                      lineHeight: 1.45,
+                    }}
+                  >
+                    Green days = profitable. Red days = losing. Blue/flat =
+                    break-even. The goal is to make your{" "}
+                    <strong>process</strong> consistent so the calendar turns
+                    consistently green over time.
                   </div>
                 </div>
                 <div style={{ fontSize: 12, opacity: 0.85 }}>
                   <span style={{ color: "#22d3ee", fontWeight: 950 }}>Tip:</span>{" "}
-                  If your avg R:R is solid but P&amp;L is negative, your entries/invalidations
-                  need work. If avg R:R is low, your trade management is likely the leak.
+                  If your avg R:R is solid but P&amp;L is negative, your
+                  entries/invalidations need work. If avg R:R is low, your trade
+                  management is likely the leak.
                 </div>
               </div>
 
@@ -1398,14 +1418,8 @@ export default function LandingPage({ onEnterApp }) {
                   <div style={styles.pnlSummaryLabel}>Avg R:R</div>
                   <div style={styles.pnlSummaryValue}>1.7R</div>
                   <div style={styles.pnlSummarySub}>
-                    Averages help you catch “small win / big loss” behavior early.
-                  </div>
-                </div>
-                <div style={styles.pnlSummaryCard}>
-                  <div style={styles.pnlSummaryLabel}>Consistency Score</div>
-                  <div style={styles.pnlSummaryValue}>7.8/10</div>
-                  <div style={styles.pnlSummarySub}>
-                    Built from streaks + discipline. (In-app score can be customized later.)
+                    Averages help you catch “small win / big loss” behavior
+                    early.
                   </div>
                 </div>
               </div>
@@ -1438,11 +1452,18 @@ export default function LandingPage({ onEnterApp }) {
                   ))}
                 </div>
 
-                <div style={{ marginTop: 12, fontSize: 12, opacity: 0.85, lineHeight: 1.55 }}>
-                  <strong>How you’ll use it:</strong> after trading, enter your day’s result
-                  and R:R, then compare it to your screenshot + journal. Over time you’ll
-                  spot the exact sessions, timeframes, and behaviors that print… and the ones
-                  that bleed.
+                <div
+                  style={{
+                    marginTop: 12,
+                    fontSize: 12,
+                    opacity: 0.85,
+                    lineHeight: 1.55,
+                  }}
+                >
+                  <strong>How you’ll use it:</strong> after trading, enter your
+                  day’s result and R:R, then compare it to your screenshot +
+                  journal. Over time you’ll spot the exact sessions,
+                  timeframes, and behaviors that print… and the ones that bleed.
                 </div>
               </div>
             </div>
@@ -1464,20 +1485,18 @@ export default function LandingPage({ onEnterApp }) {
                 <div style={styles.checklistTitle}>What you get</div>
                 <ul style={{ margin: 0, paddingLeft: 16, fontSize: 13 }}>
                   <li>AI feedback that grades every trade you upload.</li>
+                  <li>Breakdown of what you executed well vs. what you missed.</li>
                   <li>
-                    Breakdown of what you executed well vs. what you missed.
-                  </li>
-                  <li>
-                    Clear &quot;next time, do this&quot; suggestions so you
-                    know what to practice.
+                    Clear &quot;next time, do this&quot; suggestions so you know
+                    what to practice.
                   </li>
                   <li>
                     Daily journal section built-in for psychology, discipline,
                     and rules.
                   </li>
                   <li>
-                    Private Member ID workspace tied to your trades — not
-                    anyone else&apos;s.
+                    Private Member ID workspace tied to your trades — not anyone
+                    else&apos;s.
                   </li>
                 </ul>
               </div>
@@ -1665,7 +1684,10 @@ export default function LandingPage({ onEnterApp }) {
               >
                 Privacy Policy
               </span>
-              <span style={styles.footerLink} onClick={() => setShowTerms(true)}>
+              <span
+                style={styles.footerLink}
+                onClick={() => setShowTerms(true)}
+              >
                 Terms of Use
               </span>
               <span
@@ -1698,8 +1720,8 @@ export default function LandingPage({ onEnterApp }) {
             <div style={styles.modalTitle}>Continue to Stripe</div>
             <div style={styles.modalText}>
               You&apos;ll enter your details directly in Stripe Checkout. This
-              is a <strong>{PRICE_SHORT}</strong> subscription for access to
-              your portal.
+              is a <strong>{PRICE_SHORT}</strong> subscription for access to your
+              portal.
               <br />
               <br />
               <span style={{ fontSize: 11, opacity: 0.8 }}>
