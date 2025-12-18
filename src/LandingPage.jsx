@@ -7,6 +7,11 @@ const STRIPE_PAYMENT_URL =
 
 const MEMBER_LS_KEY = "tc_member_v1";
 
+// ✅ NEW: Login webhook (Member ID → verify in Google Sheet)
+const LOGIN_WEBHOOK_URL =
+  import.meta?.env?.VITE_N8N_TRADECOACH_LOGIN ||
+  "https://jacobtf007.app.n8n.cloud/webhook/tradecoach_login";
+
 // ✅ Pricing (single source of truth for all copy)
 const PRICE_DISPLAY = "$24.99";
 const BILLING_PERIOD = "month";
@@ -45,6 +50,7 @@ export default function LandingPage({ onEnterApp }) {
   const [showMemberPortal, setShowMemberPortal] = useState(false);
   const [memberPortalId, setMemberPortalId] = useState("");
   const [memberPortalError, setMemberPortalError] = useState("");
+  const [memberPortalLoading, setMemberPortalLoading] = useState(false);
 
   const [openFaq, setOpenFaq] = useState(null);
 
@@ -924,7 +930,8 @@ export default function LandingPage({ onEnterApp }) {
     }
   }
 
-  function handleMemberPortalSubmit(e) {
+  // ✅ MEMBER ID LOGIN (validated by n8n + Google Sheets)
+  async function handleMemberPortalSubmit(e) {
     e.preventDefault();
     setMemberPortalError("");
 
@@ -934,13 +941,40 @@ export default function LandingPage({ onEnterApp }) {
       return;
     }
 
-    saveMemberToLocal({
-      memberId: trimmed,
-      email: "",
-      name: "",
-    });
+    try {
+      setMemberPortalLoading(true);
 
-    openWorkspace();
+      const res = await fetch(LOGIN_WEBHOOK_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ memberId: trimmed }),
+      });
+
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok || !data?.ok) {
+        setMemberPortalError(
+          data?.error || "Member ID not found. Please check and try again."
+        );
+        return;
+      }
+
+      // ✅ Save EXACT member returned by sheet (prevents wrong account login)
+      const m = data.member || {};
+      saveMemberToLocal({
+        memberId: (m.memberId || trimmed).toString().trim(),
+        email: (m.email || "").toString().trim(),
+        name: (m.name || "").toString().trim(),
+        plan: (m.plan || "personal").toString().trim() || "personal",
+      });
+
+      openWorkspace();
+    } catch (err) {
+      console.error(err);
+      setMemberPortalError("Login failed. Please try again in a moment.");
+    } finally {
+      setMemberPortalLoading(false);
+    }
   }
 
   const faqs = [
@@ -1851,8 +1885,16 @@ export default function LandingPage({ onEnterApp }) {
                 <div style={styles.modalError}>{memberPortalError}</div>
               )}
 
-              <button type="submit" style={styles.modalButtonPrimary}>
-                Continue to my portal
+              <button
+                type="submit"
+                disabled={memberPortalLoading}
+                style={{
+                  ...styles.modalButtonPrimary,
+                  opacity: memberPortalLoading ? 0.7 : 1,
+                  cursor: memberPortalLoading ? "default" : "pointer",
+                }}
+              >
+                {memberPortalLoading ? "Checking..." : "Continue to my portal"}
               </button>
             </form>
 
