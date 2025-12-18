@@ -1,5 +1,4 @@
-// src/LandingPage.jsx
-import { useEffect, useMemo, useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
 const STRIPE_PAYMENT_URL =
@@ -56,17 +55,6 @@ export default function LandingPage({ onEnterApp }) {
   // show success banner if coming back from Stripe redirect
   const [checkoutSuccess, setCheckoutSuccess] = useState(false);
 
-  // ✅ basic responsive hook (no libraries)
-  const [isMobile, setIsMobile] = useState(() =>
-    typeof window === "undefined" ? false : window.innerWidth < 720
-  );
-
-  useEffect(() => {
-    const onResize = () => setIsMobile(window.innerWidth < 720);
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
-  }, []);
-
   useEffect(() => {
     try {
       const params = new URLSearchParams(window.location.search);
@@ -78,763 +66,714 @@ export default function LandingPage({ onEnterApp }) {
     }
   }, []);
 
-  const styles = useMemo(() => {
-    return {
-      page: {
-        minHeight: "100vh",
-        background: "#020617",
-        color: "#e5e7eb",
-        fontFamily:
-          '-apple-system, BlinkMacSystemFont, system-ui, -system-ui, "SF Pro Text", sans-serif',
-        display: "flex",
-        flexDirection: "column",
-        width: "100%",
-        maxWidth: "100%",
-        overflowX: "hidden",
-      },
+  const styles = {
+    page: {
+      minHeight: "100vh",
+      background: "#020617",
+      color: "#e5e7eb",
+      fontFamily:
+        '-apple-system, BlinkMacSystemFont, system-ui, -system-ui, "SF Pro Text", sans-serif',
+      display: "flex",
+      flexDirection: "column",
+      width: "100%",
+      maxWidth: "100%",
+      overflowX: "hidden",
+    },
 
-      // TOP RIBBON + NAV
-      ribbon: {
-        background: "#020617",
-        borderBottom: "1px solid rgba(34,211,238,0.30)",
-        padding: isMobile ? "8px 12px" : "6px 16px",
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        fontSize: 12,
-        color: "#f9fafb",
-      },
-      ribbonInner: {
-        maxWidth: 1120,
-        width: "100%",
-        display: "flex",
-        justifyContent: "space-between",
-        gap: 12,
-        alignItems: "center",
-      },
-      ribbonText: { opacity: 0.9, lineHeight: 1.25 },
-      ribbonStrong: { fontWeight: 800, color: "#22d3ee" },
-      ribbonBtn: {
-        borderRadius: 999,
-        border: "none",
-        padding: "7px 14px",
-        fontSize: 12,
-        fontWeight: 800,
-        cursor: "pointer",
-        background:
-          "linear-gradient(135deg, #22d3ee, #0ea5e9, #0369a1 90%, #0f172a)",
-        color: "#020617",
-        boxShadow: "0 14px 35px rgba(15,23,42,0.9)",
-        whiteSpace: "nowrap",
-      },
+    // TOP RIBBON + NAV
+    ribbon: {
+      background: "#020617",
+      borderBottom: "1px solid rgba(34,211,238,0.35)",
+      padding: "6px 16px",
+      display: "flex",
+      justifyContent: "center",
+      alignItems: "center",
+      fontSize: 12,
+      color: "#f9fafb",
+    },
+    ribbonInner: {
+      maxWidth: 1100,
+      width: "100%",
+      display: "flex",
+      justifyContent: "space-between",
+      gap: 12,
+      alignItems: "center",
+    },
+    ribbonText: {
+      opacity: 0.85,
+    },
+    ribbonStrong: {
+      fontWeight: 700,
+      color: "#22d3ee",
+    },
+    ribbonBtn: {
+      borderRadius: 999,
+      border: "none",
+      padding: "6px 14px",
+      fontSize: 12,
+      fontWeight: 700,
+      cursor: "pointer",
+      background:
+        "linear-gradient(135deg, #22d3ee, #0ea5e9, #0369a1 90%, #0f172a)",
+      color: "#020617",
+      boxShadow: "0 10px 30px rgba(15,23,42,0.85)",
+      whiteSpace: "nowrap",
+    },
 
-      nav: {
-        padding: isMobile ? "12px 12px 10px" : "14px 16px 10px",
-        display: "flex",
-        justifyContent: "center",
-        borderBottom: "1px solid rgba(15,23,42,0.9)",
-        background:
-          "radial-gradient(circle at top, #0f172a 0, #020617 55%, #020617 100%)",
-        position: "sticky",
-        top: 0,
-        zIndex: 40,
-        backdropFilter: "blur(18px)",
-      },
-      navInner: {
-        maxWidth: 1120,
-        width: "100%",
-        display: "flex",
-        alignItems: isMobile ? "flex-start" : "center",
-        justifyContent: "space-between",
-        gap: 12,
-        flexDirection: isMobile ? "column" : "row",
-      },
-      logoRow: { display: "flex", alignItems: "center", gap: 10 },
-      logoMark: {
-        width: 30,
-        height: 30,
-        borderRadius: 999,
-        background:
-          "conic-gradient(from 220deg, #22d3ee, #a5f3fc, #22d3ee, #0f172a)",
-        boxShadow:
-          "0 0 0 1px rgba(15,23,42,0.9), 0 0 24px rgba(34,211,238,0.55)",
-        flex: "0 0 auto",
-      },
-      logoTitle: {
-        fontSize: 16,
-        fontWeight: 900,
-        letterSpacing: 0.1,
-      },
-      logoSub: { fontSize: 11, opacity: 0.72 },
-      navRight: {
-        display: "flex",
-        gap: 10,
-        alignItems: "center",
-        fontSize: 12,
-        width: isMobile ? "100%" : "auto",
-        justifyContent: isMobile ? "space-between" : "flex-end",
-      },
-      navPill: {
-        padding: "6px 10px",
-        borderRadius: 999,
-        border: "1px solid rgba(51,65,85,0.9)",
-        background: "rgba(15,23,42,0.9)",
-        opacity: 0.95,
-        whiteSpace: "nowrap",
-        display: isMobile ? "none" : "inline-flex",
-      },
-      navLinkBtn: {
-        borderRadius: 999,
-        border: "1px solid rgba(148,163,184,0.45)",
-        background: "rgba(15,23,42,0.92)",
-        color: "#e5e7eb",
-        padding: "9px 12px",
-        fontSize: 12,
-        fontWeight: 700,
-        cursor: "pointer",
-        width: isMobile ? "calc(50% - 6px)" : "auto",
-      },
-      navPrimaryBtn: {
-        borderRadius: 999,
-        border: "none",
-        background:
-          "linear-gradient(135deg, #22d3ee, #0ea5e9, #0284c7 90%, #0f172a)",
-        color: "#020617",
-        padding: "9px 12px",
-        fontSize: 12,
-        fontWeight: 900,
-        cursor: "pointer",
-        boxShadow: "0 16px 40px rgba(15,23,42,0.9)",
-        width: isMobile ? "calc(50% - 6px)" : "auto",
-      },
+    nav: {
+      padding: "14px 16px 10px",
+      display: "flex",
+      justifyContent: "center",
+      borderBottom: "1px solid rgba(15,23,42,0.9)",
+      background:
+        "radial-gradient(circle at top, #0f172a 0, #020617 55%, #020617 100%)",
+      position: "sticky",
+      top: 0,
+      zIndex: 40,
+      backdropFilter: "blur(18px)",
+    },
+    navInner: {
+      maxWidth: 1100,
+      width: "100%",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: 12,
+    },
+    logoRow: {
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
+    },
+    logoMark: {
+      width: 28,
+      height: 28,
+      borderRadius: 999,
+      background:
+        "conic-gradient(from 220deg, #22d3ee, #a5f3fc, #22d3ee, #0f172a)",
+      boxShadow:
+        "0 0 0 1px rgba(15,23,42,0.9), 0 0 20px rgba(34,211,238,0.55)",
+    },
+    logoTitle: {
+      fontSize: 16,
+      fontWeight: 800,
+      letterSpacing: 0.1,
+    },
+    logoSub: {
+      fontSize: 11,
+      opacity: 0.7,
+    },
+    navRight: {
+      display: "flex",
+      gap: 12,
+      alignItems: "center",
+      fontSize: 12,
+    },
+    navPill: {
+      padding: "4px 10px",
+      borderRadius: 999,
+      border: "1px solid rgba(51,65,85,0.9)",
+      background: "rgba(15,23,42,0.9)",
+      opacity: 0.9,
+      whiteSpace: "nowrap",
+    },
+    navLink: {
+      fontSize: 12,
+      opacity: 0.8,
+      cursor: "pointer",
+      borderBottom: "1px solid transparent",
+    },
 
-      // GENERAL LAYOUT
-      section: {
-        padding: isMobile ? "34px 12px" : "42px 16px",
-        display: "flex",
-        justifyContent: "center",
-      },
-      sectionInner: {
-        maxWidth: 1120,
-        width: "100%",
-        textAlign: "center",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-      },
+    // GENERAL LAYOUT
+    section: {
+      padding: "40px 16px",
+      display: "flex",
+      justifyContent: "center",
+    },
+    sectionInner: {
+      maxWidth: 1100,
+      width: "100%",
+      textAlign: "center",
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+    },
 
-      // HERO
-      hero: {
-        padding: isMobile ? "44px 12px 34px" : "62px 16px 48px",
-        background:
-          "radial-gradient(circle at top, #0f172a 0%, #020617 45%, #020617 100%)",
-        display: "flex",
-        justifyContent: "center",
-      },
-      heroInner: {
-        maxWidth: 1120,
-        width: "100%",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        textAlign: "center",
-        gap: 18,
-      },
-      heroEyebrow: {
-        fontSize: 12,
-        letterSpacing: 0.16,
-        textTransform: "uppercase",
-        opacity: 0.85,
-        color: "#38bdf8",
-      },
-      heroHeadline: {
-        fontSize: "clamp(30px, 5.2vw, 46px)",
-        lineHeight: 1.08,
-        fontWeight: 950,
-        maxWidth: 760,
-        margin: 0,
-      },
-      heroHighlight: { color: "#22d3ee" },
-      heroSub: {
-        maxWidth: 680,
-        fontSize: isMobile ? 14 : 15,
-        opacity: 0.88,
-        lineHeight: 1.55,
-        margin: 0,
-      },
-      heroBtnRow: {
-        display: "flex",
-        flexWrap: "wrap",
-        gap: 10,
-        justifyContent: "center",
-        marginTop: 6,
-        width: "100%",
-      },
-      heroPrimaryBtn: {
-        borderRadius: 999,
-        border: "none",
-        padding: isMobile ? "12px 16px" : "12px 22px",
-        fontSize: 14,
-        fontWeight: 900,
-        cursor: "pointer",
-        background:
-          "linear-gradient(135deg, #22d3ee, #0ea5e9, #0284c7 90%, #0f172a)",
-        color: "#020617",
-        boxShadow:
-          "0 18px 48px rgba(15,23,42,0.92), 0 0 20px rgba(34,211,238,0.45)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 8,
-        minWidth: isMobile ? "100%" : 260,
-      },
-      heroSecondaryBtn: {
-        borderRadius: 999,
-        border: "1px solid rgba(148,163,184,0.75)",
-        padding: isMobile ? "11px 16px" : "11px 18px",
-        fontSize: 13,
-        fontWeight: 700,
-        cursor: "pointer",
-        background: "rgba(15,23,42,0.95)",
-        color: "#e5e7eb",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 6,
-        minWidth: isMobile ? "100%" : 200,
-      },
-      heroTertiary: { fontSize: 11, opacity: 0.78, marginTop: 6 },
+    // HERO
+    hero: {
+      padding: "56px 16px 46px",
+      background:
+        "radial-gradient(circle at top, #0f172a 0%, #020617 45%, #020617 100%)",
+      display: "flex",
+      justifyContent: "center",
+    },
+    heroInner: {
+      maxWidth: 1100,
+      width: "100%",
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      textAlign: "center",
+      gap: 20,
+    },
+    heroEyebrow: {
+      fontSize: 12,
+      letterSpacing: 0.16,
+      textTransform: "uppercase",
+      opacity: 0.8,
+      color: "#38bdf8",
+    },
+    heroHeadline: {
+      fontSize: 38,
+      lineHeight: 1.1,
+      fontWeight: 900,
+      maxWidth: 680,
+    },
+    heroHighlight: {
+      color: "#22d3ee",
+    },
+    heroSub: {
+      maxWidth: 620,
+      fontSize: 14,
+      opacity: 0.86,
+    },
+    heroBtnRow: {
+      display: "flex",
+      flexWrap: "wrap",
+      gap: 10,
+      justifyContent: "center",
+      marginTop: 6,
+    },
+    heroPrimaryBtn: {
+      borderRadius: 999,
+      border: "none",
+      padding: "11px 22px",
+      fontSize: 14,
+      fontWeight: 800,
+      cursor: "pointer",
+      background:
+        "linear-gradient(135deg, #22d3ee, #0ea5e9, #0284c7 90%, #0f172a)",
+      color: "#020617",
+      boxShadow:
+        "0 18px 45px rgba(15,23,42,0.9), 0 0 20px rgba(34,211,238,0.55)",
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
+    },
+    heroSecondaryBtn: {
+      borderRadius: 999,
+      border: "1px solid rgba(148,163,184,0.9)",
+      padding: "10px 18px",
+      fontSize: 13,
+      fontWeight: 600,
+      cursor: "pointer",
+      background: "rgba(15,23,42,0.95)",
+      color: "#e5e7eb",
+      display: "flex",
+      alignItems: "center",
+      gap: 6,
+    },
+    heroTertiary: {
+      fontSize: 11,
+      opacity: 0.75,
+      marginTop: 6,
+    },
 
-      // LOGOS STRIP
-      logosRow: {
-        marginTop: 10,
-        padding: "14px 0 4px",
-        borderTop: "1px solid rgba(15,23,42,0.9)",
-        borderBottom: "1px solid rgba(15,23,42,0.9)",
-        display: "flex",
-        flexWrap: "wrap",
-        justifyContent: "center",
-        gap: 10,
-        opacity: 0.9,
-        fontSize: 11,
-      },
-      logoBadge: {
-        padding: "7px 12px",
-        borderRadius: 999,
-        border: "1px solid rgba(51,65,85,0.9)",
-        background:
-          "linear-gradient(135deg, rgba(15,23,42,0.95), rgba(8,47,73,0.95))",
-      },
+    // LOGOS STRIP
+    logosRow: {
+      marginTop: 10,
+      padding: "16px 0 4px",
+      borderTop: "1px solid rgba(15,23,42,0.9)",
+      borderBottom: "1px solid rgba(15,23,42,0.9)",
+      display: "flex",
+      flexWrap: "wrap",
+      justifyContent: "center",
+      gap: 16,
+      opacity: 0.85,
+      fontSize: 11,
+    },
+    logoBadge: {
+      padding: "6px 12px",
+      borderRadius: 999,
+      border: "1px solid rgba(51,65,85,0.9)",
+      background:
+        "linear-gradient(135deg, rgba(15,23,42,0.95), rgba(8,47,73,0.95))",
+    },
 
-      // STATS
-      statsGrid: {
-        display: "grid",
-        gridTemplateColumns: isMobile ? "1fr" : "repeat(4, minmax(0, 1fr))",
-        gap: 14,
-        marginTop: 18,
-        width: "100%",
-      },
-      statCard: {
-        padding: "16px 18px",
-        borderRadius: 18,
-        background:
-          "linear-gradient(135deg, rgba(15,118,110,0.85), rgba(2,132,199,0.9), rgba(15,118,110,0.85))",
-        boxShadow: "0 18px 50px rgba(15,23,42,0.92)",
-        border: "1px solid rgba(34,211,238,0.22)",
-        textAlign: "left",
-      },
-      statNumber: { fontSize: 20, fontWeight: 950, marginBottom: 4 },
-      statLabel: { fontSize: 12, opacity: 0.9 },
+    // STATS
+    statsGrid: {
+      display: "flex",
+      flexWrap: "wrap",
+      gap: 16,
+      marginTop: 18,
+      justifyContent: "center",
+    },
+    statCard: {
+      flex: "1 1 180px",
+      minWidth: 160,
+      padding: "16px 18px",
+      borderRadius: 18,
+      background:
+        "linear-gradient(135deg, #0f766e, #0284c7, #0f766e 90%, #0b1120)",
+      boxShadow: "0 18px 50px rgba(15,23,42,0.9)",
+    },
+    statNumber: {
+      fontSize: 20,
+      fontWeight: 900,
+      marginBottom: 4,
+    },
+    statLabel: {
+      fontSize: 12,
+      opacity: 0.9,
+    },
 
-      // TITLES
-      sectionTitle: {
-        fontSize: "clamp(20px, 3.4vw, 28px)",
-        fontWeight: 950,
-        marginBottom: 8,
-      },
-      sectionEyebrow: {
-        fontSize: 11,
-        letterSpacing: 0.16,
-        textTransform: "uppercase",
-        opacity: 0.85,
-        color: "#38bdf8",
-        marginBottom: 4,
-      },
-      sectionSub: {
-        fontSize: 13,
-        opacity: 0.8,
-        maxWidth: 560,
-        lineHeight: 1.55,
-      },
+    // TITLES
+    sectionTitle: {
+      fontSize: 24,
+      fontWeight: 900,
+      marginBottom: 8,
+    },
+    sectionEyebrow: {
+      fontSize: 11,
+      letterSpacing: 0.16,
+      textTransform: "uppercase",
+      opacity: 0.8,
+      color: "#38bdf8",
+      marginBottom: 4,
+    },
+    sectionSub: {
+      fontSize: 13,
+      opacity: 0.78,
+      maxWidth: 520,
+    },
 
-      // PROBLEMS
-      problemsGrid: {
-        marginTop: 20,
-        display: "grid",
-        gridTemplateColumns: isMobile ? "1fr" : "repeat(3, minmax(0, 1fr))",
-        gap: 14,
-        width: "100%",
-      },
-      problemCard: {
-        borderRadius: 22,
-        padding: "18px 18px 20px",
-        background:
-          "linear-gradient(135deg, rgba(11,17,32,0.96), rgba(15,23,42,0.96), rgba(2,6,23,0.98))",
-        color: "#e5e7eb",
-        boxShadow: "0 18px 45px rgba(15,23,42,0.92)",
-        border: "1px solid rgba(30,64,175,0.55)",
-        textAlign: "left",
-      },
-      problemTag: {
-        fontSize: 10,
-        textTransform: "uppercase",
-        letterSpacing: 0.14,
-        padding: "4px 8px",
-        borderRadius: 999,
-        border: "1px solid rgba(148,163,184,0.55)",
-        marginBottom: 10,
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 6,
-        background: "rgba(15,23,42,0.75)",
-      },
-      problemTitle: { fontSize: 15, fontWeight: 900, marginBottom: 8 },
-      problemText: { fontSize: 12, opacity: 0.9, lineHeight: 1.55 },
+    // PROBLEMS
+    problemsGrid: {
+      marginTop: 20,
+      display: "flex",
+      flexWrap: "wrap",
+      gap: 14,
+      justifyContent: "center",
+    },
+    problemCard: {
+      flex: "1 1 220px",
+      minWidth: 220,
+      borderRadius: 22,
+      padding: "18px 18px 20px",
+      background:
+        "linear-gradient(135deg, #0b1120, #0f172a, #0b1120 90%, #020617)",
+      color: "#e5e7eb",
+      boxShadow: "0 18px 45px rgba(15,23,42,0.9)",
+      border: "1px solid rgba(30,64,175,0.7)",
+    },
+    problemTag: {
+      fontSize: 10,
+      textTransform: "uppercase",
+      letterSpacing: 0.14,
+      padding: "4px 8px",
+      borderRadius: 999,
+      border: "1px solid rgba(148,163,184,0.7)",
+      marginBottom: 10,
+      display: "inline-flex",
+      alignItems: "center",
+      gap: 4,
+      background: "rgba(15,23,42,0.9)",
+    },
+    problemTitle: {
+      fontSize: 15,
+      fontWeight: 800,
+      marginBottom: 8,
+    },
+    problemText: {
+      fontSize: 12,
+      opacity: 0.9,
+    },
 
-      // CHECKLIST / WHAT YOU GET
-      checklistGrid: {
-        marginTop: 18,
-        display: "grid",
-        gridTemplateColumns: isMobile ? "1fr" : "repeat(2, minmax(0, 1fr))",
-        gap: 14,
-        width: "100%",
-      },
-      checklistCol: {
-        borderRadius: 20,
-        padding: 18,
-        background: "rgba(15,23,42,0.92)",
-        border: "1px solid rgba(30,64,175,0.65)",
-        boxShadow: "0 18px 45px rgba(15,23,42,0.92)",
-        textAlign: "left",
-      },
-      checklistTitle: { fontSize: 15, fontWeight: 900, marginBottom: 10 },
-      checklistItemRow: {
-        display: "flex",
-        justifyContent: "space-between",
-        gap: 10,
-        fontSize: 12,
-        padding: "10px 10px",
-        borderRadius: 14,
-        background: "rgba(2,6,23,0.55)",
-        border: "1px solid rgba(30,64,175,0.55)",
-        marginBottom: 8,
-      },
-      checklistLabel: { opacity: 0.9 },
-      checklistChecks: {
-        display: "flex",
-        gap: 10,
-        fontSize: 11,
-        textTransform: "uppercase",
-        letterSpacing: 0.12,
-        whiteSpace: "nowrap",
-      },
-      checklistYes: { color: "#22c55e", fontWeight: 800 },
-      checklistNo: { color: "#fb7185", fontWeight: 800 },
+    // CHECKLIST / WHAT YOU GET
+    checklistGrid: {
+      marginTop: 18,
+      display: "flex",
+      flexWrap: "wrap",
+      gap: 16,
+      justifyContent: "center",
+    },
+    checklistCol: {
+      flex: "1 1 260px",
+      minWidth: 240,
+      borderRadius: 20,
+      padding: 18,
+      background: "rgba(15,23,42,0.97)",
+      border: "1px solid rgba(30,64,175,0.8)",
+      boxShadow: "0 18px 45px rgba(15,23,42,0.9)",
+      textAlign: "left",
+    },
+    checklistTitle: {
+      fontSize: 15,
+      fontWeight: 800,
+      marginBottom: 8,
+    },
+    checklistItemRow: {
+      display: "flex",
+      justifyContent: "space-between",
+      fontSize: 12,
+      padding: "8px 10px",
+      borderRadius: 12,
+      background: "rgba(15,23,42,0.96)",
+      border: "1px solid rgba(30,64,175,0.8)",
+      marginBottom: 6,
+    },
+    checklistLabel: {
+      opacity: 0.86,
+    },
+    checklistChecks: {
+      display: "flex",
+      gap: 8,
+      fontSize: 11,
+      textTransform: "uppercase",
+      letterSpacing: 0.14,
+    },
+    checklistYes: {
+      color: "#22c55e",
+    },
+    checklistNo: {
+      color: "#fb7185",
+    },
 
-      // TESTIMONIALS
-      testimonialGrid: {
-        marginTop: 18,
-        display: "grid",
-        gridTemplateColumns: isMobile ? "1fr" : "repeat(3, minmax(0, 1fr))",
-        gap: 14,
-        width: "100%",
-      },
-      testimonialCard: {
-        borderRadius: 20,
-        padding: 16,
-        background:
-          "linear-gradient(135deg, rgba(11,17,32,0.96), rgba(15,23,42,0.96), rgba(2,6,23,0.98))",
-        boxShadow: "0 18px 45px rgba(15,23,42,0.92)",
-        border: "1px solid rgba(30,64,175,0.55)",
-        fontSize: 12,
-        textAlign: "left",
-        lineHeight: 1.55,
-      },
-      testimonialName: { marginTop: 10, fontWeight: 800, fontSize: 12 },
+    // TESTIMONIALS
+    testimonialGrid: {
+      marginTop: 18,
+      display: "flex",
+      flexWrap: "wrap",
+      gap: 16,
+      justifyContent: "center",
+    },
+    testimonialCard: {
+      flex: "1 1 260px",
+      minWidth: 220,
+      borderRadius: 20,
+      padding: 16,
+      background:
+        "linear-gradient(135deg, #0b1120, #0f172a, #0b1120 90%, #020617)",
+      boxShadow: "0 18px 45px rgba(15,23,42,0.9)",
+      border: "1px solid rgba(30,64,175,0.7)",
+      fontSize: 12,
+      textAlign: "left",
+    },
+    testimonialName: {
+      marginTop: 10,
+      fontWeight: 700,
+      fontSize: 12,
+    },
 
-      // FAQ
-      faqList: {
-        marginTop: 18,
-        display: "flex",
-        flexDirection: "column",
-        gap: 10,
-        alignItems: "center",
-        width: "100%",
-      },
-      faqItem: {
-        borderRadius: 16,
-        overflow: "hidden",
-        border: "1px solid rgba(30,64,175,0.65)",
-        background:
-          "linear-gradient(135deg, rgba(11,17,32,0.96), rgba(15,23,42,0.96), rgba(2,6,23,0.98))",
-        width: "100%",
-        maxWidth: 720,
-        textAlign: "left",
-      },
-      faqHeader: {
-        padding: "12px 14px",
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-        cursor: "pointer",
-        fontSize: 13,
-        fontWeight: 800,
-      },
-      faqIcon: { fontSize: 18, fontWeight: 900, marginLeft: 8, opacity: 0.9 },
-      faqBody: {
-        padding: "0 14px 12px",
-        fontSize: 12,
-        background: "rgba(2,6,23,0.55)",
-        borderTop: "1px solid rgba(30,64,175,0.45)",
-        lineHeight: 1.55,
-      },
+    // FAQ
+    faqList: {
+      marginTop: 18,
+      display: "flex",
+      flexDirection: "column",
+      gap: 10,
+      alignItems: "center",
+    },
+    faqItem: {
+      borderRadius: 14,
+      overflow: "hidden",
+      border: "1px solid rgba(30,64,175,0.8)",
+      background:
+        "linear-gradient(135deg, #0b1120, #0f172a, #0b1120 90%, #020617)",
+      width: "100%",
+      maxWidth: 680,
+      textAlign: "left",
+    },
+    faqHeader: {
+      padding: "10px 14px",
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      cursor: "pointer",
+      fontSize: 13,
+      fontWeight: 600,
+    },
+    faqIcon: {
+      fontSize: 18,
+      fontWeight: 700,
+      marginLeft: 8,
+    },
+    faqBody: {
+      padding: "0 14px 10px",
+      fontSize: 12,
+      background: "rgba(15,23,42,0.96)",
+      borderTop: "1px solid rgba(30,64,175,0.7)",
+    },
 
-      // FINAL CTA
-      finalCard: {
-        marginTop: 18,
-        borderRadius: 24,
-        padding: "22px 18px 24px",
-        background: "rgba(15,23,42,0.92)",
-        border: "1px solid rgba(30,64,175,0.75)",
-        textAlign: "center",
-        boxShadow: "0 24px 70px rgba(15,23,42,0.95)",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        width: "100%",
-      },
-      finalHeadline: { fontSize: 22, fontWeight: 950, marginBottom: 8 },
-      finalSub: {
-        fontSize: 13,
-        opacity: 0.88,
-        maxWidth: 620,
-        margin: "0 auto 14px",
-        lineHeight: 1.6,
-      },
+    // FINAL CTA
+    finalCard: {
+      marginTop: 18,
+      borderRadius: 24,
+      padding: "22px 18px 24px",
+      background: "rgba(15,23,42,0.98)",
+      border: "1px solid rgba(30,64,175,0.9)",
+      textAlign: "center",
+      boxShadow: "0 24px 70px rgba(15,23,42,0.95)",
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+    },
+    finalHeadline: {
+      fontSize: 22,
+      fontWeight: 900,
+      marginBottom: 8,
+    },
+    finalSub: {
+      fontSize: 13,
+      opacity: 0.86,
+      maxWidth: 560,
+      margin: "0 auto 14px",
+    },
 
-      // FOOTER
-      footer: {
-        borderTop: "1px solid rgba(15,23,42,0.9)",
-        padding: "18px 16px 22px",
-        display: "flex",
-        justifyContent: "center",
-        fontSize: 11,
-        color: "#9ca3af",
-      },
-      footerInner: {
-        maxWidth: 1120,
-        width: "100%",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        gap: 10,
-        textAlign: "center",
-      },
-      footerLinks: {
-        display: "flex",
-        gap: 14,
-        flexWrap: "wrap",
-        justifyContent: "center",
-      },
-      footerLink: {
-        cursor: "pointer",
-        textDecoration: "underline",
-        textDecorationStyle: "dotted",
-      },
+    // FOOTER
+    footer: {
+      borderTop: "1px solid rgba(15,23,42,0.9)",
+      padding: "18px 16px 22px",
+      display: "flex",
+      justifyContent: "center",
+      fontSize: 11,
+      color: "#9ca3af",
+    },
+    footerInner: {
+      maxWidth: 1100,
+      width: "100%",
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      gap: 10,
+      textAlign: "center",
+    },
+    footerLinks: {
+      display: "flex",
+      gap: 14,
+      flexWrap: "wrap",
+      justifyContent: "center",
+    },
+    footerLink: {
+      cursor: "pointer",
+      textDecoration: "underline",
+      textDecorationStyle: "dotted",
+    },
 
-      // MODALS
-      overlay: {
-        position: "fixed",
-        inset: 0,
-        background: "rgba(0,0,0,0.74)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 16,
-        zIndex: 80,
-        boxSizing: "border-box",
-      },
-      modalCard: {
-        width: "100%",
-        maxWidth: 460,
-        background: "rgba(2,6,23,0.96)",
-        borderRadius: 18,
-        border: "1px solid rgba(30,64,175,0.75)",
-        boxShadow: "0 24px 70px rgba(15,23,42,0.95)",
-        padding: 20,
-        fontSize: 13,
-        boxSizing: "border-box",
-        color: "#e5e7eb",
-      },
-      modalTitle: {
-        fontSize: 18,
-        fontWeight: 900,
-        marginBottom: 6,
-        textAlign: "center",
-      },
-      modalText: {
-        fontSize: 12,
-        opacity: 0.85,
-        marginBottom: 12,
-        textAlign: "center",
-        lineHeight: 1.55,
-      },
-      modalButtonPrimary: {
-        width: "100%",
-        borderRadius: 12,
-        border: "none",
-        padding: "10px 12px",
-        fontSize: 13,
-        fontWeight: 900,
-        background:
-          "linear-gradient(130deg, #22d3ee, #0ea5e9, #0284c7 90%, #0f172a)",
-        color: "#020617",
-        cursor: "pointer",
-        marginTop: 6,
-        boxShadow: "0 16px 40px rgba(15,23,42,0.9)",
-      },
-      modalButtonSecondary: {
-        width: "100%",
-        borderRadius: 12,
-        border: "1px solid rgba(30,64,175,0.75)",
-        padding: "9px 12px",
-        fontSize: 12,
-        fontWeight: 700,
-        background: "transparent",
-        color: "#e5e7eb",
-        cursor: "pointer",
-        marginTop: 10,
-      },
-      modalError: {
-        fontSize: 11,
-        color: "#fecaca",
-        marginTop: 6,
-        textAlign: "center",
-        lineHeight: 1.4,
-      },
-      idBox: {
-        marginTop: 10,
-        padding: 12,
-        borderRadius: 12,
-        background: "rgba(2,6,23,0.6)",
-        border: "1px dashed rgba(34,211,238,0.55)",
-        fontSize: 12,
-        textAlign: "center",
-        wordBreak: "break-word",
-      },
-      idLabel: { fontWeight: 900, marginBottom: 4, display: "block" },
-      idValue: {
-        fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
-        fontSize: 13,
-        color: "#22d3ee",
-      },
-      idHint: { marginTop: 8, fontSize: 11, opacity: 0.82, lineHeight: 1.45 },
+    // MODALS
+    overlay: {
+      position: "fixed",
+      inset: 0,
+      background: "rgba(0,0,0,0.7)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      padding: 16,
+      zIndex: 80,
+      boxSizing: "border-box",
+    },
+    modalCard: {
+      width: "100%",
+      maxWidth: 420,
+      background: "#020617",
+      borderRadius: 18,
+      border: "1px solid rgba(30,64,175,0.9)",
+      boxShadow: "0 24px 70px rgba(15,23,42,0.95)",
+      padding: 20,
+      fontSize: 13,
+      boxSizing: "border-box",
+      color: "#e5e7eb",
+    },
+    modalTitle: {
+      fontSize: 18,
+      fontWeight: 800,
+      marginBottom: 6,
+      textAlign: "center",
+    },
+    modalText: {
+      fontSize: 12,
+      opacity: 0.8,
+      marginBottom: 12,
+      textAlign: "center",
+    },
+    modalButtonPrimary: {
+      width: "100%",
+      borderRadius: 10,
+      border: "none",
+      padding: "9px 12px",
+      fontSize: 13,
+      fontWeight: 700,
+      background:
+        "linear-gradient(130deg, #22d3ee, #0ea5e9, #0284c7 90%, #0f172a)",
+      color: "#020617",
+      cursor: "pointer",
+      marginTop: 4,
+    },
+    modalButtonSecondary: {
+      width: "100%",
+      borderRadius: 10,
+      border: "1px solid rgba(30,64,175,0.9)",
+      padding: "8px 12px",
+      fontSize: 12,
+      fontWeight: 500,
+      background: "transparent",
+      color: "#e5e7eb",
+      cursor: "pointer",
+      marginTop: 8,
+    },
+    modalError: {
+      fontSize: 11,
+      color: "#fecaca",
+      marginTop: 4,
+      textAlign: "center",
+    },
+    idBox: {
+      marginTop: 10,
+      padding: 10,
+      borderRadius: 10,
+      background: "#020617",
+      border: "1px dashed rgba(30,64,175,0.9)",
+      fontSize: 12,
+      textAlign: "center",
+      wordBreak: "break-all",
+    },
+    idLabel: {
+      fontWeight: 700,
+      marginBottom: 4,
+      display: "block",
+    },
+    idValue: {
+      fontFamily: "monospace",
+      fontSize: 13,
+      color: "#22d3ee",
+    },
+    idHint: {
+      marginTop: 6,
+      fontSize: 11,
+      opacity: 0.8,
+    },
 
-      // AI REPORT PREVIEW
-      previewCard: {
-        marginTop: 20,
-        maxWidth: 520,
-        width: "100%",
-        borderRadius: 22,
-        background: "rgba(2,6,23,0.55)",
-        border: "1px solid rgba(148,163,184,0.35)",
-        padding: 18,
-        boxShadow: "0 18px 45px rgba(15,23,42,0.92)",
-        textAlign: "left",
-      },
-      previewHeader: {
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "flex-start",
-        gap: 12,
-      },
-      previewTitle: { fontSize: 18, fontWeight: 900, color: "#f9fafb" },
-      previewMeta: { fontSize: 12, color: "#9ca3af" },
-      previewMetaSpacer: { marginTop: 2 },
-      previewGradeBadge: {
-        height: 38,
-        width: 38,
-        borderRadius: 999,
-        background: "linear-gradient(180deg, #fde68a, #f59e0b)",
-        color: "#020617",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        fontWeight: 950,
-        fontSize: 14,
-        boxShadow: "0 12px 34px rgba(0,0,0,0.6)",
-        flex: "0 0 auto",
-      },
-      previewSections: {
-        marginTop: 16,
-        display: "flex",
-        flexDirection: "column",
-        gap: 12,
-      },
-      previewSectionTitle: {
-        fontSize: 10,
-        textTransform: "uppercase",
-        letterSpacing: 0.16,
-        color: "#cbd5f5",
-        fontWeight: 900,
-      },
-      previewBars: { marginTop: 7, display: "flex", flexDirection: "column", gap: 5 },
-      previewBar: (width) => ({
-        height: 8,
-        borderRadius: 999,
-        background:
-          "linear-gradient(90deg, rgba(34,211,238,0.75), rgba(14,165,233,0.25))",
-        width,
-      }),
-      previewFooter: {
-        marginTop: 14,
-        fontSize: 10,
-        color: "#6b7280",
-        textAlign: "right",
-      },
+    // AI REPORT PREVIEW
+    previewCard: {
+      marginTop: 20,
+      maxWidth: 480,
+      marginLeft: "auto",
+      marginRight: "auto",
+      borderRadius: 20,
+      background: "#0e1016",
+      border: "1px solid rgba(148,163,184,0.6)",
+      padding: 18,
+      boxShadow: "0 18px 45px rgba(15,23,42,0.9)",
+      textAlign: "left",
+    },
+    previewHeader: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "flex-start",
+    },
+    previewTitle: {
+      fontSize: 18,
+      fontWeight: 700,
+      color: "#f9fafb",
+    },
+    previewMeta: {
+      fontSize: 12,
+      color: "#9ca3af",
+    },
+    previewMetaSpacer: {
+      marginTop: 2,
+    },
+    previewGradeBadge: {
+      height: 36,
+      width: 36,
+      borderRadius: 999,
+      background: "#facc15",
+      color: "#020617",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      fontWeight: 800,
+      fontSize: 18,
+      boxShadow: "0 10px 30px rgba(0,0,0,0.7)",
+    },
+    previewSections: {
+      marginTop: 18,
+      display: "flex",
+      flexDirection: "column",
+      gap: 12,
+    },
+    previewSectionTitle: {
+      fontSize: 10,
+      textTransform: "uppercase",
+      letterSpacing: 0.16,
+      color: "#cbd5f5",
+    },
+    previewBars: {
+      marginTop: 6,
+      display: "flex",
+      flexDirection: "column",
+      gap: 4,
+    },
+    previewBar: (width) => ({
+      height: 8,
+      borderRadius: 999,
+      background: "rgba(148,163,184,0.25)",
+      width,
+    }),
+    previewFooter: {
+      marginTop: 14,
+      fontSize: 10,
+      color: "#6b7280",
+      textAlign: "right",
+    },
 
-      // P&L VISUAL (mini calendar)
-      pnlGridWrap: {
-        width: "100%",
-        maxWidth: 860,
-        marginTop: 16,
-        borderRadius: 22,
-        background:
-          "linear-gradient(135deg, rgba(2,6,23,0.55), rgba(15,23,42,0.75))",
-        border: "1px solid rgba(30,64,175,0.55)",
-        boxShadow: "0 18px 45px rgba(15,23,42,0.92)",
-        padding: isMobile ? 14 : 16,
-        textAlign: "left",
-      },
-      pnlTopRow: {
-        display: "flex",
-        flexDirection: isMobile ? "column" : "row",
-        alignItems: isMobile ? "stretch" : "center",
-        justifyContent: "space-between",
-        gap: 10,
-        marginBottom: 12,
-      },
-      pnlSummaryRow: {
-        display: "grid",
-        gridTemplateColumns: isMobile ? "1fr" : "repeat(3, minmax(0, 1fr))",
-        gap: 10,
-      },
-      pnlSummaryCard: {
-        borderRadius: 16,
-        padding: 12,
-        background: "rgba(2,6,23,0.55)",
-        border: "1px solid rgba(148,163,184,0.25)",
-      },
-      pnlSummaryLabel: {
-        fontSize: 10,
-        textTransform: "uppercase",
-        letterSpacing: 0.14,
-        opacity: 0.8,
-        marginBottom: 6,
-        fontWeight: 900,
-        color: "#a5b4fc",
-      },
-      pnlSummaryValue: { fontSize: 18, fontWeight: 950 },
-      pnlSummarySub: { fontSize: 12, opacity: 0.82, marginTop: 2, lineHeight: 1.45 },
+    // Legal modal body
+    legalBody: {
+      maxHeight: "60vh",
+      overflowY: "auto",
+      fontSize: 12,
+      lineHeight: 1.5,
+      textAlign: "left",
+      marginTop: 8,
+      paddingRight: 4,
+    },
+    legalHeading: {
+      fontWeight: 700,
+      marginTop: 8,
+      marginBottom: 4,
+      fontSize: 13,
+    },
 
-      pnlCalendar: {
-        marginTop: 12,
-        display: "grid",
-        gridTemplateColumns: "repeat(7, minmax(0, 1fr))",
-        gap: 8,
-      },
-      pnlDow: {
-        fontSize: 10,
-        opacity: 0.75,
-        textTransform: "uppercase",
-        letterSpacing: 0.12,
-        textAlign: "center",
-        paddingBottom: 4,
-      },
-      pnlCell: (tone) => {
-        let bg = "rgba(148,163,184,0.10)";
-        let border = "rgba(148,163,184,0.20)";
-        let glow = "transparent";
-        if (tone === "win") {
-          bg = "rgba(34,197,94,0.16)";
-          border = "rgba(34,197,94,0.28)";
-          glow = "rgba(34,197,94,0.12)";
-        }
-        if (tone === "loss") {
-          bg = "rgba(251,113,133,0.14)";
-          border = "rgba(251,113,133,0.24)";
-          glow = "rgba(251,113,133,0.10)";
-        }
-        if (tone === "flat") {
-          bg = "rgba(56,189,248,0.10)";
-          border = "rgba(56,189,248,0.20)";
-          glow = "rgba(56,189,248,0.08)";
-        }
-        return {
-          borderRadius: 14,
-          padding: "10px 10px",
-          background: bg,
-          border: `1px solid ${border}`,
-          minHeight: 64,
-          boxShadow: `0 10px 26px ${glow}`,
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "space-between",
-          overflow: "hidden",
-        };
-      },
-      pnlCellDay: { fontSize: 11, opacity: 0.8, fontWeight: 900 },
-      pnlCellValue: { fontSize: 12, fontWeight: 900, marginTop: 6 },
-      pnlCellRR: { fontSize: 10, opacity: 0.8 },
-
-      // Legal modal body
-      legalBody: {
-        maxHeight: "60vh",
-        overflowY: "auto",
-        fontSize: 12,
-        lineHeight: 1.55,
-        textAlign: "left",
-        marginTop: 8,
-        paddingRight: 4,
-      },
-      legalHeading: { fontWeight: 900, marginTop: 10, marginBottom: 4, fontSize: 13 },
-
-      // Terms checkbox
-      checkboxRow: {
-        display: "flex",
-        alignItems: "flex-start",
-        gap: 8,
-        marginTop: 6,
-        marginBottom: 6,
-        fontSize: 11,
-        lineHeight: 1.45,
-        textAlign: "left",
-      },
-      checkboxInput: { marginTop: 2 },
-      checkboxLabel: { opacity: 0.92 },
-      checkboxLink: {
-        color: "#22d3ee",
-        textDecoration: "underline",
-        textDecorationStyle: "dotted",
-        cursor: "pointer",
-        fontWeight: 900,
-      },
-    };
-  }, [isMobile]);
+    // Terms checkbox
+    checkboxRow: {
+      display: "flex",
+      alignItems: "flex-start",
+      gap: 8,
+      marginTop: 6,
+      marginBottom: 4,
+      fontSize: 11,
+      lineHeight: 1.4,
+      textAlign: "left",
+    },
+    checkboxInput: {
+      marginTop: 2,
+    },
+    checkboxLabel: {
+      opacity: 0.9,
+    },
+    checkboxLink: {
+      color: "#22d3ee",
+      textDecoration: "underline",
+      textDecorationStyle: "dotted",
+      cursor: "pointer",
+    },
+  };
 
   function openWorkspace() {
-    if (onEnterApp) onEnterApp();
-    else navigate("/workspace");
+    if (onEnterApp) {
+      onEnterApp();
+    } else {
+      navigate("/workspace");
+    }
   }
 
   async function handleCheckoutSubmit(e) {
@@ -851,8 +790,10 @@ export default function LandingPage({ onEnterApp }) {
     try {
       setCheckoutLoading(true);
 
-      // keep any prior local member info, but do not collect name/email here anymore
-      saveMemberToLocal({ plan: "personal" });
+      // OPTIONAL: keep any prior local member info, but do not collect name/email here anymore
+      saveMemberToLocal({
+        plan: "personal",
+      });
 
       // 🚀 send user directly to Stripe Payment Link (subscription)
       window.location.href = STRIPE_PAYMENT_URL;
@@ -874,7 +815,12 @@ export default function LandingPage({ onEnterApp }) {
       return;
     }
 
-    saveMemberToLocal({ memberId: trimmed, email: "", name: "" });
+    saveMemberToLocal({
+      memberId: trimmed,
+      email: "",
+      name: "",
+    });
+
     openWorkspace();
   }
 
@@ -892,100 +838,32 @@ export default function LandingPage({ onEnterApp }) {
       a: "You can submit as many screenshots and journal entries as you want within your personal workspace.",
     },
     {
-      q: "What’s the P&L Calendar for?",
-      a: "It’s the accountability layer. You log your daily P&L and R:R so you can connect performance to execution. It helps you spot overtrading, revenge days, and whether your best days share a pattern.",
-    },
-    {
       q: "Does the AI understand BOS / CHoCH / FVG / liquidity?",
       a: "Yes. The prompts and training are built specifically around those concepts so it can talk in your language, not generic indicator spam.",
     },
   ];
 
-  // Mini P&L mock data (just for the landing page graphic)
-  const pnlDays = useMemo(() => {
-    // 28 cells for a clean mini-month (4 weeks)
-    // tone: win/loss/flat/neutral
-    const cells = [
-      { d: 1, v: "+$120", rr: "RR 2.1", tone: "win" },
-      { d: 2, v: "−$40", rr: "RR 0.8", tone: "loss" },
-      { d: 3, v: "+$80", rr: "RR 1.6", tone: "win" },
-      { d: 4, v: "Flat", rr: "RR 1.0", tone: "flat" },
-      { d: 5, v: "−$65", rr: "RR 0.9", tone: "loss" },
-      { d: 6, v: "+$140", rr: "RR 2.4", tone: "win" },
-      { d: 7, v: "+$55", rr: "RR 1.3", tone: "win" },
-
-      { d: 8, v: "−$30", rr: "RR 0.7", tone: "loss" },
-      { d: 9, v: "+$95", rr: "RR 1.8", tone: "win" },
-      { d: 10, v: "+$60", rr: "RR 1.4", tone: "win" },
-      { d: 11, v: "Flat", rr: "RR 1.0", tone: "flat" },
-      { d: 12, v: "−$90", rr: "RR 0.6", tone: "loss" },
-      { d: 13, v: "+$170", rr: "RR 2.6", tone: "win" },
-      { d: 14, v: "+$40", rr: "RR 1.2", tone: "win" },
-
-      { d: 15, v: "−$25", rr: "RR 0.8", tone: "loss" },
-      { d: 16, v: "+$110", rr: "RR 2.0", tone: "win" },
-      { d: 17, v: "+$70", rr: "RR 1.5", tone: "win" },
-      { d: 18, v: "Flat", rr: "RR 1.0", tone: "flat" },
-      { d: 19, v: "−$45", rr: "RR 0.9", tone: "loss" },
-      { d: 20, v: "+$130", rr: "RR 2.2", tone: "win" },
-      { d: 21, v: "+$20", rr: "RR 1.1", tone: "win" },
-
-      { d: 22, v: "−$60", rr: "RR 0.7", tone: "loss" },
-      { d: 23, v: "+$85", rr: "RR 1.7", tone: "win" },
-      { d: 24, v: "+$50", rr: "RR 1.3", tone: "win" },
-      { d: 25, v: "Flat", rr: "RR 1.0", tone: "flat" },
-      { d: 26, v: "−$35", rr: "RR 0.8", tone: "loss" },
-      { d: 27, v: "+$160", rr: "RR 2.5", tone: "win" },
-      { d: 28, v: "+$75", rr: "RR 1.6", tone: "win" },
-    ];
-    return cells;
-  }, []);
-
-  function openCheckout() {
-    setCheckoutError("");
-    setMemberId("");
-    setCheckoutAgreed(false);
-    setShowCheckout(true);
-  }
-
-  function openMemberIdModal() {
-    let existingId = "";
-    try {
-      const raw = localStorage.getItem(MEMBER_LS_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        existingId = parsed.memberId || "";
-      }
-    } catch {
-      // ignore
-    }
-    setMemberPortalId(existingId);
-    setMemberPortalError("");
-    setShowMemberPortal(true);
-  }
-
   return (
     <>
-      {/* tiny CSS helpers (safe, responsive, improves tap feel) */}
-      <style>{`
-        * { box-sizing: border-box; }
-        button { -webkit-tap-highlight-color: transparent; }
-        @media (max-width: 420px) {
-          .ribbonHideMobile { display:none !important; }
-        }
-      `}</style>
-
       <div style={styles.page}>
         {/* TOP RIBBON */}
         <div style={styles.ribbon}>
           <div style={styles.ribbonInner}>
-            <span style={styles.ribbonText} className="ribbonHideMobile">
+            <span style={styles.ribbonText}>
               <span style={styles.ribbonStrong}>
                 Monthly access · {PRICE_SHORT}:
               </span>{" "}
-              your private portal + AI feedback + daily journal + P&amp;L calendar.
+              get your private portal + AI feedback + daily journal.
             </span>
-            <button style={styles.ribbonBtn} onClick={openCheckout}>
+            <button
+              style={styles.ribbonBtn}
+              onClick={() => {
+                setCheckoutError("");
+                setMemberId("");
+                setCheckoutAgreed(false);
+                setShowCheckout(true);
+              }}
+            >
               {PRICE_CTA}
             </button>
           </div>
@@ -1003,15 +881,30 @@ export default function LandingPage({ onEnterApp }) {
                 </div>
               </div>
             </div>
-
             <div style={styles.navRight}>
-              <span style={styles.navPill}>Screenshot + journal traders</span>
-              <button style={styles.navLinkBtn} onClick={openMemberIdModal}>
-                Enter Member ID
-              </button>
-              <button style={styles.navPrimaryBtn} onClick={openCheckout}>
-                {PRICE_SHORT}
-              </button>
+              <span style={styles.navPill}>
+                Built for screenshot + journal traders
+              </span>
+              <span
+                style={styles.navLink}
+                onClick={() => {
+                  let existingId = "";
+                  try {
+                    const raw = localStorage.getItem(MEMBER_LS_KEY);
+                    if (raw) {
+                      const parsed = JSON.parse(raw);
+                      existingId = parsed.memberId || "";
+                    }
+                  } catch {
+                    // ignore
+                  }
+                  setMemberPortalId(existingId);
+                  setMemberPortalError("");
+                  setShowMemberPortal(true);
+                }}
+              >
+                Already have a Member ID?
+              </span>
             </div>
           </div>
         </div>
@@ -1020,8 +913,8 @@ export default function LandingPage({ onEnterApp }) {
         {checkoutSuccess && (
           <div
             style={{
-              background: "rgba(2,44,34,0.9)",
-              borderBottom: "1px solid rgba(34,197,94,0.6)",
+              background: "#022c22",
+              borderBottom: "1px solid #16a34a",
               color: "#bbf7d0",
               padding: "10px 16px",
               textAlign: "center",
@@ -1036,53 +929,78 @@ export default function LandingPage({ onEnterApp }) {
         {/* HERO */}
         <section style={styles.hero}>
           <div style={styles.heroInner}>
-            <div style={styles.heroEyebrow}>Real feedback, not random signals</div>
-
+            <div style={styles.heroEyebrow}>
+              Real feedback, not random signals
+            </div>
             <h1 style={styles.heroHeadline}>
               Turn every screenshot into{" "}
-              <span style={styles.heroHighlight}>a trade you actually learn from.</span>
+              <span style={styles.heroHighlight}>
+                a trade you actually learn from.
+              </span>
             </h1>
-
             <p style={styles.heroSub}>
-              MaxTradeAI is your private workspace for trade screenshots, AI feedback,
-              a daily journal, and a P&amp;L calendar. Upload your chart, explain your
-              idea, and get a breakdown like a coach is sitting next to you — for
-              NASDAQ, indices, FX, and gold.
+              MaxTradeAI is your private workspace for trade screenshots, AI
+              feedback, and a daily journal. Upload your chart, explain your
+              idea, and get a breakdown like a coach is sitting next to you —
+              for NASDAQ, indices, FX, and gold.
             </p>
 
+            {/* disclaimer under hero */}
             <div
               style={{
-                width: "100%",
-                maxWidth: 820,
-                marginTop: 4,
-                padding: "10px 12px",
-                borderRadius: 16,
-                border: "1px solid rgba(34,211,238,0.22)",
-                background: "rgba(2,6,23,0.40)",
                 fontSize: 11,
-                opacity: 0.86,
-                lineHeight: 1.45,
+                opacity: 0.7,
+                maxWidth: 640,
+                marginTop: 6,
               }}
             >
-              <strong>Important:</strong> Educational use only — not financial advice.
-              AI can be wrong or incomplete, and you are fully responsible for your
-              trading decisions.
+              <strong>Important:</strong> MaxTradeAI is for educational and
+              informational purposes only. It does not provide financial or
+              investment advice. AI-generated feedback can be inaccurate or
+              incomplete, and you are fully responsible for your own trading
+              decisions.
             </div>
 
             <div style={styles.heroBtnRow}>
-              <button style={styles.heroPrimaryBtn} onClick={openCheckout}>
+              <button
+                style={styles.heroPrimaryBtn}
+                onClick={() => {
+                  setCheckoutError("");
+                  setMemberId("");
+                  setCheckoutAgreed(false);
+                  setShowCheckout(true);
+                }}
+              >
                 {PRICE_CTA_LONG}
               </button>
-              <button style={styles.heroSecondaryBtn} onClick={openMemberIdModal}>
+              <button
+                style={styles.heroSecondaryBtn}
+                onClick={() => {
+                  let existingId = "";
+                  try {
+                    const raw = localStorage.getItem(MEMBER_LS_KEY);
+                    if (raw) {
+                      const parsed = JSON.parse(raw);
+                      existingId = parsed.memberId || "";
+                    }
+                  } catch {
+                    // ignore
+                  }
+                  setMemberPortalId(existingId);
+                  setMemberPortalError("");
+                  setShowMemberPortal(true);
+                }}
+              >
                 Enter Member ID
               </button>
             </div>
 
             <div style={styles.heroTertiary}>
-              {PRICE_SHORT} subscription. Your trades stay organized per day — with
-              results tracked, not just screenshots saved.
+              {PRICE_SHORT} subscription access. Your trades stay organized per
+              day — not buried in camera roll folders or Discord chats.
             </div>
 
+            {/* logos strip */}
             <div style={styles.logosRow}>
               <span style={styles.logoBadge}>NASDAQ / S&amp;P / US30</span>
               <span style={styles.logoBadge}>GBP/USD · EUR/USD · XAU/USD</span>
@@ -1095,18 +1013,31 @@ export default function LandingPage({ onEnterApp }) {
         {/* RESULTS / STATS */}
         <section style={styles.section}>
           <div style={styles.sectionInner}>
-            <div style={styles.sectionEyebrow}>The results speak for themselves</div>
-
-            <div style={{ maxWidth: 760 }}>
-              <h2 style={styles.sectionTitle}>Study your own data like a professional.</h2>
-              <p style={styles.sectionSub}>
-                Every trade, note, and lesson is saved to your personal timeline.
-                Stop guessing and start reviewing execution day by day — with the
-                P&amp;L calendar making patterns obvious.
-              </p>
-              <div style={{ fontSize: 12, opacity: 0.78, marginTop: 10 }}>
-                Traders use MaxTradeAI to <strong>grade trades</strong>, <strong>journal daily</strong>,
-                and <strong>track P&amp;L + R:R</strong> — for {PRICE_SHORT}.
+            <div style={styles.sectionEyebrow}>
+              The results speak for themselves
+            </div>
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: 12,
+              }}
+            >
+              <div>
+                <h2 style={styles.sectionTitle}>
+                  Study your own data like a professional.
+                </h2>
+                <p style={styles.sectionSub}>
+                  Every trade, note, and lesson is saved to your personal
+                  timeline. Stop guessing, stop relying on random calls, and
+                  start reviewing your own execution day by day.
+                </p>
+              </div>
+              <div style={{ fontSize: 12, opacity: 0.75, maxWidth: 520 }}>
+                Traders use MaxTradeAI to{" "}
+                <strong>grade trades, journal daily,</strong> and build rules
+                they actually follow — for {PRICE_SHORT}.
               </div>
             </div>
 
@@ -1116,18 +1047,21 @@ export default function LandingPage({ onEnterApp }) {
                 <div style={styles.statLabel}>sessions reviewed by AI</div>
               </div>
               <div style={styles.statCard}>
-                <div style={styles.statNumber}>A–F</div>
-                <div style={styles.statLabel}>grade scale for each submission</div>
-              </div>
-              <div style={styles.statCard}>
-                <div style={styles.statNumber}>ICT / TJR / SMC</div>
+                <div style={styles.statNumber}>A-F</div>
                 <div style={styles.statLabel}>
-                  BOS, CHoCH, FVG, OB, liquidity sweeps
+                  grade scale for each trade you submit
                 </div>
               </div>
               <div style={styles.statCard}>
-                <div style={styles.statNumber}>P&amp;L + R:R</div>
-                <div style={styles.statLabel}>see totals + averages per month</div>
+                <div style={styles.statNumber}>ICT, TJR, SMC</div>
+                <div style={styles.statLabel}>
+                  common setups and strategies understood: BOS, CHoCH, FVG, OB,
+                  liquidity sweeps
+                </div>
+              </div>
+              <div style={styles.statCard}>
+                <div style={styles.statNumber}>Unlimited</div>
+                <div style={styles.statLabel}>Trade submissions daily</div>
               </div>
             </div>
           </div>
@@ -1143,8 +1077,9 @@ export default function LandingPage({ onEnterApp }) {
               You don&apos;t need more signals — you need structured review.
             </h2>
             <p style={styles.sectionSub}>
-              Screenshots in random folders, scattered notes, and no performance tracking
-              makes it impossible to improve fast. MaxTradeAI ties it all together.
+              Most traders never build a system for reviewing their trades.
+              Screenshots live in random folders, notes are scattered, and
+              nothing connects back to the exact session they traded.
             </p>
 
             <div style={styles.problemsGrid}>
@@ -1154,11 +1089,11 @@ export default function LandingPage({ onEnterApp }) {
                   <span>Problem #1</span>
                 </div>
                 <div style={styles.problemTitle}>
-                  &ldquo;I don&apos;t know why my trades keep failing.&rdquo;
+                  &ldquo;I don't know why my trades keep failing.&rdquo;
                 </div>
                 <div style={styles.problemText}>
-                  Get a clear breakdown of what went right, what went wrong, and what to
-                  do next time — based on your screenshot + your plan.
+                  MaxTradeAI will serve as your mentor, being an extra set of
+                  eyes on your moves in the charts.
                 </div>
               </div>
 
@@ -1168,11 +1103,12 @@ export default function LandingPage({ onEnterApp }) {
                   <span>Problem #2</span>
                 </div>
                 <div style={styles.problemTitle}>
-                  &ldquo;I forget what happened on my past trades.&rdquo;
+                  &ldquo;I keep forgetting what happened with my past
+                  trades.&rdquo;
                 </div>
                 <div style={styles.problemText}>
-                  Your journal saves daily so you can jump between dates and see your
-                  progress (and your mistakes) without digging through camera roll.
+                  Your journal in MaxTradeAI saves daily, allowing you to go
+                  back and forth between dates to view your progress.
                 </div>
               </div>
 
@@ -1182,11 +1118,12 @@ export default function LandingPage({ onEnterApp }) {
                   <span>Problem #3</span>
                 </div>
                 <div style={styles.problemTitle}>
-                  &ldquo;Nothing ties back to rules or results.&rdquo;
+                  &ldquo;Nothing ties back to ICT/liquidity rules.&rdquo;
                 </div>
                 <div style={styles.problemText}>
-                  The P&amp;L calendar connects performance to execution. You&apos;ll see
-                  what your best days have in common — and what your worst days share.
+                  Generic journaling apps don&apos;t understand BOS / CHoCH /
+                  FVG / liquidity sweeps. You end up translating concepts
+                  instead of getting direct feedback on your setup.
                 </div>
               </div>
             </div>
@@ -1197,37 +1134,49 @@ export default function LandingPage({ onEnterApp }) {
         <section style={styles.section}>
           <div style={styles.sectionInner}>
             <div style={styles.sectionEyebrow}>How your feedback looks</div>
-            <h2 style={styles.sectionTitle}>A clean, structured report for each trade.</h2>
+            <h2 style={styles.sectionTitle}>
+              A clean, structured report for each trade.
+            </h2>
 
             <div style={styles.previewCard}>
               <div style={styles.previewHeader}>
                 <div>
                   <div style={styles.previewTitle}>Trade Coach AI</div>
-                  <div style={{ ...styles.previewMeta, ...styles.previewMetaSpacer }}>
+                  <div
+                    style={{
+                      ...styles.previewMeta,
+                      ...styles.previewMetaSpacer,
+                    }}
+                  >
                     Gold Futures · 5m
                   </div>
-                  <div style={{ ...styles.previewMeta, ...styles.previewMetaSpacer }}>
+                  <div
+                    style={{
+                      ...styles.previewMeta,
+                      ...styles.previewMetaSpacer,
+                    }}
+                  >
                     Confidence: 75%
                   </div>
                 </div>
-                <div style={styles.previewGradeBadge}>A–F</div>
+                <div style={styles.previewGradeBadge}>A-F</div>
               </div>
 
               <div style={styles.previewSections}>
                 <div>
                   <div style={styles.previewSectionTitle}>What went right</div>
                   <div style={styles.previewBars}>
-                    <div style={styles.previewBar("82%")} />
-                    <div style={styles.previewBar("58%")} />
+                    <div style={styles.previewBar("80%")} />
+                    <div style={styles.previewBar("60%")} />
                   </div>
                 </div>
 
                 <div>
                   <div style={styles.previewSectionTitle}>What went wrong</div>
                   <div style={styles.previewBars}>
-                    <div style={styles.previewBar("86%")} />
-                    <div style={styles.previewBar("72%")} />
-                    <div style={styles.previewBar("48%")} />
+                    <div style={styles.previewBar("85%")} />
+                    <div style={styles.previewBar("70%")} />
+                    <div style={styles.previewBar("50%")} />
                   </div>
                 </div>
 
@@ -1235,26 +1184,27 @@ export default function LandingPage({ onEnterApp }) {
                   <div style={styles.previewSectionTitle}>Improvements</div>
                   <div style={styles.previewBars}>
                     <div style={styles.previewBar("80%")} />
-                    <div style={styles.previewBar("64%")} />
+                    <div style={styles.previewBar("65%")} />
                   </div>
                 </div>
 
                 <div>
                   <div style={styles.previewSectionTitle}>Lesson learned</div>
                   <div style={styles.previewBars}>
-                    <div style={styles.previewBar("74%")} />
+                    <div style={styles.previewBar("75%")} />
                   </div>
                 </div>
               </div>
 
               <div style={styles.previewFooter}>
-                Example preview — your real reports show full text inside the app.
+                Example AI trade report preview — your real reports show full
+                text here.
               </div>
             </div>
           </div>
         </section>
 
-        {/* ✅ P&L CALENDAR (UPGRADED) */}
+            {/* ✅ P&L CALENDAR (UPGRADED) */}
         <section style={styles.section}>
           <div style={styles.sectionInner}>
             <div style={styles.sectionEyebrow}>Track performance, not just ideas</div>
@@ -1350,7 +1300,9 @@ export default function LandingPage({ onEnterApp }) {
         {/* WHAT YOU GET / VS EVERYTHING ELSE */}
         <section style={styles.section}>
           <div style={styles.sectionInner}>
-            <div style={styles.sectionEyebrow}>Inside your MaxTradeAI portal</div>
+            <div style={styles.sectionEyebrow}>
+              Inside your MaxTradeAI portal
+            </div>
             <h2 style={styles.sectionTitle}>
               Everything you need to self-coach trades — in one place.
             </h2>
@@ -1358,50 +1310,66 @@ export default function LandingPage({ onEnterApp }) {
             <div style={styles.checklistGrid}>
               <div style={styles.checklistCol}>
                 <div style={styles.checklistTitle}>What you get</div>
-                <ul style={{ margin: 0, paddingLeft: 16, fontSize: 13, lineHeight: 1.6 }}>
+                <ul style={{ margin: 0, paddingLeft: 16, fontSize: 13 }}>
                   <li>AI feedback that grades every trade you upload.</li>
-                  <li>Breakdown of what you executed well vs. what you missed.</li>
-                  <li>Clear “next time, do this” suggestions so you know what to practice.</li>
-                  <li>Daily journal section for psychology, discipline, and rules.</li>
                   <li>
-                    P&amp;L calendar to track <strong>results + R:R</strong> and build consistency.
+                    Breakdown of what you executed well vs. what you missed.
                   </li>
-                  <li>Private Member ID workspace tied to your trades — not anyone else’s.</li>
+                  <li>
+                    Clear &quot;next time, do this&quot; suggestions so you
+                    know what to practice.
+                  </li>
+                  <li>
+                    Daily journal section built-in for psychology, discipline,
+                    and rules.
+                  </li>
+                  <li>
+                    Private Member ID workspace tied to your trades — not
+                    anyone else&apos;s.
+                  </li>
                 </ul>
               </div>
 
               <div style={styles.checklistCol}>
-                <div style={styles.checklistTitle}>MaxTradeAI vs the usual</div>
+                <div style={styles.checklistTitle}>MaxTradeAI</div>
 
                 <div style={styles.checklistItemRow}>
-                  <span style={styles.checklistLabel}>Actually reviews your trades</span>
+                  <span style={styles.checklistLabel}>
+                    Actually reviews your trades
+                  </span>
                   <div style={styles.checklistChecks}>
-                    <span style={styles.checklistYes}>MaxTrade ✓</span>
-                    <span style={styles.checklistNo}>Random group ✕</span>
+                    <span style={styles.checklistYes}>MaxTrade: ✓</span>
+                    <span style={styles.checklistNo}>TradingView: ✕</span>
                   </div>
                 </div>
 
                 <div style={styles.checklistItemRow}>
-                  <span style={styles.checklistLabel}>Journal stays tied to the date</span>
+                  <span style={styles.checklistLabel}>
+                    Structured daily journal to log your daily progress
+                  </span>
                   <div style={styles.checklistChecks}>
-                    <span style={styles.checklistYes}>MaxTrade ✓</span>
-                    <span style={styles.checklistNo}>Notes app ✕</span>
+                    <span style={styles.checklistYes}>MaxTrade: ✓</span>
+                    <span style={styles.checklistNo}>Other AI: ✕</span>
                   </div>
                 </div>
 
                 <div style={styles.checklistItemRow}>
-                  <span style={styles.checklistLabel}>Understands liquidity concepts</span>
+                  <span style={styles.checklistLabel}>
+                    Understands BOS / CHoCH / FVG / liquidity
+                  </span>
                   <div style={styles.checklistChecks}>
-                    <span style={styles.checklistYes}>MaxTrade ✓</span>
-                    <span style={styles.checklistNo}>Generic AI ✕</span>
+                    <span style={styles.checklistYes}>MaxTrade: ✓</span>
+                    <span style={styles.checklistNo}>Basic AI: ✕</span>
                   </div>
                 </div>
 
                 <div style={styles.checklistItemRow}>
-                  <span style={styles.checklistLabel}>Tracks P&amp;L + R:R patterns</span>
+                  <span style={styles.checklistLabel}>
+                    Keeps everything in a single private portal
+                  </span>
                   <div style={styles.checklistChecks}>
-                    <span style={styles.checklistYes}>MaxTrade ✓</span>
-                    <span style={styles.checklistNo}>Camera roll ✕</span>
+                    <span style={styles.checklistYes}>MaxTrade: ✓</span>
+                    <span style={styles.checklistNo}>Others: ✕</span>
                   </div>
                 </div>
               </div>
@@ -1414,28 +1382,31 @@ export default function LandingPage({ onEnterApp }) {
           <div style={styles.sectionInner}>
             <div style={styles.sectionEyebrow}>Real results</div>
             <h2 style={styles.sectionTitle}>
-              What traders say after switching to structured review.
+              See what traders are saying about structured review.
             </h2>
             <p style={styles.sectionSub}>
-              The goal is simple: stop repeating the same mistakes and build a process
-              that holds up day after day.
+              These are the kinds of outcomes traders report when they finally
+              stop relying on screenshots alone and start tracking trades with
+              feedback and rules.
             </p>
 
             <div style={styles.testimonialGrid}>
               <div style={styles.testimonialCard}>
-                &ldquo;Instead of having no clue why my stop loss was hit, I get a clear
-                grade and a list of mistakes to fix. I’m finally building confidence in my
-                setups.&rdquo;
+                &ldquo;Instead of having no clue why my stop loss was hit, I now
+                get a clear grade and a list of mistakes to fix. I&apos;m
+                finally building confidence in my setups.&rdquo;
                 <div style={styles.testimonialName}>— Index &amp; FX trader</div>
               </div>
               <div style={styles.testimonialCard}>
-                &ldquo;The P&amp;L calendar made it obvious which days I was revenge trading.
-                Fixing that alone changed my whole month.&rdquo;
+                &ldquo;The daily journal tied to each day forced me to be honest
+                about my rules and emotions. I actually know why I won or lost a
+                trade now.&rdquo;
                 <div style={styles.testimonialName}>— NAS100 day trader</div>
               </div>
               <div style={styles.testimonialCard}>
-                &ldquo;The AI speaks in BOS / CHoCH / FVG language, so it feels like someone
-                who actually trades liquidity is reviewing my charts.&rdquo;
+                &ldquo;The AI speaks in BOS / CHoCH / FVG language, so it feels
+                like someone who actually trades liquidity is reviewing my
+                charts.&rdquo;
                 <div style={styles.testimonialName}>— ICT-focused trader</div>
               </div>
             </div>
@@ -1446,9 +1417,12 @@ export default function LandingPage({ onEnterApp }) {
         <section style={styles.section}>
           <div style={styles.sectionInner}>
             <div style={styles.sectionEyebrow}>FAQs</div>
-            <h2 style={styles.sectionTitle}>Get answers before you start.</h2>
+            <h2 style={styles.sectionTitle}>
+              Get answers before you start your portal.
+            </h2>
             <p style={styles.sectionSub}>
-              Common questions traders ask before getting instant access.
+              The most common questions traders ask before getting instant
+              access to MaxTradeAI.
             </p>
 
             <div style={styles.faqList}>
@@ -1458,14 +1432,18 @@ export default function LandingPage({ onEnterApp }) {
                   <div key={idx} style={styles.faqItem}>
                     <div
                       style={styles.faqHeader}
-                      onClick={() => setOpenFaq((prev) => (prev === idx ? null : idx))}
+                      onClick={() =>
+                        setOpenFaq((prev) => (prev === idx ? null : idx))
+                      }
                     >
                       <span>{item.q}</span>
                       <span style={styles.faqIcon}>{open ? "−" : "+"}</span>
                     </div>
                     {open && (
                       <div style={styles.faqBody}>
-                        <p style={{ marginTop: 10, marginBottom: 4 }}>{item.a}</p>
+                        <p style={{ marginTop: 8, marginBottom: 8 }}>
+                          {item.a}
+                        </p>
                       </div>
                     )}
                   </div>
@@ -1481,24 +1459,42 @@ export default function LandingPage({ onEnterApp }) {
             <div style={styles.finalCard}>
               <div style={styles.sectionEyebrow}>Ready to start today?</div>
               <h2 style={styles.finalHeadline}>
-                Improve one screenshot at a time — and prove it with your calendar.
+                Start building real trading improvement — one screenshot at a
+                time.
               </h2>
               <p style={styles.finalSub}>
-                Get instant access for <strong>{PRICE_SHORT}</strong>. Upload your next
-                trade, explain your idea, and get structured feedback — then log your
-                result and R:R to build real consistency.
+                Get instant access to your MaxTradeAI portal for{" "}
+                <strong>{PRICE_SHORT}</strong>. Upload your next trade, explain
+                your idea, and see how different it feels to get a structured,
+                ICT-aware breakdown instead of a random emoji-filled comment.
               </p>
-
-              <button style={styles.heroPrimaryBtn} onClick={openCheckout}>
+              <button
+                style={styles.heroPrimaryBtn}
+                onClick={() => {
+                  setCheckoutError("");
+                  setMemberId("");
+                  setCheckoutAgreed(false);
+                  setShowCheckout(true);
+                }}
+              >
                 {PRICE_BUTTON}
               </button>
 
-              <div style={{ fontSize: 11, opacity: 0.76, maxWidth: 560, marginTop: 12, lineHeight: 1.5 }}>
-                MaxTradeAI does not guarantee profits or outcomes. AI feedback is fallible.
-                Always use your own judgment and risk management.
+              {/* brief legal note under final CTA */}
+              <div
+                style={{
+                  fontSize: 11,
+                  opacity: 0.7,
+                  maxWidth: 520,
+                  marginTop: 10,
+                }}
+              >
+                MaxTradeAI does not guarantee profits or specific outcomes. AI
+                feedback is fallible and may miss or misinterpret information
+                you provide. Always use your own judgment and risk management.
                 <br />
                 <br />
-                Contact: orbitalbiz1@gmail.com
+                Contact Us: orbitalbiz1@gmail.com
               </div>
             </div>
           </div>
@@ -1507,22 +1503,40 @@ export default function LandingPage({ onEnterApp }) {
         {/* FOOTER */}
         <footer style={styles.footer}>
           <div style={styles.footerInner}>
-            <span>© {new Date().getFullYear()} MaxTradeAI. All rights reserved.</span>
+            <span>
+              © {new Date().getFullYear()} MaxTradeAI. All rights reserved.
+            </span>
             <div style={styles.footerLinks}>
-              <span style={styles.footerLink} onClick={() => setShowPrivacy(true)}>
+              <span
+                style={styles.footerLink}
+                onClick={() => setShowPrivacy(true)}
+              >
                 Privacy Policy
               </span>
-              <span style={styles.footerLink} onClick={() => setShowTerms(true)}>
+              <span
+                style={styles.footerLink}
+                onClick={() => setShowTerms(true)}
+              >
                 Terms of Use
               </span>
-              <span style={styles.footerLink} onClick={() => setShowDisclaimer(true)}>
+              <span
+                style={styles.footerLink}
+                onClick={() => setShowDisclaimer(true)}
+              >
                 Disclaimer
               </span>
             </div>
-            <div style={{ fontSize: 11, opacity: 0.7, maxWidth: 760, marginTop: 4, lineHeight: 1.45 }}>
-              Educational use only. Nothing on this site or in the app is financial advice.
-              AI-generated feedback can be inaccurate or incomplete, and you are responsible
-              for any trades you place.
+            <div
+              style={{
+                fontSize: 11,
+                opacity: 0.7,
+                maxWidth: 700,
+                marginTop: 4,
+              }}
+            >
+              Educational use only. Nothing on this site or in the app is
+              financial advice. AI-generated feedback can be inaccurate or
+              incomplete, and you are responsible for any trades you place.
             </div>
           </div>
         </footer>
@@ -1534,17 +1548,20 @@ export default function LandingPage({ onEnterApp }) {
           <div style={styles.modalCard}>
             <div style={styles.modalTitle}>Continue to Stripe</div>
             <div style={styles.modalText}>
-              You&apos;ll enter your details directly in Stripe Checkout. This is a{" "}
-              <strong>{PRICE_SHORT}</strong> subscription for access to your portal.
+              You&apos;ll enter your details directly in Stripe Checkout. This is
+              a <strong>{PRICE_SHORT}</strong> subscription for access to your
+              portal.
               <br />
               <br />
-              <span style={{ fontSize: 11, opacity: 0.86 }}>
-                By continuing, you acknowledge MaxTradeAI is educational only, AI can make
-                mistakes, and you are responsible for your own decisions.
+              <span style={{ fontSize: 11, opacity: 0.8 }}>
+                By continuing, you acknowledge that MaxTradeAI is for
+                educational use only, that AI can make mistakes, and that you
+                are fully responsible for your own trading decisions.
               </span>
             </div>
 
             <form onSubmit={handleCheckoutSubmit}>
+              {/* Terms / Privacy checkbox */}
               <label style={styles.checkboxRow}>
                 <input
                   type="checkbox"
@@ -1553,7 +1570,7 @@ export default function LandingPage({ onEnterApp }) {
                   onChange={(e) => setCheckoutAgreed(e.target.checked)}
                 />
                 <span style={styles.checkboxLabel}>
-                  I agree to the{" "}
+                  I have read and agree to the{" "}
                   <span
                     style={styles.checkboxLink}
                     onClick={(event) => {
@@ -1573,22 +1590,27 @@ export default function LandingPage({ onEnterApp }) {
                   >
                     Privacy Policy
                   </span>
-                  .
+                  , and I understand that MaxTradeAI is educational only and not
+                  financial advice.
                 </span>
               </label>
 
-              {checkoutError && <div style={styles.modalError}>{checkoutError}</div>}
+              {checkoutError && (
+                <div style={styles.modalError}>{checkoutError}</div>
+              )}
 
               <button
                 type="submit"
                 disabled={checkoutLoading}
                 style={{
                   ...styles.modalButtonPrimary,
-                  opacity: checkoutLoading ? 0.75 : 1,
+                  opacity: checkoutLoading ? 0.7 : 1,
                   cursor: checkoutLoading ? "default" : "pointer",
                 }}
               >
-                {checkoutLoading ? "Redirecting…" : `Subscribe ${PRICE_SHORT} with Stripe →`}
+                {checkoutLoading
+                  ? "Redirecting…"
+                  : `Subscribe ${PRICE_SHORT} with Stripe →`}
               </button>
             </form>
 
@@ -1597,11 +1619,15 @@ export default function LandingPage({ onEnterApp }) {
                 <span style={styles.idLabel}>Your Member ID:</span>
                 <span style={styles.idValue}>{memberId}</span>
                 <div style={styles.idHint}>
-                  Save this somewhere safe — you&apos;ll use it to log in on any device.
+                  Save this somewhere safe — you&apos;ll use it to log into Max
+                  Trade Coach on any device.
                 </div>
                 <button
                   type="button"
-                  style={{ ...styles.modalButtonPrimary, marginTop: 10 }}
+                  style={{
+                    ...styles.modalButtonPrimary,
+                    marginTop: 10,
+                  }}
                   onClick={openWorkspace}
                 >
                   I saved it → go to my portal
@@ -1626,30 +1652,33 @@ export default function LandingPage({ onEnterApp }) {
           <div style={styles.modalCard}>
             <div style={styles.modalTitle}>Enter your Member ID</div>
             <div style={styles.modalText}>
-              Paste the Member ID you received after purchase to unlock your portal.
+              Paste the Member ID you received after purchase to unlock your Max
+              Trade Coach portal.
             </div>
 
             <form onSubmit={handleMemberPortalSubmit}>
               <input
                 type="text"
-                placeholder="Member ID (e.g. MT-ABC123)"
+                placeholder="Member ID (e.g. MTC-ABC123)"
                 value={memberPortalId}
                 onChange={(e) => setMemberPortalId(e.target.value)}
                 style={{
                   width: "100%",
-                  borderRadius: 12,
-                  border: "1px solid rgba(30,64,175,0.75)",
-                  background: "rgba(2,6,23,0.65)",
+                  borderRadius: 10,
+                  border: "1px solid rgba(30,64,175,0.9)",
+                  background: "#020617",
                   color: "#e5e7eb",
-                  padding: "10px 12px",
+                  padding: "8px 10px",
                   fontSize: 13,
-                  marginBottom: 10,
-                  outline: "none",
+                  marginBottom: 8,
+                  boxSizing: "border-box",
                 }}
                 required
               />
 
-              {memberPortalError && <div style={styles.modalError}>{memberPortalError}</div>}
+              {memberPortalError && (
+                <div style={styles.modalError}>{memberPortalError}</div>
+              )}
 
               <button type="submit" style={styles.modalButtonPrimary}>
                 Continue to my portal
@@ -1672,47 +1701,61 @@ export default function LandingPage({ onEnterApp }) {
         <div style={styles.overlay}>
           <div style={styles.modalCard}>
             <div style={styles.modalTitle}>Privacy Policy</div>
-            <div style={styles.modalText}>How MaxTradeAI handles your information.</div>
+            <div style={styles.modalText}>
+              How MaxTradeAI handles your information.
+            </div>
             <div style={styles.legalBody}>
               <div style={styles.legalHeading}>1. Information You Provide</div>
               <p>
-                When you use MaxTradeAI, you may upload screenshots, enter notes, and
-                provide basic details like your name and email. This information is used
-                to generate AI feedback and maintain your personal workspace.
+                When you use MaxTradeAI, you may upload screenshots, enter
+                notes, and provide basic details like your name and email. This
+                information is used to generate AI feedback and maintain your
+                personal workspace.
               </p>
 
               <div style={styles.legalHeading}>2. How We Use Your Data</div>
               <p>
-                We use your data to operate the app, generate educational feedback on your
-                trades, and keep your journal and history organized. We do not sell your data.
+                We use your data to operate and improve the app, generate
+                educational feedback on your trades, and keep your journal and
+                trade history organized. We do not sell your personal data.
               </p>
 
               <div style={styles.legalHeading}>3. AI & Third-Party Services</div>
               <p>
-                Your charts and notes may be processed by third-party AI providers solely for
-                generating feedback. We take reasonable steps to protect data, but no system
-                is 100% secure.
+                Your charts and notes may be processed by third-party AI
+                providers solely for the purpose of generating feedback. We take
+                reasonable steps to protect this data, but no system is 100%
+                secure.
               </p>
 
               <div style={styles.legalHeading}>4. Storage & Security</div>
               <p>
-                Some information may be stored locally in your browser or on our servers. Avoid
-                uploading highly sensitive personal or financial account information.
+                Some information may be stored locally in your browser or on our
+                servers. We aim to use reasonable security measures, but you
+                should avoid uploading highly sensitive personal or financial
+                account information.
               </p>
 
               <div style={styles.legalHeading}>5. Your Choices</div>
               <p>
-                You can stop using the app at any time. If you&apos;d like data removed, contact
-                us and we&apos;ll make reasonable efforts to delete it where technically and legally possible.
+                You can stop using the app at any time. If you&apos;d like your
+                data removed from our systems, you can contact us and we will
+                make reasonable efforts to delete it, where technically and
+                legally possible.
               </p>
 
               <div style={styles.legalHeading}>6. Changes to This Policy</div>
               <p>
-                We may update this policy over time. If we make material changes, we&apos;ll update
-                the effective date and may provide notice in the app.
+                We may update this Privacy Policy over time. If we make material
+                changes, we&apos;ll update the effective date and may provide
+                a brief notice in the app.
               </p>
             </div>
-            <button type="button" style={styles.modalButtonSecondary} onClick={() => setShowPrivacy(false)}>
+            <button
+              type="button"
+              style={styles.modalButtonSecondary}
+              onClick={() => setShowPrivacy(false)}
+            >
               Close
             </button>
           </div>
@@ -1724,49 +1767,68 @@ export default function LandingPage({ onEnterApp }) {
         <div style={styles.overlay}>
           <div style={styles.modalCard}>
             <div style={styles.modalTitle}>Terms of Use</div>
-            <div style={styles.modalText}>Please read this before relying on MaxTradeAI.</div>
+            <div style={styles.modalText}>
+              Please read this before relying on MaxTradeAI.
+            </div>
             <div style={styles.legalBody}>
               <div style={styles.legalHeading}>1. Educational Purpose Only</div>
               <p>
-                MaxTradeAI is for educational and informational purposes only. It does not provide
-                financial, investment, legal, tax, or professional advice of any kind.
+                MaxTradeAI is provided for educational and informational
+                purposes only. It does not provide financial, investment, legal,
+                tax, or professional advice of any kind.
               </p>
 
               <div style={styles.legalHeading}>2. No Financial Advice</div>
               <p>
-                Nothing in the app should be interpreted as a recommendation to buy, sell, or hold
-                any security, currency, or financial instrument. You are solely responsible for trades you place.
+                Nothing generated by the app should be interpreted as a
+                recommendation to buy, sell, or hold any security, currency, or
+                financial instrument. You are solely responsible for any trades
+                you choose to place.
               </p>
 
               <div style={styles.legalHeading}>3. AI-Generated Content</div>
               <p>
-                Feedback is generated using AI based on the screenshots and notes you provide. AI can misunderstand
-                charts, miss details, or generate inaccurate information. Never treat AI feedback as guaranteed truth.
+                Feedback in MaxTradeAI is generated using AI models based on the
+                screenshots and notes you provide. AI can misunderstand charts,
+                miss important details, or generate inaccurate or incomplete
+                information. You should never treat AI feedback as guaranteed
+                truth.
               </p>
 
               <div style={styles.legalHeading}>4. User Responsibility</div>
               <p>
-                You are responsible for providing accurate info, managing risk, and verifying ideas before acting.
-                You trade at your own risk.
+                By using this app, you agree that you are responsible for:
+                providing accurate information, managing your own risk, and
+                verifying any ideas before acting on them. You trade at your own
+                risk.
               </p>
 
               <div style={styles.legalHeading}>5. Limitation of Liability</div>
               <p>
-                To the fullest extent permitted by law, MaxTradeAI and its operators are not liable for losses or damages
-                arising from your use of the app, including trading losses or missed opportunities.
+                To the fullest extent permitted by law, MaxTradeAI and its
+                operators are not liable for any direct, indirect, incidental,
+                or consequential losses or damages arising from your use of the
+                app, including trading losses, missed opportunities, or emotional
+                stress.
               </p>
 
               <div style={styles.legalHeading}>6. No Warranties</div>
               <p>
-                The app is provided &quot;as is&quot; and &quot;as available&quot; without warranties of any kind.
+                The app is provided &quot;as is&quot; and &quot;as available&quot;
+                without warranties of any kind, whether express or implied.
               </p>
 
               <div style={styles.legalHeading}>7. Changes to Terms</div>
               <p>
-                We may update these terms over time. Continued use after changes means you accept the updated terms.
+                We may update these Terms of Use over time. Continued use of the
+                app after changes means you accept the updated terms.
               </p>
             </div>
-            <button type="button" style={styles.modalButtonSecondary} onClick={() => setShowTerms(false)}>
+            <button
+              type="button"
+              style={styles.modalButtonSecondary}
+              onClick={() => setShowTerms(false)}
+            >
               Close
             </button>
           </div>
@@ -1778,32 +1840,44 @@ export default function LandingPage({ onEnterApp }) {
         <div style={styles.overlay}>
           <div style={styles.modalCard}>
             <div style={styles.modalTitle}>Disclaimer</div>
-            <div style={styles.modalText}>AI can be wrong. Trading always involves risk.</div>
+            <div style={styles.modalText}>
+              AI can be wrong. Trading always involves risk.
+            </div>
             <div style={styles.legalBody}>
               <div style={styles.legalHeading}>1. No Guarantees</div>
               <p>
-                MaxTradeAI cannot guarantee accuracy of AI-generated feedback, nor can it guarantee profits,
-                improvement, or outcomes. You may lose money trading.
+                MaxTradeAI cannot guarantee accuracy of any AI-generated
+                feedback, nor can it guarantee profits, improvement, or specific
+                outcomes. All trading involves risk, and you may lose money.
               </p>
 
               <div style={styles.legalHeading}>2. AI Limitations</div>
               <p>
-                Even with clear screenshots, AI can misinterpret context or miss key points. Treat feedback as an
-                extra opinion — not a signal service or rulebook.
+                Even with detailed notes and clear screenshots, AI can
+                misinterpret context, miss key points, or provide feedback that
+                you disagree with. Treat AI feedback as an extra opinion, not a
+                signal service or rulebook.
               </p>
 
               <div style={styles.legalHeading}>3. Your Decisions</div>
               <p>
-                Trades you place are your decisions and responsibility. Use your own judgment and risk management.
+                Any trades you place are your decisions and your responsibility.
+                You should always use your own judgment, risk management, and,
+                where appropriate, consult a qualified financial professional.
               </p>
 
               <div style={styles.legalHeading}>4. Educational Framing</div>
               <p>
-                Think of MaxTradeAI like a practice tool. It helps you reflect on process — not tell you exactly
-                what to do in markets.
+                Think of MaxTradeAI like a practice tool or training partner.
+                Its role is to help you reflect on your process, not to tell you
+                exactly what to do in the markets.
               </p>
             </div>
-            <button type="button" style={styles.modalButtonSecondary} onClick={() => setShowDisclaimer(false)}>
+            <button
+              type="button"
+              style={styles.modalButtonSecondary}
+              onClick={() => setShowDisclaimer(false)}
+            >
               Close
             </button>
           </div>
