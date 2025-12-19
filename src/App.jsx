@@ -86,6 +86,7 @@ function normalizeDriveUrl(url) {
 
 function safeSaveChats(key, chats) {
   try {
+    // keep storage lean (no local image blobs)
     const leanChats = chats.map(({ localPreviewUrl, localDataUrl, ...rest }) => ({
       ...rest,
     }));
@@ -209,7 +210,11 @@ export default function App({ selectedDay = todayStr() }) {
   });
 
   // ⭐ JOURNAL STATE
-  const [journal, setJournal] = useState({ notes: "", learned: "", improve: "" });
+  const [journal, setJournal] = useState({
+    notes: "",
+    learned: "",
+    improve: "",
+  });
 
   // ⭐ P&L CALENDAR STATE (manual)
   const [pnlMonth, setPnlMonth] = useState(() => {
@@ -218,7 +223,8 @@ export default function App({ selectedDay = todayStr() }) {
   });
 
   const [pnl, setPnl] = useState(() => {
-    const raw = typeof window !== "undefined" ? localStorage.getItem(PNL_KEY) : null;
+    const raw =
+      typeof window !== "undefined" ? localStorage.getItem(PNL_KEY) : null;
     return safeParseJSON(raw, {});
   });
 
@@ -231,7 +237,11 @@ export default function App({ selectedDay = todayStr() }) {
   const todayIso = todayStr();
 
   const isValid = useMemo(
-    () => !!form.strategyNotes && !!form.file && !!form.timeframe && !!form.instrument,
+    () =>
+      !!form.strategyNotes &&
+      !!form.file &&
+      !!form.timeframe &&
+      !!form.instrument,
     [form]
   );
 
@@ -251,7 +261,6 @@ export default function App({ selectedDay = todayStr() }) {
       * { -webkit-tap-highlight-color: transparent; }
       html, body { max-width: 100%; overflow-x: hidden; }
 
-      /* soft “glass” + crisp text rendering */
       body {
         text-rendering: geometricPrecision;
         -webkit-font-smoothing: antialiased;
@@ -264,7 +273,6 @@ export default function App({ selectedDay = todayStr() }) {
 
       .mt-calPanel { max-width: min(92vw, 340px); width: min(92vw, 340px); }
 
-      /* subtle card hover lift */
       .mt-cardHover {
         transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
       }
@@ -272,7 +280,6 @@ export default function App({ selectedDay = todayStr() }) {
         transform: translateY(-2px);
       }
 
-      /* nicer scrollbars */
       ::-webkit-scrollbar { width: 10px; height: 10px; }
       ::-webkit-scrollbar-thumb {
         background: rgba(148,163,184,0.18);
@@ -299,19 +306,6 @@ export default function App({ selectedDay = todayStr() }) {
       }
     `}</style>
   );
-
-  /* ---------------- FIRESTORE: QUICK TEST WRITE ---------------- */
-  useEffect(() => {
-    if (!memberId) return;
-    (async () => {
-      try {
-        await setDoc(doc(db, "test", memberId), { works: true, at: serverTimestamp() }, { merge: true });
-        console.log("✅ Firestore connected (test write ok)");
-      } catch (e) {
-        console.error("❌ Firestore test write error:", e?.code, e?.message, e);
-      }
-    })();
-  }, [memberId]);
 
   /* ---------------- WHEN MEMBER CHANGES: LOAD THEIR LOCAL DEFAULTS ---------------- */
   useEffect(() => {
@@ -463,17 +457,18 @@ export default function App({ selectedDay = todayStr() }) {
 
   // AI date dropdown calendar
   const monthWeeks = buildMonthWeeks(calendarMonth);
-  const calendarMonthLabel = new Date(calendarMonth.year, calendarMonth.month, 1).toLocaleDateString(
-    undefined,
-    { month: "long", year: "numeric" }
-  );
+  const calendarMonthLabel = new Date(
+    calendarMonth.year,
+    calendarMonth.month,
+    1
+  ).toLocaleDateString(undefined, { month: "long", year: "numeric" });
 
   // P&L month calendar
   const pnlWeeks = buildMonthWeeks(pnlMonth);
-  const pnlMonthLabel = new Date(pnlMonth.year, pnlMonth.month, 1).toLocaleDateString(undefined, {
-    month: "long",
-    year: "numeric",
-  });
+  const pnlMonthLabel = new Date(pnlMonth.year, pnlMonth.month, 1).toLocaleDateString(
+    undefined,
+    { month: "long", year: "numeric" }
+  );
 
   const formattedDayLabel = parseLocalDateFromIso(day).toLocaleDateString(undefined, {
     weekday: "long",
@@ -519,9 +514,15 @@ export default function App({ selectedDay = todayStr() }) {
     setPnlEditingIso(iso);
     setPnlEditSymbol(existing?.symbol || "");
     setPnlEditPnl(
-      typeof existing?.pnl === "number" && Number.isFinite(existing.pnl) ? String(existing.pnl) : ""
+      typeof existing?.pnl === "number" && Number.isFinite(existing.pnl)
+        ? String(existing.pnl)
+        : ""
     );
-    setPnlEditRR(typeof existing?.rr === "number" && Number.isFinite(existing.rr) ? String(existing.rr) : "");
+    setPnlEditRR(
+      typeof existing?.rr === "number" && Number.isFinite(existing.rr)
+        ? String(existing.rr)
+        : ""
+    );
     setPnlModalOpen(true);
   }
 
@@ -648,7 +649,8 @@ export default function App({ selectedDay = todayStr() }) {
       height: 10,
       borderRadius: 999,
       background: `linear-gradient(135deg, ${CYAN}, ${VIOLET})`,
-      boxShadow: "0 0 0 5px rgba(34,211,238,0.12), 0 14px 45px rgba(34,211,238,0.25)",
+      boxShadow:
+        "0 0 0 5px rgba(34,211,238,0.12), 0 14px 45px rgba(34,211,238,0.25)",
       flex: "0 0 auto",
     },
     siteHeaderTitle: {
@@ -690,7 +692,8 @@ export default function App({ selectedDay = todayStr() }) {
       fontSize: 18,
       padding: 0,
       boxShadow: "0 14px 50px rgba(2,6,23,0.9)",
-      transition: "transform .18s ease, box-shadow .18s ease, border-color .18s ease",
+      transition:
+        "transform .18s ease, box-shadow .18s ease, border-color .18s ease",
     },
     menuButtonHover: {
       transform: "translateY(-1px)",
@@ -785,12 +788,17 @@ export default function App({ selectedDay = todayStr() }) {
       background: active
         ? `linear-gradient(135deg, ${CYAN}, ${CYAN_SOFT})`
         : "linear-gradient(135deg, rgba(148,163,184,0.06), rgba(2,6,23,0))",
-      border: active ? "1px solid rgba(34,211,238,0.45)" : "1px solid rgba(148,163,184,0.10)",
-      boxShadow: active ? "0 18px 60px rgba(34,211,238,0.26)" : "0 10px 35px rgba(2,6,23,0.65)",
+      border: active
+        ? "1px solid rgba(34,211,238,0.45)"
+        : "1px solid rgba(148,163,184,0.10)",
+      boxShadow: active
+        ? "0 18px 60px rgba(34,211,238,0.26)"
+        : "0 10px 35px rgba(2,6,23,0.65)",
       fontWeight: active ? 900 : 800,
       letterSpacing: active ? "0.02em" : "0",
       marginBottom: 10,
-      transition: "transform .15s ease, box-shadow .15s ease, background .15s ease, border-color .15s ease",
+      transition:
+        "transform .15s ease, box-shadow .15s ease, background .15s ease, border-color .15s ease",
       userSelect: "none",
       position: "relative",
       overflow: "hidden",
@@ -804,7 +812,9 @@ export default function App({ selectedDay = todayStr() }) {
       height: 8,
       borderRadius: 999,
       background: active ? "#07101f" : "rgba(34,211,238,0.55)",
-      boxShadow: active ? "0 0 0 6px rgba(7,16,31,0.10)" : "0 0 0 6px rgba(34,211,238,0.08)",
+      boxShadow: active
+        ? "0 0 0 6px rgba(7,16,31,0.10)"
+        : "0 0 0 6px rgba(34,211,238,0.08)",
       pointerEvents: "none",
     }),
     navItemText: { paddingLeft: 16 },
@@ -925,7 +935,8 @@ export default function App({ selectedDay = todayStr() }) {
       cursor: "pointer",
       border: "1px solid rgba(148,163,184,0.10)",
       color: "#e5e7eb",
-      transition: "background .12s ease, border .12s ease, color .12s ease, transform .12s ease",
+      transition:
+        "background .12s ease, border .12s ease, color .12s ease, transform .12s ease",
       userSelect: "none",
       background: "rgba(2,6,23,0.55)",
       boxShadow: "0 10px 26px rgba(2,6,23,0.65)",
@@ -1069,7 +1080,11 @@ export default function App({ selectedDay = todayStr() }) {
       color: "#e5e7eb",
       letterSpacing: "0.01em",
     },
-    statusPlaceholderText: { fontSize: 13, opacity: 0.85, color: "rgba(148,163,184,0.95)" },
+    statusPlaceholderText: {
+      fontSize: 13,
+      opacity: 0.85,
+      color: "rgba(148,163,184,0.95)",
+    },
     statusHeaderRow: {
       display: "flex",
       justifyContent: "space-between",
@@ -1086,8 +1101,17 @@ export default function App({ selectedDay = todayStr() }) {
       fontSize: 12,
       minWidth: 0,
     },
-    statusLabel: { fontSize: 13, fontWeight: 950, color: "#e5e7eb", letterSpacing: "0.02em" },
-    statusMeta: { fontSize: 11, opacity: 0.82, color: "rgba(148,163,184,0.95)" },
+    statusLabel: {
+      fontSize: 13,
+      fontWeight: 950,
+      color: "#e5e7eb",
+      letterSpacing: "0.02em",
+    },
+    statusMeta: {
+      fontSize: 11,
+      opacity: 0.82,
+      color: "rgba(148,163,184,0.95)",
+    },
     gradePill: {
       fontSize: 14,
       fontWeight: 950,
@@ -1127,10 +1151,22 @@ export default function App({ selectedDay = todayStr() }) {
       color: "rgba(226,232,240,0.92)",
       lineHeight: 1.5,
     },
-    smallMeta: { fontSize: 11, opacity: 0.78, marginTop: 10, color: "rgba(148,163,184,0.95)" },
+    smallMeta: {
+      fontSize: 11,
+      opacity: 0.78,
+      marginTop: 10,
+      color: "rgba(148,163,184,0.95)",
+    },
 
     // 🔹 FORM BELOW STATUS
-    formSection: { marginTop: 10, display: "flex", flexDirection: "column", gap: 8, position: "relative", zIndex: 1 },
+    formSection: {
+      marginTop: 10,
+      display: "flex",
+      flexDirection: "column",
+      gap: 8,
+      position: "relative",
+      zIndex: 1,
+    },
     composerRow: { display: "flex", gap: 10, alignItems: "stretch", flexWrap: "wrap" },
     composerLeft: { flex: "0 0 200px", minWidth: 150 },
     composerRight: { flex: "1 1 260px", minWidth: 260 },
@@ -1195,7 +1231,13 @@ export default function App({ selectedDay = todayStr() }) {
       boxShadow: "0 12px 40px rgba(2,6,23,0.9)",
     },
 
-    label: { fontSize: 12, opacity: 0.9, marginBottom: 4, color: "rgba(148,163,184,0.95)", fontWeight: 800 },
+    label: {
+      fontSize: 12,
+      opacity: 0.9,
+      marginBottom: 4,
+      color: "rgba(148,163,184,0.95)",
+      fontWeight: 800,
+    },
     fieldRow: { display: "flex", gap: 8, marginBottom: 6, flexWrap: "wrap" },
     fieldHalf: { flex: "1 1 0", minWidth: 140 },
 
@@ -1285,7 +1327,10 @@ export default function App({ selectedDay = todayStr() }) {
       position: "relative",
       overflow: "hidden",
     },
-    buttonHover: { transform: "translateY(-1px)", boxShadow: "0 28px 92px rgba(34,211,238,0.55)" },
+    buttonHover: {
+      transform: "translateY(-1px)",
+      boxShadow: "0 28px 92px rgba(34,211,238,0.55)",
+    },
     error: {
       marginTop: 6,
       padding: 10,
@@ -1327,9 +1372,24 @@ export default function App({ selectedDay = todayStr() }) {
       filter: "blur(18px)",
       pointerEvents: "none",
     },
-    journalHeaderRow: { display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8, flexWrap: "wrap", position: "relative", zIndex: 1 },
+    journalHeaderRow: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "baseline",
+      gap: 8,
+      flexWrap: "wrap",
+      position: "relative",
+      zIndex: 1,
+    },
     journalTitle: { fontSize: 18, fontWeight: 950, color: "#f9fafb", letterSpacing: "0.02em" },
-    journalSub: { fontSize: 11, opacity: 0.86, marginTop: 6, maxWidth: 380, color: "rgba(148,163,184,0.95)", lineHeight: 1.45 },
+    journalSub: {
+      fontSize: 11,
+      opacity: 0.86,
+      marginTop: 6,
+      maxWidth: 380,
+      color: "rgba(148,163,184,0.95)",
+      lineHeight: 1.45,
+    },
     journalBadge: {
       fontSize: 11,
       padding: "5px 10px",
@@ -1435,8 +1495,23 @@ export default function App({ selectedDay = todayStr() }) {
       filter: "blur(18px)",
       pointerEvents: "none",
     },
-    pnlCalHeader: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10, gap: 8, flexWrap: "wrap", position: "relative", zIndex: 1 },
-    pnlCalTitle: { fontSize: 16, fontWeight: 950, color: "#f9fafb", letterSpacing: "0.10em", textTransform: "uppercase" },
+    pnlCalHeader: {
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 10,
+      gap: 8,
+      flexWrap: "wrap",
+      position: "relative",
+      zIndex: 1,
+    },
+    pnlCalTitle: {
+      fontSize: 16,
+      fontWeight: 950,
+      color: "#f9fafb",
+      letterSpacing: "0.10em",
+      textTransform: "uppercase",
+    },
     pnlCalNav: { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" },
     pnlNavBtn: {
       width: 32,
@@ -1452,8 +1527,21 @@ export default function App({ selectedDay = todayStr() }) {
       justifyContent: "center",
       boxShadow: "0 12px 40px rgba(2,6,23,0.85)",
     },
-    pnlMonthLabel: { fontSize: 13, fontWeight: 900, color: "#e5e7eb", opacity: 0.92, minWidth: 160, textAlign: "center", letterSpacing: "0.02em" },
-    pnlMonthMeta: { fontSize: 12, opacity: 0.86, color: "rgba(148,163,184,0.95)", lineHeight: 1.45 },
+    pnlMonthLabel: {
+      fontSize: 13,
+      fontWeight: 900,
+      color: "#e5e7eb",
+      opacity: 0.92,
+      minWidth: 160,
+      textAlign: "center",
+      letterSpacing: "0.02em",
+    },
+    pnlMonthMeta: {
+      fontSize: 12,
+      opacity: 0.86,
+      color: "rgba(148,163,184,0.95)",
+      lineHeight: 1.45,
+    },
 
     pnlWeekdayRow: {
       display: "grid",
@@ -1467,8 +1555,21 @@ export default function App({ selectedDay = todayStr() }) {
       position: "relative",
       zIndex: 1,
     },
-    pnlWeek: { display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 8, marginTop: 8, position: "relative", zIndex: 1 },
-    pnlCellEmpty: { height: 80, borderRadius: 16, border: "1px solid rgba(148,163,184,0.08)", opacity: 0.25, background: "rgba(2,6,23,0.35)" },
+    pnlWeek: {
+      display: "grid",
+      gridTemplateColumns: "repeat(7, 1fr)",
+      gap: 8,
+      marginTop: 8,
+      position: "relative",
+      zIndex: 1,
+    },
+    pnlCellEmpty: {
+      height: 80,
+      borderRadius: 16,
+      border: "1px solid rgba(148,163,184,0.08)",
+      opacity: 0.25,
+      background: "rgba(2,6,23,0.35)",
+    },
 
     pnlDayCell: (bg, borderColor) => ({
       height: 80,
@@ -1548,8 +1649,26 @@ export default function App({ selectedDay = todayStr() }) {
       filter: "blur(18px)",
       pointerEvents: "none",
     },
-    modalTitle: { fontSize: 18, fontWeight: 950, marginBottom: 6, textAlign: "center", color: "#f9fafb", letterSpacing: "0.02em", position: "relative", zIndex: 1 },
-    modalText: { fontSize: 12, opacity: 0.86, marginBottom: 12, textAlign: "center", color: "rgba(148,163,184,0.95)", lineHeight: 1.45, position: "relative", zIndex: 1 },
+    modalTitle: {
+      fontSize: 18,
+      fontWeight: 950,
+      marginBottom: 6,
+      textAlign: "center",
+      color: "#f9fafb",
+      letterSpacing: "0.02em",
+      position: "relative",
+      zIndex: 1,
+    },
+    modalText: {
+      fontSize: 12,
+      opacity: 0.86,
+      marginBottom: 12,
+      textAlign: "center",
+      color: "rgba(148,163,184,0.95)",
+      lineHeight: 1.45,
+      position: "relative",
+      zIndex: 1,
+    },
     modalRow: { marginBottom: 10, fontSize: 13, position: "relative", zIndex: 1 },
     modalLabel: { fontWeight: 900, opacity: 0.9, color: "#e5e7eb", marginBottom: 4 },
     modalCloseBtn: {
@@ -1772,12 +1891,6 @@ export default function App({ selectedDay = todayStr() }) {
       setChats((prev) =>
         prev.map((c) => {
           if (c.id !== tempId) return c;
-
-          if (c.localPreviewUrl) {
-            try {
-              URL.revokeObjectURL(c.localPreviewUrl);
-            } catch {}
-          }
 
           return {
             ...c,
@@ -2092,10 +2205,7 @@ export default function App({ selectedDay = todayStr() }) {
                       setShowCalendar((open) => !open);
                       if (!showCalendar) {
                         const d = parseLocalDateFromIso(day);
-                        setCalendarMonth({
-                          year: d.getFullYear(),
-                          month: d.getMonth(),
-                        });
+                        setCalendarMonth({ year: d.getFullYear(), month: d.getMonth() });
                       }
                     }}
                     onMouseEnter={() => setDateHover(true)}
@@ -2226,13 +2336,20 @@ export default function App({ selectedDay = todayStr() }) {
                               </div>
 
                               {typeof confidence === "number" && (
-                                <div style={styles.statusMeta}>{Math.round(confidence * 100)}% confident</div>
+                                <div style={styles.statusMeta}>
+                                  {Math.round(confidence * 100)}% confident
+                                </div>
                               )}
 
-                              {imgSrc && <img src={imgSrc} alt="Trade screenshot" style={styles.statusImg} />}
+                              {imgSrc && (
+                                <img src={imgSrc} alt="Trade screenshot" style={styles.statusImg} />
+                              )}
 
                               {oneLineVerdict && (
-                                <div className="mt-safeWrap" style={{ opacity: 0.98, fontSize: 13, lineHeight: 1.5 }}>
+                                <div
+                                  className="mt-safeWrap"
+                                  style={{ opacity: 0.98, fontSize: 13, lineHeight: 1.5 }}
+                                >
                                   {oneLineVerdict}
                                 </div>
                               )}
@@ -2279,7 +2396,10 @@ export default function App({ selectedDay = todayStr() }) {
                               {lessonLearned && (
                                 <>
                                   <div style={styles.sectionTitle}>Lesson learned</div>
-                                  <div className="mt-safeWrap" style={{ fontSize: 13, opacity: 0.94, lineHeight: 1.5 }}>
+                                  <div
+                                    className="mt-safeWrap"
+                                    style={{ fontSize: 13, opacity: 0.94, lineHeight: 1.5 }}
+                                  >
                                     {lessonLearned}
                                   </div>
                                 </>
@@ -2368,7 +2488,7 @@ export default function App({ selectedDay = todayStr() }) {
                             </div>
                           </div>
 
-                          {/* RIGHT: selects + notes */}
+                          {/* RIGHT: fields */}
                           <div style={styles.composerRight}>
                             <div style={styles.fieldRow}>
                               <div style={styles.fieldHalf}>
@@ -2380,18 +2500,17 @@ export default function App({ selectedDay = todayStr() }) {
                                     style={styles.select}
                                   >
                                     <option value="">Select…</option>
-                                    <option value="NASDAQ">Nasdaq</option>
-                                    <option value="S&P500">S&amp;P 500</option>
-                                    <option value="DOW">Dow</option>
-                                    <option value="GOLD">Gold</option>
-                                    <option value="GBP/USD">GBP/USD</option>
-                                    <option value="EUR/USD">EUR/USD</option>
-                                    <option value="USD/JPY">USD/JPY</option>
-                                    <option value="BTCUSD">BTCUSD</option>
-                                    <option value="ETHUSD">ETHUSD</option>
-                                    <option value="OTHER">Other</option>
+                                    <option value="EURUSD">EURUSD</option>
+                                    <option value="GBPUSD">GBPUSD</option>
+                                    <option value="USDJPY">USDJPY</option>
+                                    <option value="XAUUSD">XAUUSD (Gold)</option>
+                                    <option value="ES">ES (S&amp;P)</option>
+                                    <option value="NQ">NQ (Nasdaq)</option>
+                                    <option value="MES">MES</option>
+                                    <option value="MNQ">MNQ</option>
+                                    <option value="Other">Other</option>
                                   </select>
-                                  <div style={styles.selectArrow}>▼</div>
+                                  <span style={styles.selectArrow}>▼</span>
                                 </div>
                               </div>
 
@@ -2412,66 +2531,65 @@ export default function App({ selectedDay = todayStr() }) {
                                     <option value="1H">1H</option>
                                     <option value="2H">2H</option>
                                     <option value="4H">4H</option>
-                                    <option value="1D">Daily</option>
-                                    <option value="1W">Weekly</option>
+                                    <option value="D">Daily</option>
                                   </select>
-                                  <div style={styles.selectArrow}>▼</div>
+                                  <span style={styles.selectArrow}>▼</span>
                                 </div>
                               </div>
                             </div>
 
-                            <div>
-                              <div style={styles.label}>Your trade idea (strategy + entry/SL/TP)</div>
+                            <div style={{ marginTop: 6 }}>
+                              <div style={styles.label}>Strategy notes (what you saw + why you took it)</div>
                               <textarea
                                 value={form.strategyNotes}
                                 onChange={(e) => onChange("strategyNotes", e.target.value)}
-                                placeholder="Example: Bullish bias from HTF… liquidity sweep… entry on FVG… SL below… TP at… emotions…"
+                                placeholder="Example: London sweep → FVG reclaim → targeted NY low… Entry, stop, target, what session, what you felt, etc."
                                 style={styles.textarea}
                               />
                             </div>
 
                             <button
                               type="submit"
-                              disabled={buttonDisabled}
                               style={{
                                 ...styles.button,
                                 ...(btnHover && !buttonDisabled ? styles.buttonHover : {}),
                               }}
+                              disabled={buttonDisabled}
                               onMouseEnter={() => setBtnHover(true)}
                               onMouseLeave={() => setBtnHover(false)}
                             >
                               {primaryButtonLabel}
                             </button>
 
-                            {!!error && (
-                              <>
-                                <div style={styles.error}>{error}</div>
-                                <div style={styles.hint}>
-                                  If this keeps happening, refresh and try a smaller image.
-                                </div>
-                              </>
+                            {!hasCompletedTrade && (
+                              <div style={styles.hint}>
+                                Finish one full submission first. (Screenshot + instrument + timeframe + notes)
+                              </div>
                             )}
+
+                            {!!error && <div style={styles.error}>{error}</div>}
 
                             {(chats?.length > 0 || form.strategyNotes || form.file) && (
                               <button
                                 type="button"
                                 onClick={handleResetTrade}
                                 style={{
-                                  marginTop: 8,
+                                  marginTop: 10,
                                   width: "100%",
                                   borderRadius: 999,
                                   border: "1px solid rgba(148,163,184,0.14)",
                                   padding: "10px 12px",
-                                  fontSize: 13,
-                                  fontWeight: 950,
-                                  cursor: "pointer",
+                                  fontSize: 12,
+                                  fontWeight: 900,
                                   background: "rgba(2,6,23,0.55)",
-                                  color: "#e5e7eb",
-                                  boxShadow: "0 16px 60px rgba(2,6,23,0.9)",
-                                  letterSpacing: "0.04em",
+                                  color: "rgba(226,232,240,0.92)",
+                                  cursor: "pointer",
+                                  boxShadow: "0 16px 55px rgba(2,6,23,0.85)",
+                                  letterSpacing: "0.06em",
+                                  textTransform: "uppercase",
                                 }}
                               >
-                                Reset day
+                                Reset this day
                               </button>
                             )}
                           </div>
@@ -2480,7 +2598,7 @@ export default function App({ selectedDay = todayStr() }) {
                     </div>
                   </div>
 
-                  {/* RIGHT COL: JOURNAL */}
+                  {/* RIGHT COLUMN: Journal */}
                   <div className="mt-rightCol" style={styles.rightCol}>
                     <div className="mt-journalCard mt-cardHover" style={styles.journalCard}>
                       <div style={styles.journalSheen} />
@@ -2489,20 +2607,18 @@ export default function App({ selectedDay = todayStr() }) {
                         <div className="mt-safeWrap">
                           <div style={styles.journalTitle}>Journal</div>
                           <div style={styles.journalSub}>
-                            Quick reflection for {day}. This saves per member + per day.
+                            Keep it simple. Short notes → better consistency.
                           </div>
                         </div>
-                        <div style={styles.journalBadge}>Auto-saved</div>
+                        <div style={styles.journalBadge}>{day}</div>
                       </div>
 
                       <div>
                         <div style={styles.journalLabel}>Notes (what happened)</div>
                         <textarea
                           value={journal.notes}
-                          onChange={(e) =>
-                            setJournal((prev) => ({ ...prev, notes: e.target.value }))
-                          }
-                          placeholder="What did price do? What session? What was the trigger?"
+                          onChange={(e) => setJournal((p) => ({ ...p, notes: e.target.value }))}
+                          placeholder="What did price do? What was your plan? Did you follow it?"
                           style={styles.journalTextareaBig}
                         />
                       </div>
@@ -2511,24 +2627,73 @@ export default function App({ selectedDay = todayStr() }) {
                         <div style={styles.journalLabel}>What you learned</div>
                         <textarea
                           value={journal.learned}
-                          onChange={(e) =>
-                            setJournal((prev) => ({ ...prev, learned: e.target.value }))
-                          }
-                          placeholder="One key insight you can repeat."
+                          onChange={(e) => setJournal((p) => ({ ...p, learned: e.target.value }))}
+                          placeholder="One lesson only."
                           style={styles.journalTextareaSmall}
                         />
                       </div>
 
                       <div>
-                        <div style={styles.journalLabel}>What to improve</div>
+                        <div style={styles.journalLabel}>Improve tomorrow</div>
                         <textarea
                           value={journal.improve}
-                          onChange={(e) =>
-                            setJournal((prev) => ({ ...prev, improve: e.target.value }))
-                          }
-                          placeholder="One thing to tighten up next time."
+                          onChange={(e) => setJournal((p) => ({ ...p, improve: e.target.value }))}
+                          placeholder="One change only."
                           style={styles.journalTextareaSmall}
                         />
+                      </div>
+
+                      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 6 }}>
+                        <button
+                          type="button"
+                          onClick={() => setJournal({ notes: "", learned: "", improve: "" })}
+                          style={{
+                            flex: 1,
+                            borderRadius: 999,
+                            border: "1px solid rgba(148,163,184,0.14)",
+                            padding: "10px 12px",
+                            fontSize: 12,
+                            fontWeight: 900,
+                            background: "rgba(2,6,23,0.55)",
+                            color: "rgba(226,232,240,0.92)",
+                            cursor: "pointer",
+                            boxShadow: "0 16px 55px rgba(2,6,23,0.85)",
+                            letterSpacing: "0.06em",
+                            textTransform: "uppercase",
+                            minWidth: 140,
+                          }}
+                        >
+                          Clear journal
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const iso = todayStr();
+                            setDay(iso);
+                            setActivePage(PAGES.AI);
+                            setShowCalendar(false);
+                            const d = parseLocalDateFromIso(iso);
+                            setCalendarMonth({ year: d.getFullYear(), month: d.getMonth() });
+                          }}
+                          style={{
+                            flex: 1,
+                            borderRadius: 999,
+                            border: "1px solid rgba(34,211,238,0.18)",
+                            padding: "10px 12px",
+                            fontSize: 12,
+                            fontWeight: 950,
+                            background: `linear-gradient(135deg, ${CYAN}, ${CYAN_SOFT})`,
+                            color: "#07101f",
+                            cursor: "pointer",
+                            boxShadow: "0 22px 75px rgba(34,211,238,0.38)",
+                            letterSpacing: "0.06em",
+                            textTransform: "uppercase",
+                            minWidth: 140,
+                          }}
+                        >
+                          Jump to today
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -2545,33 +2710,36 @@ export default function App({ selectedDay = todayStr() }) {
                       <div style={styles.pnlCardValue}>{fmtMoneySigned(allTimeStats.pnlSum)}</div>
                       <div style={styles.pnlCardSub}>
                         Avg RR:{" "}
-                        {typeof allTimeStats.avgRR === "number"
-                          ? fmtRR(allTimeStats.avgRR)
-                          : "—"}{" "}
+                        <strong>
+                          {typeof allTimeStats.avgRR === "number" ? fmtRR(allTimeStats.avgRR) : "—"}
+                        </strong>{" "}
                         • Trades w/ RR: {allTimeStats.rrCount}
                       </div>
                     </div>
 
                     <div style={styles.pnlCard} className="mt-cardHover">
                       <div style={styles.pnlCardSheen} />
-                      <div style={styles.pnlCardLabel}>{pnlMonthLabel} P&amp;L</div>
+                      <div style={styles.pnlCardLabel}>This month</div>
                       <div style={styles.pnlCardValue}>{fmtMoneySigned(monthStats.pnlSum)}</div>
                       <div style={styles.pnlCardSub}>
                         Avg RR:{" "}
-                        {typeof monthStats.avgRR === "number" ? fmtRR(monthStats.avgRR) : "—"} •
-                        Trades w/ RR: {monthStats.rrCount}
+                        <strong>
+                          {typeof monthStats.avgRR === "number" ? fmtRR(monthStats.avgRR) : "—"}
+                        </strong>{" "}
+                        • Trades w/ RR: {monthStats.rrCount}
                       </div>
                     </div>
                   </div>
 
                   <div style={styles.pnlCalendarCard} className="mt-cardHover">
                     <div style={styles.pnlCalendarSheen} />
+
                     <div style={styles.pnlCalHeader}>
                       <div>
-                        <div style={styles.pnlCalTitle}>P&amp;L calendar</div>
+                        <div style={styles.pnlCalTitle}>P&amp;L Calendar</div>
                         <div style={styles.pnlMonthMeta}>
-                          Click any day to enter <strong>Symbol</strong>, <strong>$ P&amp;L</strong>,
-                          and <strong>RR</strong>.
+                          Click a day to add <strong>Symbol</strong>, <strong>$ P&amp;L</strong>,{" "}
+                          and optional <strong>RR</strong>.
                         </div>
                       </div>
 
@@ -2599,44 +2767,45 @@ export default function App({ selectedDay = todayStr() }) {
                         {week.map((cell, di) => {
                           if (!cell) return <div key={di} style={styles.pnlCellEmpty} />;
 
-                          const entry = allEntries?.[cell.iso];
-                          const theme = cellThemeForIso(cell.iso);
+                          const iso = cell.iso;
+                          const entry = allEntries?.[iso];
+                          const theme = cellThemeForIso(iso);
+
+                          const pnlVal =
+                            typeof entry?.pnl === "number" && Number.isFinite(entry.pnl)
+                              ? fmtMoneySigned(entry.pnl)
+                              : null;
+
+                          const rrVal =
+                            typeof entry?.rr === "number" && Number.isFinite(entry.rr)
+                              ? fmtRR(entry.rr)
+                              : null;
 
                           return (
                             <div
                               key={di}
                               style={styles.pnlDayCell(theme.bg, theme.border)}
-                              onClick={() => openPnlModal(cell.iso)}
+                              onClick={() => openPnlModal(iso)}
                               onMouseEnter={(e) => (e.currentTarget.style.transform = "translateY(-1px)")}
                               onMouseLeave={(e) => (e.currentTarget.style.transform = "translateY(0)")}
-                              role="button"
-                              tabIndex={0}
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter" || e.key === " ") openPnlModal(cell.iso);
-                              }}
-                              aria-label={`Edit P&L for ${cell.iso}`}
                             >
                               <div style={styles.pnlDayTop}>
                                 <div style={styles.pnlDayNum}>{cell.day}</div>
-                                {!!entry?.symbol && (
+                                {entry?.symbol ? (
                                   <div style={styles.pnlSymbolTag}>{entry.symbol}</div>
+                                ) : (
+                                  <div style={{ ...styles.pnlSymbolTag, opacity: 0.35 }}>—</div>
                                 )}
                               </div>
 
-                              <div style={styles.pnlDayMid}>
-                                {typeof entry?.pnl === "number" && Number.isFinite(entry.pnl) ? (
-                                  <>
-                                    <div style={styles.pnlPnlValue}>{fmtMoneySigned(entry.pnl)}</div>
-                                    <div style={styles.pnlRRValue}>
-                                      {typeof entry?.rr === "number" && Number.isFinite(entry.rr)
-                                        ? fmtRR(entry.rr)
-                                        : "—"}
-                                    </div>
-                                  </>
-                                ) : (
-                                  <div style={styles.pnlNoEntry}>No entry</div>
-                                )}
-                              </div>
+                              {pnlVal ? (
+                                <div style={styles.pnlDayMid}>
+                                  <div style={styles.pnlPnlValue}>{pnlVal}</div>
+                                  <div style={styles.pnlRRValue}>{rrVal || " "}</div>
+                                </div>
+                              ) : (
+                                <div style={styles.pnlNoEntry}>No entry</div>
+                              )}
                             </div>
                           );
                         })}
@@ -2650,87 +2819,23 @@ export default function App({ selectedDay = todayStr() }) {
         </div>
       </div>
 
-      {/* ===================== PROFILE MODAL ===================== */}
-      {showProfile && (
-        <div
-          style={styles.overlay}
-          onClick={() => setShowProfile(false)}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => {
-            if (e.key === "Escape") setShowProfile(false);
-          }}
-        >
-          <div
-            style={styles.modalCard}
-            onClick={(e) => e.stopPropagation()}
-            role="dialog"
-            aria-modal="true"
-            aria-label="Profile"
-          >
-            <div style={styles.modalSheen} />
-            <div style={styles.modalTitle}>Profile</div>
-            <div style={styles.modalText}>
-              This is the account currently loaded on this device.
-            </div>
-
-            <div style={styles.modalRow}>
-              <div style={styles.modalLabel}>Member ID</div>
-              <div className="mt-safeWrap" style={{ opacity: 0.95 }}>
-                {member?.memberId || "—"}
-              </div>
-            </div>
-
-            <div style={styles.modalRow}>
-              <div style={styles.modalLabel}>Name</div>
-              <div className="mt-safeWrap" style={{ opacity: 0.95 }}>
-                {member?.name || "—"}
-              </div>
-            </div>
-
-            <div style={styles.modalRow}>
-              <div style={styles.modalLabel}>Email</div>
-              <div className="mt-safeWrap" style={{ opacity: 0.95 }}>
-                {member?.email || "—"}
-              </div>
-            </div>
-
-            <div style={styles.modalRow}>
-              <div style={styles.modalLabel}>Plan</div>
-              <div className="mt-safeWrap" style={{ opacity: 0.95 }}>
-                {member?.plan || "personal"}
-              </div>
-            </div>
-
-            <button type="button" style={styles.modalCloseBtn} onClick={() => setShowProfile(false)}>
-              Close
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ===================== P&L ENTRY MODAL ===================== */}
+      {/* ===================== P&L MODAL ===================== */}
       {pnlModalOpen && (
         <div
           style={styles.overlay}
           onClick={() => setPnlModalOpen(false)}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => {
-            if (e.key === "Escape") setPnlModalOpen(false);
-          }}
+          role="presentation"
         >
           <div
             style={styles.modalCard}
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-modal="true"
-            aria-label="Edit P&L entry"
           >
             <div style={styles.modalSheen} />
             <div style={styles.modalTitle}>Edit P&amp;L</div>
             <div style={styles.modalText}>
-              {pnlEditingIso || ""} • Leave everything blank to delete.
+              {pnlEditingIso || "—"} • leave all fields empty to delete.
             </div>
 
             <div style={styles.modalRow}>
@@ -2738,9 +2843,8 @@ export default function App({ selectedDay = todayStr() }) {
               <input
                 value={pnlEditSymbol}
                 onChange={(e) => setPnlEditSymbol(e.target.value)}
-                placeholder="e.g., NQ, ES, GBPUSD"
+                placeholder="e.g. MNQ / EURUSD"
                 style={styles.input}
-                maxLength={14}
               />
             </div>
 
@@ -2749,9 +2853,9 @@ export default function App({ selectedDay = todayStr() }) {
               <input
                 value={pnlEditPnl}
                 onChange={(e) => setPnlEditPnl(e.target.value)}
-                placeholder="e.g., 125 or -80"
-                style={styles.input}
+                placeholder="e.g. 120 or -75"
                 inputMode="decimal"
+                style={styles.input}
               />
             </div>
 
@@ -2760,28 +2864,84 @@ export default function App({ selectedDay = todayStr() }) {
               <input
                 value={pnlEditRR}
                 onChange={(e) => setPnlEditRR(e.target.value)}
-                placeholder="e.g., 2 or 1.5"
-                style={styles.input}
+                placeholder="e.g. 2 or 1.5"
                 inputMode="decimal"
+                style={styles.input}
               />
             </div>
 
             <div style={styles.modalBtnRow}>
+              <button type="button" style={styles.modalBtnGhost} onClick={() => setPnlModalOpen(false)}>
+                Cancel
+              </button>
               <button type="button" style={styles.modalBtnPrimary} onClick={savePnlEntry}>
                 Save
-              </button>
-              <button
-                type="button"
-                style={styles.modalBtnGhost}
-                onClick={() => setPnlModalOpen(false)}
-              >
-                Cancel
               </button>
             </div>
 
             <div style={styles.modalBtnRow}>
               <button type="button" style={styles.modalBtnDanger} onClick={deletePnlEntry}>
                 Delete entry
+              </button>
+            </div>
+
+            <button type="button" style={styles.modalCloseBtn} onClick={() => setPnlModalOpen(false)}>
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ===================== PROFILE MODAL ===================== */}
+      {showProfile && (
+        <div
+          style={styles.overlay}
+          onClick={() => setShowProfile(false)}
+          role="presentation"
+        >
+          <div
+            style={styles.modalCard}
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+          >
+            <div style={styles.modalSheen} />
+            <div style={styles.modalTitle}>Profile</div>
+            <div style={styles.modalText}>This app saves per memberId.</div>
+
+            <div style={styles.modalRow}>
+              <div style={styles.modalLabel}>Member</div>
+              <div className="mt-safeWrap" style={{ opacity: 0.92 }}>
+                {member?.name ? <div><strong>{member.name}</strong></div> : null}
+                {member?.email ? <div>{member.email}</div> : null}
+                <div style={{ marginTop: 6, opacity: 0.85 }}>
+                  memberId: <strong>{memberId || "anon"}</strong>
+                </div>
+              </div>
+            </div>
+
+            <div style={styles.modalRow}>
+              <div style={styles.modalLabel}>Storage scope</div>
+              <div style={{ opacity: 0.86 }}>
+                <div>Chats key: <strong>{`tradeChats:${scope}:{YYYY-MM-DD}`}</strong></div>
+                <div>Journal key: <strong>{`tradeJournalV2:${scope}:{YYYY-MM-DD}`}</strong></div>
+                <div>P&amp;L key: <strong>{PNL_KEY}</strong></div>
+              </div>
+            </div>
+
+            <div style={styles.modalBtnRow}>
+              <button type="button" style={styles.modalBtnGhost} onClick={() => setShowProfile(false)}>
+                Close
+              </button>
+              <button
+                type="button"
+                style={styles.modalBtnDanger}
+                onClick={() => {
+                  setShowProfile(false);
+                  handleLogout();
+                }}
+              >
+                Log out
               </button>
             </div>
           </div>
