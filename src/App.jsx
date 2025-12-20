@@ -187,15 +187,8 @@ export default function App({ selectedDay = todayStr() }) {
   const dayChatsKey = (iso) => `tradeChats:${scope}:${iso}`;
   const dayJournalKeyV2 = (iso) => `tradeJournalV2:${scope}:${iso}`;
 
-  // initial day = last day with data (for THIS member) else selectedDay
-  const initialDay = (() => {
-    try {
-      const saved = localStorage.getItem(LAST_DAY_KEY);
-      return saved || selectedDay;
-    } catch {
-      return selectedDay;
-    }
-  })();
+  // ✅ initial day should ALWAYS be "today" (or selectedDay prop if you override it)
+const initialDay = selectedDay || todayStr();
 
   // ⭐ header menu + profile modal state
   const [menuOpen, setMenuOpen] = useState(false);
@@ -307,26 +300,22 @@ export default function App({ selectedDay = todayStr() }) {
     `}</style>
   );
 
-  /* ---------------- WHEN MEMBER CHANGES: LOAD THEIR LOCAL DEFAULTS ---------------- */
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem(LAST_DAY_KEY);
-      setDay(saved || selectedDay);
-      setShowCalendar(false);
-      const d = parseLocalDateFromIso(saved || selectedDay);
-      setCalendarMonth({ year: d.getFullYear(), month: d.getMonth() });
-    } catch {
-      setDay(selectedDay);
-    }
+  // ✅ Always start on today's day for this member
+  const iso = selectedDay || todayStr();
+  setDay(iso);
+  setShowCalendar(false);
+  const d = parseLocalDateFromIso(iso);
+  setCalendarMonth({ year: d.getFullYear(), month: d.getMonth() });
 
-    try {
-      const raw = localStorage.getItem(PNL_KEY);
-      setPnl(safeParseJSON(raw, {}));
-    } catch {
-      setPnl({});
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scope]);
+  try {
+    const raw = localStorage.getItem(PNL_KEY);
+    setPnl(safeParseJSON(raw, {}));
+  } catch {
+    setPnl({});
+  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [scope]);
 
   /* ---------------- FIRESTORE: LOAD PNL ON LOGIN ---------------- */
   useEffect(() => {
