@@ -1753,17 +1753,22 @@ export default function LandingPage({ onEnterApp }) {
           <div style={styles.modalCard}>
             <div style={styles.modalTitle}>Continue to Stripe</div>
             <div style={styles.modalText}>
-              You&apos;ll enter your details directly in Stripe Checkout. This
-              is a <strong>{PRICE_SHORT}</strong> subscription for access to your
-              portal.
-              <br />
-              <br />
-              <span style={{ fontSize: 11, opacity: 0.8 }}>
-                By continuing, you acknowledge that MaxTradeAI is for
-                educational use only, that AI can make mistakes, and that you
-                are fully responsible for your own trading decisions.
-              </span>
-            </div>
+  You&apos;ll enter your details directly in Stripe Checkout. This is a{" "}
+  <strong>{PRICE_SHORT}</strong> subscription for access to your portal.
+  <br />
+  <br />
+  <strong style={{ fontSize: 12 }}>
+    Important: You must enter your email in Stripe so you can receive your
+    Member ID.
+  </strong>
+  <br />
+  <br />
+  <span style={{ fontSize: 11, opacity: 0.8 }}>
+    By continuing, you acknowledge that MaxTradeAI is for educational use only,
+    that AI can make mistakes, and that you are fully responsible for your own
+    trading decisions.
+  </span>
+</div>
 
             <form onSubmit={handleCheckoutSubmit}>
               {/* Terms / Privacy checkbox */}
