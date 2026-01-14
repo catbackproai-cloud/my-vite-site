@@ -2702,7 +2702,6 @@ const initialDay = selectedDay || todayStr();
                         <strong>
                           {typeof allTimeStats.avgRR === "number" ? fmtRR(allTimeStats.avgRR) : "—"}
                         </strong>{" "}
-                        • Trades w/ RR: {allTimeStats.rrCount}
                       </div>
                     </div>
 
@@ -2715,7 +2714,6 @@ const initialDay = selectedDay || todayStr();
                         <strong>
                           {typeof monthStats.avgRR === "number" ? fmtRR(monthStats.avgRR) : "—"}
                         </strong>{" "}
-                        • Trades w/ RR: {monthStats.rrCount}
                       </div>
                     </div>
                   </div>
