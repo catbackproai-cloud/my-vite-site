@@ -180,6 +180,63 @@ export default function App({ selectedDay = todayStr() }) {
   // ✅ Firestore refs (per member)
   const memberId = member?.memberId || null;
 
+  /* ---------------- FIRESTORE: ENSURE USER ROOT DOC EXISTS ---------------- */
+useEffect(() => {
+  if (!memberId) return;
+
+  (async () => {
+    try {
+      const userRef = doc(db, "users", memberId);
+
+      await setDoc(
+        userRef,
+        {
+          memberId,
+          name: member?.name || "",
+          email: member?.email || "",
+          plan: member?.plan || "free",
+          updatedAt: serverTimestamp(),
+          createdAt: serverTimestamp(), // merge:true makes this safe; if you want true "first time only" see note below
+        },
+        { merge: true }
+      );
+
+      console.log("✅ ensured Firestore user doc:", memberId);
+    } catch (e) {
+      console.error("❌ ensure user doc failed:", e?.code, e?.message, e);
+    }
+  })();
+}, [memberId, member?.name, member?.email, member?.plan]);
+
+/* ---------------- FIRESTORE: ENSURE USER ROOT DOC EXISTS ---------------- */
+useEffect(() => {
+  if (!memberId) return;
+
+  (async () => {
+    try {
+      const userRef = doc(db, "users", memberId);
+
+      await setDoc(
+        userRef,
+        {
+          memberId,
+          name: member?.name || "",
+          email: member?.email || "",
+          plan: member?.plan || "free",
+          updatedAt: serverTimestamp(),
+          createdAt: serverTimestamp(), // merge:true makes this safe; if you want true "first time only" see note below
+        },
+        { merge: true }
+      );
+
+      console.log("✅ ensured Firestore user doc:", memberId);
+    } catch (e) {
+      console.error("❌ ensure user doc failed:", e?.code, e?.message, e);
+    }
+  })();
+}, [memberId, member?.name, member?.email, member?.plan]);
+
+
   // ✅ Namespaced local keys so users on the same device never see each other's data
   const scope = memberId || "anon";
   const LAST_DAY_KEY = `tradeCoach:lastDayWithData:${scope}`;
