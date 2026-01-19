@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
 const STRIPE_PAYMENT_URL =
-  "https://buy.stripe.com/5kQ28r5nFgLR6m03pCgQE02";
+  "https://buy.stripe.com/5kQ7sL6rJeDJaCg5xKgQE01";
 
 const MEMBER_LS_KEY = "tc_member_v1";
 
