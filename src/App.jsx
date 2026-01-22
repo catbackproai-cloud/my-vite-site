@@ -243,7 +243,7 @@ const initialDay = selectedDay || todayStr();
 
   // ⭐ header menu + profile modal state
   const [menuOpen, setMenuOpen] = useState(false);
-  const [showProfile, setShowProfile] = useState(false);
+  const [showCancelInfo, setShowCancelInfo] = useState(false);
 
   // ⭐ DAY + CALENDAR STATE (AI page)
   const [day, setDay] = useState(initialDay);
@@ -1770,6 +1770,66 @@ const initialDay = selectedDay || todayStr();
     },
   };
 
+  {/* ===================== CANCEL INFO MODAL ===================== */}
+{showCancelInfo && (
+  <div
+    style={styles.overlay}
+    onClick={() => setShowCancelInfo(false)}
+    role="presentation"
+  >
+    <div
+      style={styles.modalCard}
+      onClick={(e) => e.stopPropagation()}
+      role="dialog"
+      aria-modal="true"
+    >
+      <div style={styles.modalSheen} />
+      <div style={styles.modalTitle}>Cancel Subscription</div>
+
+      <div style={styles.modalText}>
+        To cancel: send an email to{" "}
+        <a
+          href="mailto:orbitalbiz1@gmail.com"
+          style={{ color: "#e5e7eb", fontWeight: 900, textDecoration: "underline" }}
+        >
+          orbitalbiz1@gmail.com
+        </a>{" "}
+        with the <strong>same email you signed up with</strong> and we will have your plan
+        canceled instantly.
+      </div>
+
+      <div style={styles.modalBtnRow}>
+        <a
+          href={`mailto:orbitalbiz1@gmail.com?subject=${encodeURIComponent(
+            "Cancel my MaxTradeAI subscription"
+          )}&body=${encodeURIComponent(
+            `Hi MaxTradeAI,\n\nPlease cancel my subscription.\n\nSigned up email: ${
+              member?.email || ""
+            }\nMemberId: ${memberId || ""}\n\nThanks,\n${member?.name || ""}`
+          )}`}
+          style={{
+            ...styles.modalBtnPrimary,
+            textAlign: "center",
+            textDecoration: "none",
+            display: "inline-block",
+            lineHeight: "18px",
+          }}
+        >
+          Email to cancel
+        </a>
+
+        <button
+          type="button"
+          style={styles.modalBtnGhost}
+          onClick={() => setShowCancelInfo(false)}
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
   /* ---------------- EFFECTS ---------------- */
 
   // Screenshot preview blob
@@ -3070,20 +3130,20 @@ async function openBillingPortal() {
                     </div>
                   ) : null}
 
-                  <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
-                    <button
-                      type="button"
-                      style={styles.modalBtnPrimary}
-                      onClick={openBillingPortal}
-                      disabled={portalLoading}
-                    >
-                      {portalLoading ? "Opening…" : "Manage billing / Cancel"}
-                    </button>
-                  </div>
+<div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
+  <button
+    type="button"
+    style={styles.modalBtnPrimary}
+    onClick={() => setShowCancelInfo(true)}
+  >
+    Manage billing / Cancel
+  </button>
+</div>
 
-                  <div style={{ marginTop: 8, fontSize: 11, opacity: 0.75 }}>
-                    Canceling happens in Stripe. Your access updates when Stripe marks your subscription inactive.
-                  </div>
+<div style={{ marginTop: 8, fontSize: 11, opacity: 0.75 }}>
+  Billing changes are handled by support.
+</div>
+
                 </div>
               )}
             </div>
