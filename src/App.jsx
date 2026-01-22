@@ -1770,66 +1770,6 @@ const initialDay = selectedDay || todayStr();
     },
   };
 
-  {/* ===================== CANCEL INFO MODAL ===================== */}
-{showCancelInfo && (
-  <div
-    style={styles.overlay}
-    onClick={() => setShowCancelInfo(false)}
-    role="presentation"
-  >
-    <div
-      style={styles.modalCard}
-      onClick={(e) => e.stopPropagation()}
-      role="dialog"
-      aria-modal="true"
-    >
-      <div style={styles.modalSheen} />
-      <div style={styles.modalTitle}>Cancel Subscription</div>
-
-      <div style={styles.modalText}>
-        To cancel: send an email to{" "}
-        <a
-          href="mailto:orbitalbiz1@gmail.com"
-          style={{ color: "#e5e7eb", fontWeight: 900, textDecoration: "underline" }}
-        >
-          orbitalbiz1@gmail.com
-        </a>{" "}
-        with the <strong>same email you signed up with</strong> and we will have your plan
-        canceled instantly.
-      </div>
-
-      <div style={styles.modalBtnRow}>
-        <a
-          href={`mailto:orbitalbiz1@gmail.com?subject=${encodeURIComponent(
-            "Cancel my MaxTradeAI subscription"
-          )}&body=${encodeURIComponent(
-            `Hi MaxTradeAI,\n\nPlease cancel my subscription.\n\nSigned up email: ${
-              member?.email || ""
-            }\nMemberId: ${memberId || ""}\n\nThanks,\n${member?.name || ""}`
-          )}`}
-          style={{
-            ...styles.modalBtnPrimary,
-            textAlign: "center",
-            textDecoration: "none",
-            display: "inline-block",
-            lineHeight: "18px",
-          }}
-        >
-          Email to cancel
-        </a>
-
-        <button
-          type="button"
-          style={styles.modalBtnGhost}
-          onClick={() => setShowCancelInfo(false)}
-        >
-          Close
-        </button>
-      </div>
-    </div>
-  </div>
-)}
-
   /* ---------------- EFFECTS ---------------- */
 
   // Screenshot preview blob
@@ -2991,6 +2931,69 @@ async function openBillingPortal() {
           </div>
         </div>
       </div>
+{/* ===================== CANCEL INFO MODAL ===================== */}
+{showCancelInfo && (
+  <div
+    style={styles.overlay}
+    onClick={() => setShowCancelInfo(false)}
+    role="presentation"
+  >
+    <div
+      style={styles.modalCard}
+      onClick={(e) => e.stopPropagation()}
+      role="dialog"
+      aria-modal="true"
+    >
+      <div style={styles.modalSheen} />
+      <div style={styles.modalTitle}>Cancel Subscription</div>
+
+      <div style={styles.modalText}>
+        To cancel: send an email to{" "}
+        <a
+          href="mailto:orbitalbiz1@gmail.com"
+          style={{
+            color: "#e5e7eb",
+            fontWeight: 900,
+            textDecoration: "underline",
+          }}
+        >
+          orbitalbiz1@gmail.com
+        </a>{" "}
+        with the <strong>same email you signed up with</strong> and we will have your
+        plan canceled instantly.
+      </div>
+
+      <div style={styles.modalBtnRow}>
+        <a
+          href={`mailto:orbitalbiz1@gmail.com?subject=${encodeURIComponent(
+            "Cancel my MaxTradeAI subscription"
+          )}&body=${encodeURIComponent(
+            `Hi MaxTradeAI,\n\nPlease cancel my subscription.\n\nSigned up email: ${
+              member?.email || ""
+            }\nMemberId: ${memberId || ""}\n\nThanks,\n${member?.name || ""}`
+          )}`}
+          style={{
+            ...styles.modalBtnPrimary,
+            textAlign: "center",
+            textDecoration: "none",
+            display: "inline-block",
+            lineHeight: "18px",
+          }}
+        >
+          Email to cancel
+        </a>
+
+        <button
+          type="button"
+          style={styles.modalBtnGhost}
+          onClick={() => setShowCancelInfo(false)}
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
       {/* ===================== P&L MODAL ===================== */}
       {pnlModalOpen && (
