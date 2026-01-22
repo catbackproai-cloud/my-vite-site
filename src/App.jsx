@@ -184,6 +184,7 @@ export default function App({ selectedDay = todayStr() }) {
 
   const [chats, setChats] = useState([]);
   const [previewUrl, setPreviewUrl] = useState(null);
+const [showProfile, setShowProfile] = useState(false);
 
   // ⭐ member info (from localStorage)
   const [member, setMember] = useState(() => {
