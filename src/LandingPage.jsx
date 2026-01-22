@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
 const STRIPE_PAYMENT_URL =
-  "https://buy.stripe.com/00w6oH17pgLR9yc9O0gQE00";
+  "https://buy.stripe.com/8x2bJ14jB1QXbGkaS4gQE03";
 
 const MEMBER_LS_KEY = "tc_member_v1";
 
@@ -13,8 +13,8 @@ const LOGIN_WEBHOOK_URL =
   "https://jacobtf007.app.n8n.cloud/webhook/tradecoach_login";
 
 // ✅ Pricing (single source of truth for all copy)
-const PRICE_DISPLAY = "$39";
-const BILLING_PERIOD = "one-time";
+const PRICE_DISPLAY = "$19.99";
+const BILLING_PERIOD = "monthly";
 const PRICE_SHORT = `${PRICE_DISPLAY}/${BILLING_PERIOD}`;
 const PRICE_CTA = `Get access for ${PRICE_SHORT}`;
 const PRICE_CTA_LONG = `Get instant access for ${PRICE_SHORT} →`;
