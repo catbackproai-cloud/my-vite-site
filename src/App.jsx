@@ -16,6 +16,13 @@ const WEBHOOK_URL =
 
 const MEMBER_LS_KEY = "tc_member_v1";
 
+// Stripe Billing Portal endpoint (you’ll build this in n8n)
+const PROD_PORTAL_WEBHOOK = "https://jacobtf007.app.n8n.cloud/webhook/stripe_portal";
+
+const PORTAL_WEBHOOK =
+  (import.meta?.env && import.meta.env.VITE_N8N_STRIPE_PORTAL_WEBHOOK) ||
+  PROD_PORTAL_WEBHOOK;
+
 // ⭐ P&L Calendar storage (manual entry) (base key; final key is namespaced per member)
 const PNL_KEY_BASE = "mtai_pnl_v2";
 
@@ -62,6 +69,17 @@ function todayStr() {
 function parseLocalDateFromIso(iso) {
   const [y, m, d] = iso.split("-").map(Number);
   return new Date(y, m - 1, d);
+}
+
+function fmtFsTimestamp(ts) {
+  try {
+    if (!ts) return null;
+    // Firestore Timestamp has .toDate()
+    const d = typeof ts?.toDate === "function" ? ts.toDate() : new Date(ts);
+    return d.toLocaleString();
+  } catch {
+    return null;
+  }
 }
 
 /* ---------------- HELPERS ---------------- */
@@ -177,6 +195,11 @@ export default function App({ selectedDay = todayStr() }) {
     }
   });
 
+  // ⭐ Subscription status (from Firestore users/{memberId})
+  const [subStatus, setSubStatus] = useState(null);
+  const [subLoading, setSubLoading] = useState(false);
+  const [portalLoading, setPortalLoading] = useState(false);
+
   // ✅ Firestore refs (per member)
   const memberId = member?.memberId || null;
 
@@ -207,35 +230,6 @@ useEffect(() => {
     }
   })();
 }, [memberId, member?.name, member?.email, member?.plan]);
-
-/* ---------------- FIRESTORE: ENSURE USER ROOT DOC EXISTS ---------------- */
-useEffect(() => {
-  if (!memberId) return;
-
-  (async () => {
-    try {
-      const userRef = doc(db, "users", memberId);
-
-      await setDoc(
-        userRef,
-        {
-          memberId,
-          name: member?.name || "",
-          email: member?.email || "",
-          plan: member?.plan || "free",
-          updatedAt: serverTimestamp(),
-          createdAt: serverTimestamp(), // merge:true makes this safe; if you want true "first time only" see note below
-        },
-        { merge: true }
-      );
-
-      console.log("✅ ensured Firestore user doc:", memberId);
-    } catch (e) {
-      console.error("❌ ensure user doc failed:", e?.code, e?.message, e);
-    }
-  })();
-}, [memberId, member?.name, member?.email, member?.plan]);
-
 
   // ✅ Namespaced local keys so users on the same device never see each other's data
   const scope = memberId || "anon";
@@ -1883,6 +1877,43 @@ const initialDay = selectedDay || todayStr();
     };
   }, [memberId, pnl]);
 
+useEffect(() => {
+  if (!memberId) {
+    setSubStatus(null);
+    return;
+  }
+
+  (async () => {
+    setSubLoading(true);
+    try {
+      const userRef = doc(db, "users", memberId);
+      const snap = await getDoc(userRef);
+      if (!snap.exists()) {
+        setSubStatus(null);
+        return;
+      }
+
+      const u = snap.data() || {};
+
+      // Expect these fields to be set by your Stripe webhooks later:
+      // u.subscriptionStatus, u.cancelAtPeriodEnd, u.currentPeriodEnd (timestamp), u.plan
+      setSubStatus({
+        plan: u.plan || "free",
+        subscriptionStatus: u.subscriptionStatus || "unknown",
+        cancelAtPeriodEnd: !!u.cancelAtPeriodEnd,
+        currentPeriodEnd: u.currentPeriodEnd || null, // Firestore Timestamp or null
+        stripeCustomerId: u.stripeCustomerId || null,
+        subscriptionId: u.subscriptionId || null,
+      });
+    } catch (e) {
+      console.error("❌ load subscription status failed:", e?.code, e?.message, e);
+      setSubStatus(null);
+    } finally {
+      setSubLoading(false);
+    }
+  })();
+}, [memberId]);
+
   /* ---------------- HANDLERS ---------------- */
 
   async function handleSubmit(e) {
@@ -2010,6 +2041,44 @@ const initialDay = selectedDay || todayStr();
     setMenuOpen(false);
     navigate("/");
   }
+
+async function openBillingPortal() {
+  if (!memberId) return;
+
+  try {
+    setPortalLoading(true);
+
+    if (!PORTAL_WEBHOOK) throw new Error("No Stripe portal webhook configured.");
+
+    const res = await fetch(PORTAL_WEBHOOK, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        memberId,
+        email: member?.email || "",
+        name: member?.name || "",
+        // optional return URL so Stripe sends them back after cancel/update
+        returnUrl: window.location.origin,
+      }),
+    });
+
+    const data = await res.json().catch(() => null);
+
+    if (!res.ok) {
+      throw new Error(data?.error || `Portal request failed (${res.status})`);
+    }
+
+    const url = data?.url;
+    if (!url) throw new Error("Portal URL missing from response.");
+
+    window.location.href = url;
+  } catch (e) {
+    console.error("❌ openBillingPortal error:", e);
+    alert(e?.message || "Could not open billing portal.");
+  } finally {
+    setPortalLoading(false);
+  }
+}
 
   /* ---------------- DERIVED (AI) ---------------- */
 
@@ -2972,7 +3041,52 @@ const initialDay = selectedDay || todayStr();
                 <div>P&amp;L key: <strong>{PNL_KEY}</strong></div>
               </div>
             </div>
+            <div style={styles.modalRow}>
+              <div style={styles.modalLabel}>Subscription</div>
 
+              {subLoading ? (
+                <div style={{ opacity: 0.86 }}>Loading…</div>
+              ) : (
+                <div style={{ opacity: 0.92 }}>
+                  <div>
+                    Plan: <strong>{subStatus?.plan || member?.plan || "free"}</strong>
+                  </div>
+
+                  <div style={{ marginTop: 6 }}>
+                    Status:{" "}
+                    <strong>
+                      {subStatus?.subscriptionStatus || "unknown"}
+                    </strong>
+                    {subStatus?.cancelAtPeriodEnd ? (
+                      <span style={{ marginLeft: 8, opacity: 0.85 }}>
+                        (canceling at period end)
+                      </span>
+                    ) : null}
+                  </div>
+
+                  {subStatus?.currentPeriodEnd ? (
+                    <div style={{ marginTop: 6, opacity: 0.85 }}>
+                      Access until: <strong>{fmtFsTimestamp(subStatus.currentPeriodEnd)}</strong>
+                    </div>
+                  ) : null}
+
+                  <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap" }}>
+                    <button
+                      type="button"
+                      style={styles.modalBtnPrimary}
+                      onClick={openBillingPortal}
+                      disabled={portalLoading}
+                    >
+                      {portalLoading ? "Opening…" : "Manage billing / Cancel"}
+                    </button>
+                  </div>
+
+                  <div style={{ marginTop: 8, fontSize: 11, opacity: 0.75 }}>
+                    Canceling happens in Stripe. Your access updates when Stripe marks your subscription inactive.
+                  </div>
+                </div>
+              )}
+            </div>
             <div style={styles.modalBtnRow}>
               <button type="button" style={styles.modalBtnGhost} onClick={() => setShowProfile(false)}>
                 Close
