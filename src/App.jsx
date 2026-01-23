@@ -2522,7 +2522,7 @@ async function openBillingPortal() {
                               )}
 
                               <div style={styles.smallMeta}>
-                                Saved to your account (member: {memberId || "anon"}) • {day}
+                                Saved to your account • {day}
                               </div>
                             </>
                           )}
