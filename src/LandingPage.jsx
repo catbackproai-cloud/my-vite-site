@@ -1076,7 +1076,7 @@ export default function LandingPage({ onEnterApp }) {
             </div>
             <div style={styles.navRight}>
               <span style={styles.navPill}>
-                Built for screenshot + journal traders
+                Built for ICT traders, by ICT traders
               </span>
               <span
                 style={styles.navLink}
@@ -1123,7 +1123,7 @@ export default function LandingPage({ onEnterApp }) {
         <section style={styles.hero}>
           <div style={styles.heroInner}>
             <div style={styles.heroEyebrow}>
-              Real feedback, not random signals
+              Real feedback, built for improvement
             </div>
             <h1 style={styles.heroHeadline}>
               Turn every screenshot into{" "}
@@ -1190,7 +1190,7 @@ export default function LandingPage({ onEnterApp }) {
 
             <div style={styles.heroTertiary}>
               {PRICE_SHORT} subscription access. Your trades stay organized per
-              day — not buried in camera roll folders or Discord chats.
+              day — Along with a P&L Calendar to Track progress.
             </div>
 
             {/* logos strip */}
@@ -1249,7 +1249,7 @@ export default function LandingPage({ onEnterApp }) {
                 <div style={styles.statNumber}>ICT, TJR, SMC</div>
                 <div style={styles.statLabel}>
                   common setups and strategies understood: BOS, CHoCH, FVG, OB,
-                  liquidity sweeps
+                  liquidity sweeps, etc
                 </div>
               </div>
               <div style={styles.statCard}>
