@@ -2,12 +2,11 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
-const STRIPE_PAYMENT_URL =
-  "https://buy.stripe.com/8x2bJ14jB1QXbGkaS4gQE03";
+const STRIPE_PAYMENT_URL = "https://buy.stripe.com/8x2bJ14jB1QXbGkaS4gQE03";
 
 const MEMBER_LS_KEY = "tc_member_v1";
 
-// ✅ NEW: Login webhook (Member ID → verify in Google Sheet)
+// ✅ Login webhook (Member ID → verify in Google Sheet)
 const LOGIN_WEBHOOK_URL =
   import.meta?.env?.VITE_N8N_TRADECOACH_LOGIN ||
   "https://jacobtf007.app.n8n.cloud/webhook/tradecoach_login";
@@ -221,7 +220,7 @@ export default function LandingPage({ onEnterApp }) {
       flexDirection: "column",
       alignItems: "center",
       textAlign: "center",
-      gap: 20,
+      gap: 18,
     },
     heroEyebrow: {
       fontSize: 12,
@@ -234,15 +233,18 @@ export default function LandingPage({ onEnterApp }) {
       fontSize: 38,
       lineHeight: 1.1,
       fontWeight: 900,
-      maxWidth: 680,
+      maxWidth: 760,
+      margin: 0,
     },
     heroHighlight: {
       color: "#22d3ee",
     },
     heroSub: {
-      maxWidth: 620,
+      maxWidth: 640,
       fontSize: 14,
       opacity: 0.86,
+      lineHeight: 1.55,
+      margin: 0,
     },
     heroBtnRow: {
       display: "flex",
@@ -280,23 +282,18 @@ export default function LandingPage({ onEnterApp }) {
       alignItems: "center",
       gap: 6,
     },
-    heroTertiary: {
-      fontSize: 11,
-      opacity: 0.75,
-      marginTop: 6,
-    },
 
     // LOGOS STRIP
     logosRow: {
-      marginTop: 10,
-      padding: "16px 0 4px",
+      marginTop: 12,
+      padding: "14px 0 2px",
       borderTop: "1px solid rgba(15,23,42,0.9)",
       borderBottom: "1px solid rgba(15,23,42,0.9)",
       display: "flex",
       flexWrap: "wrap",
       justifyContent: "center",
-      gap: 16,
-      opacity: 0.85,
+      gap: 12,
+      opacity: 0.9,
       fontSize: 11,
     },
     logoBadge: {
@@ -307,38 +304,12 @@ export default function LandingPage({ onEnterApp }) {
         "linear-gradient(135deg, rgba(15,23,42,0.95), rgba(8,47,73,0.95))",
     },
 
-    // STATS
-    statsGrid: {
-      display: "flex",
-      flexWrap: "wrap",
-      gap: 16,
-      marginTop: 18,
-      justifyContent: "center",
-    },
-    statCard: {
-      flex: "1 1 180px",
-      minWidth: 160,
-      padding: "16px 18px",
-      borderRadius: 18,
-      background:
-        "linear-gradient(135deg, #0f766e, #0284c7, #0f766e 90%, #0b1120)",
-      boxShadow: "0 18px 50px rgba(15,23,42,0.9)",
-    },
-    statNumber: {
-      fontSize: 20,
-      fontWeight: 900,
-      marginBottom: 4,
-    },
-    statLabel: {
-      fontSize: 12,
-      opacity: 0.9,
-    },
-
     // TITLES
     sectionTitle: {
       fontSize: 24,
       fontWeight: 900,
       marginBottom: 8,
+      marginTop: 0,
     },
     sectionEyebrow: {
       fontSize: 11,
@@ -351,49 +322,9 @@ export default function LandingPage({ onEnterApp }) {
     sectionSub: {
       fontSize: 13,
       opacity: 0.78,
-      maxWidth: 520,
-    },
-
-    // PROBLEMS
-    problemsGrid: {
-      marginTop: 20,
-      display: "flex",
-      flexWrap: "wrap",
-      gap: 14,
-      justifyContent: "center",
-    },
-    problemCard: {
-      flex: "1 1 220px",
-      minWidth: 220,
-      borderRadius: 22,
-      padding: "18px 18px 20px",
-      background:
-        "linear-gradient(135deg, #0b1120, #0f172a, #0b1120 90%, #020617)",
-      color: "#e5e7eb",
-      boxShadow: "0 18px 45px rgba(15,23,42,0.9)",
-      border: "1px solid rgba(30,64,175,0.7)",
-    },
-    problemTag: {
-      fontSize: 10,
-      textTransform: "uppercase",
-      letterSpacing: 0.14,
-      padding: "4px 8px",
-      borderRadius: 999,
-      border: "1px solid rgba(148,163,184,0.7)",
-      marginBottom: 10,
-      display: "inline-flex",
-      alignItems: "center",
-      gap: 4,
-      background: "rgba(15,23,42,0.9)",
-    },
-    problemTitle: {
-      fontSize: 15,
-      fontWeight: 800,
-      marginBottom: 8,
-    },
-    problemText: {
-      fontSize: 12,
-      opacity: 0.9,
+      maxWidth: 560,
+      lineHeight: 1.6,
+      marginTop: 0,
     },
 
     // CHECKLIST / WHAT YOU GET
@@ -403,10 +334,11 @@ export default function LandingPage({ onEnterApp }) {
       flexWrap: "wrap",
       gap: 16,
       justifyContent: "center",
+      width: "100%",
     },
     checklistCol: {
-      flex: "1 1 260px",
-      minWidth: 240,
+      flex: "1 1 340px",
+      minWidth: 280,
       borderRadius: 20,
       padding: 18,
       background: "rgba(15,23,42,0.97)",
@@ -416,60 +348,79 @@ export default function LandingPage({ onEnterApp }) {
     },
     checklistTitle: {
       fontSize: 15,
-      fontWeight: 800,
-      marginBottom: 8,
-    },
-    checklistItemRow: {
-      display: "flex",
-      justifyContent: "space-between",
-      fontSize: 12,
-      padding: "8px 10px",
-      borderRadius: 12,
-      background: "rgba(15,23,42,0.96)",
-      border: "1px solid rgba(30,64,175,0.8)",
-      marginBottom: 6,
-    },
-    checklistLabel: {
-      opacity: 0.86,
-    },
-    checklistChecks: {
-      display: "flex",
-      gap: 8,
-      fontSize: 11,
-      textTransform: "uppercase",
-      letterSpacing: 0.14,
-    },
-    checklistYes: {
-      color: "#22c55e",
-    },
-    checklistNo: {
-      color: "#fb7185",
+      fontWeight: 900,
+      marginBottom: 12,
+      letterSpacing: 0.2,
     },
 
-    // TESTIMONIALS
-    testimonialGrid: {
-      marginTop: 18,
-      display: "flex",
-      flexWrap: "wrap",
-      gap: 16,
+    // ✅ Cleaner comparison table
+    compareHeaderRow: {
+      display: "grid",
+      gridTemplateColumns: "1fr 120px 120px",
+      gap: 10,
+      alignItems: "center",
+      padding: "10px 12px",
+      borderRadius: 14,
+      background: "rgba(2,6,23,0.5)",
+      border: "1px solid rgba(51,65,85,0.75)",
+      marginBottom: 10,
+    },
+    compareHeaderLabel: {
+      fontSize: 11,
+      opacity: 0.8,
+      textTransform: "uppercase",
+      letterSpacing: 0.14,
+      fontWeight: 800,
+    },
+    compareHeaderCol: {
+      fontSize: 11,
+      opacity: 0.9,
+      fontWeight: 900,
+      textAlign: "center",
+    },
+    compareRow: {
+      display: "grid",
+      gridTemplateColumns: "1fr 120px 120px",
+      gap: 10,
+      alignItems: "center",
+      padding: "10px 12px",
+      borderRadius: 14,
+      background: "rgba(15,23,42,0.75)",
+      border: "1px solid rgba(30,64,175,0.55)",
+      marginBottom: 8,
+    },
+    compareLabel: {
+      fontSize: 12,
+      opacity: 0.9,
+      lineHeight: 1.35,
+      fontWeight: 600,
+    },
+    badgeYes: {
+      display: "inline-flex",
+      alignItems: "center",
       justifyContent: "center",
-    },
-    testimonialCard: {
-      flex: "1 1 260px",
-      minWidth: 220,
-      borderRadius: 20,
-      padding: 16,
-      background:
-        "linear-gradient(135deg, #0b1120, #0f172a, #0b1120 90%, #020617)",
-      boxShadow: "0 18px 45px rgba(15,23,42,0.9)",
-      border: "1px solid rgba(30,64,175,0.7)",
+      height: 26,
+      borderRadius: 999,
+      padding: "0 10px",
       fontSize: 12,
-      textAlign: "left",
+      fontWeight: 900,
+      color: "#052e1a",
+      background: "rgba(34,197,94,0.9)",
+      border: "1px solid rgba(34,197,94,0.55)",
+      boxShadow: "0 10px 24px rgba(15,23,42,0.55)",
     },
-    testimonialName: {
-      marginTop: 10,
-      fontWeight: 700,
+    badgeNo: {
+      display: "inline-flex",
+      alignItems: "center",
+      justifyContent: "center",
+      height: 26,
+      borderRadius: 999,
+      padding: "0 10px",
       fontSize: 12,
+      fontWeight: 900,
+      color: "#fff1f2",
+      background: "rgba(244,63,94,0.18)",
+      border: "1px solid rgba(244,63,94,0.45)",
     },
 
     // FAQ
@@ -479,6 +430,7 @@ export default function LandingPage({ onEnterApp }) {
       flexDirection: "column",
       gap: 10,
       alignItems: "center",
+      width: "100%",
     },
     faqItem: {
       borderRadius: 14,
@@ -523,17 +475,21 @@ export default function LandingPage({ onEnterApp }) {
       display: "flex",
       flexDirection: "column",
       alignItems: "center",
+      width: "100%",
+      maxWidth: 900,
     },
     finalHeadline: {
       fontSize: 22,
       fontWeight: 900,
       marginBottom: 8,
+      marginTop: 0,
     },
     finalSub: {
       fontSize: 13,
       opacity: 0.86,
       maxWidth: 560,
       margin: "0 auto 14px",
+      lineHeight: 1.6,
     },
 
     // FOOTER
@@ -671,7 +627,7 @@ export default function LandingPage({ onEnterApp }) {
     pnlCellDay: {
       fontSize: 11,
       opacity: 0.78,
-      fontWeight: 700,
+      fontWeight: 800,
     },
     pnlCellValue: {
       fontSize: 14,
@@ -719,6 +675,7 @@ export default function LandingPage({ onEnterApp }) {
       opacity: 0.8,
       marginBottom: 12,
       textAlign: "center",
+      lineHeight: 1.5,
     },
     modalButtonPrimary: {
       width: "100%",
@@ -748,8 +705,9 @@ export default function LandingPage({ onEnterApp }) {
     modalError: {
       fontSize: 11,
       color: "#fecaca",
-      marginTop: 4,
+      marginTop: 6,
       textAlign: "center",
+      lineHeight: 1.4,
     },
     idBox: {
       marginTop: 10,
@@ -775,80 +733,7 @@ export default function LandingPage({ onEnterApp }) {
       marginTop: 6,
       fontSize: 11,
       opacity: 0.8,
-    },
-
-    // AI REPORT PREVIEW
-    previewCard: {
-      marginTop: 20,
-      maxWidth: 480,
-      marginLeft: "auto",
-      marginRight: "auto",
-      borderRadius: 20,
-      background: "#0e1016",
-      border: "1px solid rgba(148,163,184,0.6)",
-      padding: 18,
-      boxShadow: "0 18px 45px rgba(15,23,42,0.9)",
-      textAlign: "left",
-    },
-    previewHeader: {
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "flex-start",
-    },
-    previewTitle: {
-      fontSize: 18,
-      fontWeight: 700,
-      color: "#f9fafb",
-    },
-    previewMeta: {
-      fontSize: 12,
-      color: "#9ca3af",
-    },
-    previewMetaSpacer: {
-      marginTop: 2,
-    },
-    previewGradeBadge: {
-      height: 36,
-      width: 36,
-      borderRadius: 999,
-      background: "#facc15",
-      color: "#020617",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      fontWeight: 800,
-      fontSize: 18,
-      boxShadow: "0 10px 30px rgba(0,0,0,0.7)",
-    },
-    previewSections: {
-      marginTop: 18,
-      display: "flex",
-      flexDirection: "column",
-      gap: 12,
-    },
-    previewSectionTitle: {
-      fontSize: 10,
-      textTransform: "uppercase",
-      letterSpacing: 0.16,
-      color: "#cbd5f5",
-    },
-    previewBars: {
-      marginTop: 6,
-      display: "flex",
-      flexDirection: "column",
-      gap: 4,
-    },
-    previewBar: (width) => ({
-      height: 8,
-      borderRadius: 999,
-      background: "rgba(148,163,184,0.25)",
-      width,
-    }),
-    previewFooter: {
-      marginTop: 14,
-      fontSize: 10,
-      color: "#6b7280",
-      textAlign: "right",
+      lineHeight: 1.4,
     },
 
     // Legal modal body
@@ -915,10 +800,8 @@ export default function LandingPage({ onEnterApp }) {
     try {
       setCheckoutLoading(true);
 
-      // OPTIONAL: keep any prior local member info, but do not collect name/email here anymore
-      saveMemberToLocal({
-        plan: "personal",
-      });
+      // keep any prior local member info (no name/email collected here)
+      saveMemberToLocal({ plan: "personal" });
 
       // 🚀 send user directly to Stripe Payment Link (subscription)
       window.location.href = STRIPE_PAYMENT_URL;
@@ -996,44 +879,51 @@ export default function LandingPage({ onEnterApp }) {
     },
   ];
 
-  // ✅ demo data for the P&L calendar graphic (prevents blank screen)
-  // ✅ Saturdays and Sundays are blank. (Anything that was on Sundays has been moved to Fridays.)
-  const pnlDays = [
-    // Week 1: Mon-Fri trades, Sat/Sun blank
-    { d: 1, tone: "pos", v: "+$210", rr: "1.8R" },
-    { d: 2, tone: "neg", v: "-$95", rr: "0.7R" },
-    { d: 3, tone: "flat", v: "$0", rr: "—" },
-    { d: 4, tone: "pos", v: "+$140", rr: "1.5R" },
-    { d: 5, tone: "pos", v: "+$85", rr: "1.2R" }, // moved from Sunday → Friday
-    { d: 6, tone: "off", v: "—", rr: "" }, // Saturday blank
-    { d: 7, tone: "off", v: "—", rr: "" }, // Sunday blank
+  // ✅ P&L CALENDAR (Sundays blank, Sunday trades moved to Fridays)
+  // Layout per week: Sun(off), Mon, Tue, Wed, Thu, Fri(includes moved Sunday), Sat(off)
+  const pnlCells = [
+    // Week 1
+    { tone: "off", day: "", v: "—", rr: "" }, // Sun
+    { tone: "pos", day: "Day 1", v: "+$210", rr: "1.8R" }, // Mon
+    { tone: "neg", day: "Day 2", v: "-$95", rr: "0.7R" }, // Tue
+    { tone: "flat", day: "Day 3", v: "$0", rr: "—" }, // Wed
+    { tone: "pos", day: "Day 4", v: "+$140", rr: "1.5R" }, // Thu
+    { tone: "pos", day: "Day 5", v: "+$85", rr: "1.2R" }, // Fri (moved Sunday → Friday)
+    { tone: "off", day: "", v: "—", rr: "" }, // Sat
 
     // Week 2
-    { d: 8, tone: "neg", v: "-$60", rr: "0.9R" },
-    { d: 9, tone: "pos", v: "+$330", rr: "2.2R" },
-    { d: 10, tone: "flat", v: "$0", rr: "—" },
-    { d: 11, tone: "neg", v: "-$120", rr: "0.6R" },
-    { d: 12, tone: "pos", v: "+$260", rr: "1.9R" }, // moved from Sunday → Friday
-    { d: 13, tone: "off", v: "—", rr: "" }, // Saturday blank
-    { d: 14, tone: "off", v: "—", rr: "" }, // Sunday blank
+    { tone: "off", day: "", v: "—", rr: "" }, // Sun
+    { tone: "neg", day: "Day 8", v: "-$60", rr: "0.9R" }, // Mon
+    { tone: "pos", day: "Day 9", v: "+$330", rr: "2.2R" }, // Tue
+    { tone: "flat", day: "Day 10", v: "$0", rr: "—" }, // Wed
+    { tone: "neg", day: "Day 11", v: "-$120", rr: "0.6R" }, // Thu
+    { tone: "pos", day: "Day 12", v: "+$260", rr: "1.9R" }, // Fri (moved Sunday → Friday)
+    { tone: "off", day: "", v: "—", rr: "" }, // Sat
 
     // Week 3
-    { d: 15, tone: "pos", v: "+$110", rr: "1.4R" },
-    { d: 16, tone: "neg", v: "-$70", rr: "0.8R" },
-    { d: 17, tone: "pos", v: "+$180", rr: "1.6R" },
-    { d: 18, tone: "pos", v: "+$95", rr: "1.1R" },
-    { d: 19, tone: "pos", v: "+$220", rr: "1.7R" }, // moved from Sunday → Friday
-    { d: 20, tone: "off", v: "—", rr: "" }, // Saturday blank
-    { d: 21, tone: "off", v: "—", rr: "" }, // Sunday blank
+    { tone: "off", day: "", v: "—", rr: "" }, // Sun
+    { tone: "pos", day: "Day 15", v: "+$110", rr: "1.4R" }, // Mon
+    { tone: "neg", day: "Day 16", v: "-$70", rr: "0.8R" }, // Tue
+    { tone: "pos", day: "Day 17", v: "+$180", rr: "1.6R" }, // Wed
+    { tone: "pos", day: "Day 18", v: "+$95", rr: "1.1R" }, // Thu
+    { tone: "pos", day: "Day 19", v: "+$220", rr: "1.7R" }, // Fri (moved Sunday → Friday)
+    { tone: "off", day: "", v: "—", rr: "" }, // Sat
 
     // Week 4
-    { d: 22, tone: "flat", v: "$0", rr: "—" },
-    { d: 23, tone: "neg", v: "-$130", rr: "0.7R" },
-    { d: 24, tone: "pos", v: "+$145", rr: "1.3R" },
-    { d: 25, tone: "pos", v: "+$305", rr: "2.0R" },
-    { d: 26, tone: "pos", v: "+$125", rr: "1.2R" }, // moved from Sunday → Friday
-    { d: 27, tone: "off", v: "—", rr: "" }, // Saturday blank
-    { d: 28, tone: "off", v: "—", rr: "" }, // Sunday blank
+    { tone: "off", day: "", v: "—", rr: "" }, // Sun
+    { tone: "flat", day: "Day 22", v: "$0", rr: "—" }, // Mon
+    { tone: "neg", day: "Day 23", v: "-$130", rr: "0.7R" }, // Tue
+    { tone: "pos", day: "Day 24", v: "+$145", rr: "1.3R" }, // Wed
+    { tone: "pos", day: "Day 25", v: "+$305", rr: "2.0R" }, // Thu
+    { tone: "pos", day: "Day 26", v: "+$125", rr: "1.2R" }, // Fri (moved Sunday → Friday)
+    { tone: "off", day: "", v: "—", rr: "" }, // Sat
+  ];
+
+  const compareRows = [
+    { label: "Trade screenshot review (not generic chat)", mt: true, other: false },
+    { label: "Structured daily journal tied to sessions", mt: true, other: false },
+    { label: "Speaks BOS / CHoCH / FVG / liquidity", mt: true, other: false },
+    { label: "Everything stays in one private portal", mt: true, other: false },
   ];
 
   return (
@@ -1043,10 +933,8 @@ export default function LandingPage({ onEnterApp }) {
         <div style={styles.ribbon}>
           <div style={styles.ribbonInner}>
             <span style={styles.ribbonText}>
-              <span style={styles.ribbonStrong}>
-                Monthly access · {PRICE_SHORT}:
-              </span>{" "}
-              get your private portal + AI feedback + daily journal.
+              <span style={styles.ribbonStrong}>Monthly access · {PRICE_SHORT}</span>{" "}
+              for your private portal.
             </span>
             <button
               style={styles.ribbonBtn}
@@ -1069,15 +957,11 @@ export default function LandingPage({ onEnterApp }) {
               <div style={styles.logoMark} />
               <div>
                 <div style={styles.logoTitle}>MaxTradeAI</div>
-                <div style={styles.logoSub}>
-                  AI trade review · liquidity &amp; ICT focused
-                </div>
+                <div style={styles.logoSub}>AI trade review · liquidity &amp; ICT focused</div>
               </div>
             </div>
             <div style={styles.navRight}>
-              <span style={styles.navPill}>
-                Built for ICT traders, by ICT traders
-              </span>
+              <span style={styles.navPill}>Built for ICT traders</span>
               <span
                 style={styles.navLink}
                 onClick={() => {
@@ -1114,45 +998,25 @@ export default function LandingPage({ onEnterApp }) {
               fontSize: 12,
             }}
           >
-            Subscription confirmed ✅ Check your email for your MaxTradeAI Member
-            ID, then click &quot;Enter Member ID&quot; to open your portal.
+            Subscription confirmed ✅ Check your email for your MaxTradeAI Member ID, then click
+            &quot;Enter Member ID&quot; to open your portal.
           </div>
         )}
 
         {/* HERO */}
         <section style={styles.hero}>
           <div style={styles.heroInner}>
-            <div style={styles.heroEyebrow}>
-              Real feedback, built for improvement
-            </div>
+            <div style={styles.heroEyebrow}>Real feedback, not hype</div>
+
             <h1 style={styles.heroHeadline}>
               Turn every screenshot into{" "}
-              <span style={styles.heroHighlight}>
-                a trade you actually learn from.
-              </span>
+              <span style={styles.heroHighlight}>a trade you actually learn from.</span>
             </h1>
-            <p style={styles.heroSub}>
-              MaxTradeAI is your private workspace for trade screenshots, AI
-              feedback, and a daily journal. Upload your chart, explain your
-              idea, and get a breakdown like a coach is sitting next to you —
-              for NASDAQ, indices, FX, and gold.
-            </p>
 
-            {/* disclaimer under hero */}
-            <div
-              style={{
-                fontSize: 11,
-                opacity: 0.7,
-                maxWidth: 640,
-                marginTop: 6,
-              }}
-            >
-              <strong>Important:</strong> MaxTradeAI is for educational and
-              informational purposes only. It does not provide financial or
-              investment advice. AI-generated feedback can be inaccurate or
-              incomplete, and you are fully responsible for your own trading
-              decisions.
-            </div>
+            <p style={styles.heroSub}>
+              Upload a chart screenshot, write what you were thinking, and get a clean,
+              ICT-aware review you can improve from.
+            </p>
 
             <div style={styles.heroBtnRow}>
               <button
@@ -1166,6 +1030,7 @@ export default function LandingPage({ onEnterApp }) {
               >
                 {PRICE_CTA_LONG}
               </button>
+
               <button
                 style={styles.heroSecondaryBtn}
                 onClick={() => {
@@ -1188,11 +1053,6 @@ export default function LandingPage({ onEnterApp }) {
               </button>
             </div>
 
-            <div style={styles.heroTertiary}>
-              {PRICE_SHORT} subscription access. Your trades stay organized per
-              day — Along with a P&L Calendar to Track progress.
-            </div>
-
             {/* logos strip */}
             <div style={styles.logosRow}>
               <span style={styles.logoBadge}>NASDAQ / S&amp;P / US30</span>
@@ -1203,240 +1063,123 @@ export default function LandingPage({ onEnterApp }) {
           </div>
         </section>
 
-        {/* RESULTS / STATS */}
+        {/* AI REPORT PREVIEW (kept) */}
         <section style={styles.section}>
           <div style={styles.sectionInner}>
-            <div style={styles.sectionEyebrow}>
-              The results speak for themselves
-            </div>
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: 12,
-              }}
-            >
-              <div>
-                <h2 style={styles.sectionTitle}>
-                  Study your own data like a professional.
-                </h2>
-                <p style={styles.sectionSub}>
-                  Every trade, note, and lesson is saved to your personal
-                  timeline. Stop guessing, stop relying on random calls, and
-                  start reviewing your own execution day by day.
-                </p>
-              </div>
-              <div style={{ fontSize: 12, opacity: 0.75, maxWidth: 520 }}>
-                Traders use MaxTradeAI to{" "}
-                <strong>grade trades, journal daily,</strong> and build rules
-                they actually follow — for {PRICE_SHORT}.
-              </div>
-            </div>
-
-            <div style={styles.statsGrid}>
-              <div style={styles.statCard}>
-                <div style={styles.statNumber}>200+</div>
-                <div style={styles.statLabel}>sessions reviewed by AI</div>
-              </div>
-              <div style={styles.statCard}>
-                <div style={styles.statNumber}>A-F</div>
-                <div style={styles.statLabel}>
-                  grade scale for each trade you submit
-                </div>
-              </div>
-              <div style={styles.statCard}>
-                <div style={styles.statNumber}>ICT, TJR, SMC</div>
-                <div style={styles.statLabel}>
-                  common setups and strategies understood: BOS, CHoCH, FVG, OB,
-                  liquidity sweeps, etc
-                </div>
-              </div>
-              <div style={styles.statCard}>
-                <div style={styles.statNumber}>Unlimited</div>
-                <div style={styles.statLabel}>Trade submissions daily</div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* HIDDEN PROBLEMS */}
-        <section style={styles.section}>
-          <div style={styles.sectionInner}>
-            <div style={styles.sectionEyebrow}>
-              The hidden problems stopping you from improving faster
-            </div>
-            <h2 style={styles.sectionTitle}>
-              You don&apos;t need more signals — you need structured review.
-            </h2>
+            <div style={styles.sectionEyebrow}>How it looks</div>
+            <h2 style={styles.sectionTitle}>A clean, structured report for each trade.</h2>
             <p style={styles.sectionSub}>
-              Most traders never build a system for reviewing their trades.
-              Screenshots live in random folders, notes are scattered, and
-              nothing connects back to the exact session they traded.
+              Clear wins, clear mistakes, and clear next steps — so you know exactly what to fix.
             </p>
 
-            <div style={styles.problemsGrid}>
-              <div style={styles.problemCard}>
-                <div style={styles.problemTag}>
-                  <span>●</span>
-                  <span>Problem #1</span>
-                </div>
-                <div style={styles.problemTitle}>
-                  &ldquo;I don't know why my trades keep failing.&rdquo;
-                </div>
-                <div style={styles.problemText}>
-                  MaxTradeAI will serve as your mentor, being an extra set of
-                  eyes on your moves in the charts.
-                </div>
-              </div>
-
-              <div style={styles.problemCard}>
-                <div style={styles.problemTag}>
-                  <span>●</span>
-                  <span>Problem #2</span>
-                </div>
-                <div style={styles.problemTitle}>
-                  &ldquo;I keep forgetting what happened with my past
-                  trades.&rdquo;
-                </div>
-                <div style={styles.problemText}>
-                  Your journal in MaxTradeAI saves daily, allowing you to go
-                  back and forth between dates to view your progress.
-                </div>
-              </div>
-
-              <div style={styles.problemCard}>
-                <div style={styles.problemTag}>
-                  <span>●</span>
-                  <span>Problem #3</span>
-                </div>
-                <div style={styles.problemTitle}>
-                  &ldquo;Nothing ties back to ICT/liquidity rules.&rdquo;
-                </div>
-                <div style={styles.problemText}>
-                  Generic journaling apps don&apos;t understand BOS / CHoCH /
-                  FVG / liquidity sweeps. You end up translating concepts
-                  instead of getting direct feedback on your setup.
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* AI REPORT PREVIEW SECTION */}
-        <section style={styles.section}>
-          <div style={styles.sectionInner}>
-            <div style={styles.sectionEyebrow}>How your feedback looks</div>
-            <h2 style={styles.sectionTitle}>
-              A clean, structured report for each trade.
-            </h2>
-
-            <div style={styles.previewCard}>
-              <div style={styles.previewHeader}>
+            {/* simple preview card (same idea, lighter code) */}
+            <div
+              style={{
+                marginTop: 18,
+                maxWidth: 520,
+                width: "100%",
+                borderRadius: 22,
+                background: "#0e1016",
+                border: "1px solid rgba(148,163,184,0.55)",
+                padding: 18,
+                boxShadow: "0 18px 45px rgba(15,23,42,0.9)",
+                textAlign: "left",
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
                 <div>
-                  <div style={styles.previewTitle}>Trade Coach AI</div>
-                  <div
-                    style={{
-                      ...styles.previewMeta,
-                      ...styles.previewMetaSpacer,
-                    }}
-                  >
+                  <div style={{ fontSize: 18, fontWeight: 800, color: "#f9fafb" }}>
+                    Trade Coach AI
+                  </div>
+                  <div style={{ fontSize: 12, color: "#9ca3af", marginTop: 4 }}>
                     Gold Futures · 5m
                   </div>
-                  <div
-                    style={{
-                      ...styles.previewMeta,
-                      ...styles.previewMetaSpacer,
-                    }}
-                  >
+                  <div style={{ fontSize: 12, color: "#9ca3af", marginTop: 2 }}>
                     Confidence: 75%
                   </div>
                 </div>
-                <div style={styles.previewGradeBadge}>A-F</div>
-              </div>
-
-              <div style={styles.previewSections}>
-                <div>
-                  <div style={styles.previewSectionTitle}>What went right</div>
-                  <div style={styles.previewBars}>
-                    <div style={styles.previewBar("80%")} />
-                    <div style={styles.previewBar("60%")} />
-                  </div>
-                </div>
-
-                <div>
-                  <div style={styles.previewSectionTitle}>What went wrong</div>
-                  <div style={styles.previewBars}>
-                    <div style={styles.previewBar("85%")} />
-                    <div style={styles.previewBar("70%")} />
-                    <div style={styles.previewBar("50%")} />
-                  </div>
-                </div>
-
-                <div>
-                  <div style={styles.previewSectionTitle}>Improvements</div>
-                  <div style={styles.previewBars}>
-                    <div style={styles.previewBar("80%")} />
-                    <div style={styles.previewBar("65%")} />
-                  </div>
-                </div>
-
-                <div>
-                  <div style={styles.previewSectionTitle}>Lesson learned</div>
-                  <div style={styles.previewBars}>
-                    <div style={styles.previewBar("75%")} />
-                  </div>
+                <div
+                  style={{
+                    height: 36,
+                    width: 36,
+                    borderRadius: 999,
+                    background: "#facc15",
+                    color: "#020617",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontWeight: 900,
+                    fontSize: 16,
+                    boxShadow: "0 10px 30px rgba(0,0,0,0.7)",
+                  }}
+                >
+                  A-F
                 </div>
               </div>
 
-              <div style={styles.previewFooter}>
-                Example AI trade report preview — your real reports show full
-                text here.
+              {[
+                { title: "What went right", bars: ["78%", "58%"] },
+                { title: "What went wrong", bars: ["82%", "68%", "46%"] },
+                { title: "Improvements", bars: ["74%", "60%"] },
+                { title: "Lesson learned", bars: ["70%"] },
+              ].map((sec) => (
+                <div key={sec.title} style={{ marginTop: 14 }}>
+                  <div
+                    style={{
+                      fontSize: 10,
+                      textTransform: "uppercase",
+                      letterSpacing: 0.16,
+                      color: "#cbd5f5",
+                      fontWeight: 800,
+                    }}
+                  >
+                    {sec.title}
+                  </div>
+                  <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 6 }}>
+                    {sec.bars.map((w, i) => (
+                      <div
+                        key={i}
+                        style={{
+                          height: 8,
+                          borderRadius: 999,
+                          background: "rgba(148,163,184,0.22)",
+                          width: w,
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))}
+
+              <div style={{ marginTop: 14, fontSize: 10, color: "#6b7280", textAlign: "right" }}>
+                Example preview — real reports include full text.
               </div>
             </div>
           </div>
         </section>
 
-        {/* ✅ P&L CALENDAR (UPGRADED) */}
+        {/* ✅ P&L CALENDAR (fixed Sundays → Fridays) */}
         <section style={styles.section}>
           <div style={styles.sectionInner}>
-            <div style={styles.sectionEyebrow}>
-              Track performance, not just ideas
-            </div>
-            <h2 style={styles.sectionTitle}>
-              The P&amp;L calendar shows the truth.
-            </h2>
+            <div style={styles.sectionEyebrow}>Track performance</div>
+            <h2 style={styles.sectionTitle}>The P&amp;L calendar shows the truth.</h2>
             <p style={styles.sectionSub}>
-              Log <strong>profit/loss</strong> and <strong>risk-to-reward</strong>{" "}
-              daily, then see patterns instantly: overtrading days, revenge
-              days, and which setups create your best results.
+              Log <strong>profit/loss</strong> and <strong>risk-to-reward</strong> daily, then spot
+              patterns instantly.
             </p>
 
             <div style={styles.pnlGridWrap}>
               <div style={styles.pnlTopRow}>
                 <div>
-                  <div style={{ fontWeight: 950, fontSize: 14 }}>
-                    Your month at a glance
-                  </div>
-                  <div
-                    style={{
-                      fontSize: 12,
-                      opacity: 0.82,
-                      marginTop: 3,
-                      lineHeight: 1.45,
-                    }}
-                  >
-                    Green days = profitable. Red days = losing. Blue/flat =
-                    break-even. The goal is to make your{" "}
-                    <strong>process</strong> consistent so the calendar turns
-                    consistently green over time.
+                  <div style={{ fontWeight: 950, fontSize: 14 }}>Your month at a glance</div>
+                  <div style={{ fontSize: 12, opacity: 0.82, marginTop: 3, lineHeight: 1.45 }}>
+                    Green = profitable. Red = losing. Blue = break-even. Weekends stay blank.
                   </div>
                 </div>
                 <div style={{ fontSize: 12, opacity: 0.85 }}>
-                  <span style={{ color: "#22d3ee", fontWeight: 950 }}>Tip:</span>{" "}
-                  If your avg R:R is solid but P&amp;L is negative, your
-                  entries/invalidations need work. If avg R:R is low, your trade
-                  management is likely the leak.
+                  <span style={{ color: "#22d3ee", fontWeight: 950 }}>Tip:</span> Solid R:R but
+                  negative P&amp;L usually means entries/invalidations need work. Low R:R usually
+                  means trade management is the leak.
                 </div>
               </div>
 
@@ -1444,16 +1187,13 @@ export default function LandingPage({ onEnterApp }) {
                 <div style={styles.pnlSummaryCard}>
                   <div style={styles.pnlSummaryLabel}>Total P&amp;L (month)</div>
                   <div style={styles.pnlSummaryValue}>+$1,055</div>
-                  <div style={styles.pnlSummarySub}>
-                    See your real total automatically based on daily entries.
-                  </div>
+                  <div style={styles.pnlSummarySub}>Auto-calculated from your daily entries.</div>
                 </div>
                 <div style={styles.pnlSummaryCard}>
                   <div style={styles.pnlSummaryLabel}>Avg R:R</div>
                   <div style={styles.pnlSummaryValue}>1.7R</div>
                   <div style={styles.pnlSummarySub}>
-                    Averages help you catch “small win / big loss” behavior
-                    early.
+                    Catch “small win / big loss” behavior early.
                   </div>
                 </div>
               </div>
@@ -1475,9 +1215,9 @@ export default function LandingPage({ onEnterApp }) {
                 </div>
 
                 <div style={styles.pnlCalendar}>
-                  {pnlDays.map((c) => (
-                    <div key={c.d} style={styles.pnlCell(c.tone)}>
-                      <div style={styles.pnlCellDay}>Day {c.d}</div>
+                  {pnlCells.map((c, idx) => (
+                    <div key={idx} style={styles.pnlCell(c.tone)}>
+                      <div style={styles.pnlCellDay}>{c.day || ""}</div>
                       <div>
                         <div style={styles.pnlCellValue}>{c.v}</div>
                         <div style={styles.pnlCellRR}>{c.rr}</div>
@@ -1486,148 +1226,70 @@ export default function LandingPage({ onEnterApp }) {
                   ))}
                 </div>
 
-                <div
-                  style={{
-                    marginTop: 12,
-                    fontSize: 12,
-                    opacity: 0.85,
-                    lineHeight: 1.55,
-                  }}
-                >
-                  <strong>How you’ll use it:</strong> after trading, enter your
-                  day’s result and R:R, then compare it to your screenshot +
-                  journal. Over time you’ll spot the exact sessions,
-                  timeframes, and behaviors that print… and the ones that bleed.
+                <div style={{ marginTop: 12, fontSize: 12, opacity: 0.85, lineHeight: 1.55 }}>
+                  <strong>How you’ll use it:</strong> after trading, enter your day’s result and
+                  R:R, then compare it to your screenshot + journal.
                 </div>
               </div>
             </div>
           </div>
         </section>
 
-        {/* WHAT YOU GET / VS EVERYTHING ELSE */}
+        {/* WHAT YOU GET / CLEANER COMPARISON */}
         <section style={styles.section}>
           <div style={styles.sectionInner}>
-            <div style={styles.sectionEyebrow}>
-              Inside your MaxTradeAI portal
-            </div>
-            <h2 style={styles.sectionTitle}>
-              Everything you need to self-coach trades — in one place.
-            </h2>
+            <div style={styles.sectionEyebrow}>Inside your portal</div>
+            <h2 style={styles.sectionTitle}>Everything you need — in one place.</h2>
+            <p style={styles.sectionSub}>
+              Upload, review, journal, track. Simple workflow. Clear improvement.
+            </p>
 
             <div style={styles.checklistGrid}>
               <div style={styles.checklistCol}>
                 <div style={styles.checklistTitle}>What you get</div>
-                <ul style={{ margin: 0, paddingLeft: 16, fontSize: 13 }}>
+                <ul style={{ margin: 0, paddingLeft: 16, fontSize: 13, lineHeight: 1.7 }}>
                   <li>AI feedback that grades every trade you upload.</li>
-                  <li>Breakdown of what you executed well vs. what you missed.</li>
-                  <li>
-                    Clear &quot;next time, do this&quot; suggestions so you know
-                    what to practice.
-                  </li>
-                  <li>
-                    Daily journal section built-in for psychology, discipline,
-                    and rules.
-                  </li>
-                  <li>
-                    Private Member ID workspace tied to your trades — not anyone
-                    else&apos;s.
-                  </li>
+                  <li>Clear breakdown of what you did well vs. what you missed.</li>
+                  <li>Actionable “next time” improvements to practice.</li>
+                  <li>Built-in daily journal for psychology, discipline, and rules.</li>
+                  <li>Private Member ID workspace tied to your trades.</li>
                 </ul>
               </div>
 
               <div style={styles.checklistCol}>
-                <div style={styles.checklistTitle}>MaxTradeAI</div>
+                <div style={styles.checklistTitle}>Comparison</div>
 
-                <div style={styles.checklistItemRow}>
-                  <span style={styles.checklistLabel}>
-                    Actually reviews your trades
-                  </span>
-                  <div style={styles.checklistChecks}>
-                    <span style={styles.checklistYes}>MaxTrade: ✓</span>
-                    <span style={styles.checklistNo}>TradingView: ✕</span>
-                  </div>
+                <div style={styles.compareHeaderRow}>
+                  <div style={styles.compareHeaderLabel}>Feature</div>
+                  <div style={styles.compareHeaderCol}>MaxTradeAI</div>
+                  <div style={styles.compareHeaderCol}>Others</div>
                 </div>
 
-                <div style={styles.checklistItemRow}>
-                  <span style={styles.checklistLabel}>
-                    Structured daily journal to log your daily progress
-                  </span>
-                  <div style={styles.checklistChecks}>
-                    <span style={styles.checklistYes}>MaxTrade: ✓</span>
-                    <span style={styles.checklistNo}>Other AI: ✕</span>
+                {compareRows.map((r) => (
+                  <div key={r.label} style={styles.compareRow}>
+                    <div style={styles.compareLabel}>{r.label}</div>
+                    <div style={{ textAlign: "center" }}>
+                      <span style={styles.badgeYes}>{r.mt ? "✓" : "—"}</span>
+                    </div>
+                    <div style={{ textAlign: "center" }}>
+                      <span style={r.other ? styles.badgeYes : styles.badgeNo}>
+                        {r.other ? "✓" : "✕"}
+                      </span>
+                    </div>
                   </div>
-                </div>
-
-                <div style={styles.checklistItemRow}>
-                  <span style={styles.checklistLabel}>
-                    Understands BOS / CHoCH / FVG / liquidity
-                  </span>
-                  <div style={styles.checklistChecks}>
-                    <span style={styles.checklistYes}>MaxTrade: ✓</span>
-                    <span style={styles.checklistNo}>Basic AI: ✕</span>
-                  </div>
-                </div>
-
-                <div style={styles.checklistItemRow}>
-                  <span style={styles.checklistLabel}>
-                    Keeps everything in a single private portal
-                  </span>
-                  <div style={styles.checklistChecks}>
-                    <span style={styles.checklistYes}>MaxTrade: ✓</span>
-                    <span style={styles.checklistNo}>Others: ✕</span>
-                  </div>
-                </div>
+                ))}
               </div>
             </div>
           </div>
         </section>
 
-        {/* TESTIMONIALS */}
-        <section style={styles.section}>
-          <div style={styles.sectionInner}>
-            <div style={styles.sectionEyebrow}>Real results</div>
-            <h2 style={styles.sectionTitle}>
-              See what traders are saying about structured review.
-            </h2>
-            <p style={styles.sectionSub}>
-              These are the kinds of outcomes traders report when they finally
-              stop relying on screenshots alone and start tracking trades with
-              feedback and rules.
-            </p>
-
-            <div style={styles.testimonialGrid}>
-              <div style={styles.testimonialCard}>
-                &ldquo;Instead of having no clue why my stop loss was hit, I now
-                get a clear grade and a list of mistakes to fix. I&apos;m
-                finally building confidence in my setups.&rdquo;
-                <div style={styles.testimonialName}>— Index &amp; FX trader</div>
-              </div>
-              <div style={styles.testimonialCard}>
-                &ldquo;The daily journal tied to each day forced me to be honest
-                about my rules and emotions. I actually know why I won or lost a
-                trade now.&rdquo;
-                <div style={styles.testimonialName}>— NAS100 day trader</div>
-              </div>
-              <div style={styles.testimonialCard}>
-                &ldquo;The AI speaks in BOS / CHoCH / FVG language, so it feels
-                like someone who actually trades liquidity is reviewing my
-                charts.&rdquo;
-                <div style={styles.testimonialName}>— ICT-focused trader</div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* FAQ */}
+        {/* FAQ (kept) */}
         <section style={styles.section}>
           <div style={styles.sectionInner}>
             <div style={styles.sectionEyebrow}>FAQs</div>
-            <h2 style={styles.sectionTitle}>
-              Get answers before you start your portal.
-            </h2>
+            <h2 style={styles.sectionTitle}>Get answers before you start.</h2>
             <p style={styles.sectionSub}>
-              The most common questions traders ask before getting instant
-              access to MaxTradeAI.
+              Quick answers to the most common questions before subscribing.
             </p>
 
             <div style={styles.faqList}>
@@ -1637,18 +1299,14 @@ export default function LandingPage({ onEnterApp }) {
                   <div key={idx} style={styles.faqItem}>
                     <div
                       style={styles.faqHeader}
-                      onClick={() =>
-                        setOpenFaq((prev) => (prev === idx ? null : idx))
-                      }
+                      onClick={() => setOpenFaq((prev) => (prev === idx ? null : idx))}
                     >
                       <span>{item.q}</span>
                       <span style={styles.faqIcon}>{open ? "−" : "+"}</span>
                     </div>
                     {open && (
                       <div style={styles.faqBody}>
-                        <p style={{ marginTop: 8, marginBottom: 8 }}>
-                          {item.a}
-                        </p>
+                        <p style={{ marginTop: 8, marginBottom: 8, lineHeight: 1.6 }}>{item.a}</p>
                       </div>
                     )}
                   </div>
@@ -1662,17 +1320,13 @@ export default function LandingPage({ onEnterApp }) {
         <section style={styles.section}>
           <div style={styles.sectionInner}>
             <div style={styles.finalCard}>
-              <div style={styles.sectionEyebrow}>Ready to start today?</div>
-              <h2 style={styles.finalHeadline}>
-                Start building real trading improvement — one screenshot at a
-                time.
-              </h2>
+              <div style={styles.sectionEyebrow}>Ready to start?</div>
+              <h2 style={styles.finalHeadline}>Start improving — one screenshot at a time.</h2>
               <p style={styles.finalSub}>
-                Get instant access to your MaxTradeAI portal for{" "}
-                <strong>{PRICE_SHORT}</strong>. Upload your next trade, explain
-                your idea, and see how different it feels to get a structured,
-                ICT-aware breakdown instead of a random emoji-filled comment.
+                Get instant access for <strong>{PRICE_SHORT}</strong>. Subscribe, receive your
+                Member ID, then log in on any device.
               </p>
+
               <button
                 style={styles.heroPrimaryBtn}
                 onClick={() => {
@@ -1685,20 +1339,7 @@ export default function LandingPage({ onEnterApp }) {
                 {PRICE_BUTTON}
               </button>
 
-              {/* brief legal note under final CTA */}
-              <div
-                style={{
-                  fontSize: 11,
-                  opacity: 0.7,
-                  maxWidth: 520,
-                  marginTop: 10,
-                }}
-              >
-                MaxTradeAI does not guarantee profits or specific outcomes. AI
-                feedback is fallible and may miss or misinterpret information
-                you provide. Always use your own judgment and risk management.
-                <br />
-                <br />
+              <div style={{ fontSize: 11, opacity: 0.7, maxWidth: 520, marginTop: 10 }}>
                 Contact Us: orbitalbiz1@gmail.com
               </div>
             </div>
@@ -1708,40 +1349,21 @@ export default function LandingPage({ onEnterApp }) {
         {/* FOOTER */}
         <footer style={styles.footer}>
           <div style={styles.footerInner}>
-            <span>
-              © {new Date().getFullYear()} MaxTradeAI. All rights reserved.
-            </span>
+            <span>© {new Date().getFullYear()} MaxTradeAI. All rights reserved.</span>
             <div style={styles.footerLinks}>
-              <span
-                style={styles.footerLink}
-                onClick={() => setShowPrivacy(true)}
-              >
+              <span style={styles.footerLink} onClick={() => setShowPrivacy(true)}>
                 Privacy Policy
               </span>
-              <span
-                style={styles.footerLink}
-                onClick={() => setShowTerms(true)}
-              >
+              <span style={styles.footerLink} onClick={() => setShowTerms(true)}>
                 Terms of Use
               </span>
-              <span
-                style={styles.footerLink}
-                onClick={() => setShowDisclaimer(true)}
-              >
+              <span style={styles.footerLink} onClick={() => setShowDisclaimer(true)}>
                 Disclaimer
               </span>
             </div>
-            <div
-              style={{
-                fontSize: 11,
-                opacity: 0.7,
-                maxWidth: 700,
-                marginTop: 4,
-              }}
-            >
-              Educational use only. Nothing on this site or in the app is
-              financial advice. AI-generated feedback can be inaccurate or
-              incomplete, and you are responsible for any trades you place.
+            <div style={{ fontSize: 11, opacity: 0.7, maxWidth: 700, marginTop: 4 }}>
+              Educational use only. Nothing on this site or in the app is financial advice. AI can
+              be inaccurate, and you are responsible for any trades you place.
             </div>
           </div>
         </footer>
@@ -1753,22 +1375,15 @@ export default function LandingPage({ onEnterApp }) {
           <div style={styles.modalCard}>
             <div style={styles.modalTitle}>Continue to Stripe</div>
             <div style={styles.modalText}>
-  You&apos;ll enter your details directly in Stripe Checkout. This is a{" "}
-  <strong>{PRICE_SHORT}</strong> subscription for access to your portal.
-  <br />
-  <br />
-  <strong style={{ fontSize: 12 }}>
-    Important: You must enter your email in Stripe so you can receive your
-    Member ID.
-  </strong>
-  <br />
-  <br />
-  <span style={{ fontSize: 11, opacity: 0.8 }}>
-    By continuing, you acknowledge that MaxTradeAI is for educational use only,
-    that AI can make mistakes, and that you are fully responsible for your own
-    trading decisions.
-  </span>
-</div>
+              You&apos;ll enter your details directly in Stripe Checkout.
+              <br />
+              This is a <strong>{PRICE_SHORT}</strong> subscription for access to your portal.
+              <br />
+              <br />
+              <strong style={{ fontSize: 12 }}>
+                Important: Enter your email in Stripe so you can receive your Member ID.
+              </strong>
+            </div>
 
             <form onSubmit={handleCheckoutSubmit}>
               {/* Terms / Privacy checkbox */}
@@ -1780,7 +1395,7 @@ export default function LandingPage({ onEnterApp }) {
                   onChange={(e) => setCheckoutAgreed(e.target.checked)}
                 />
                 <span style={styles.checkboxLabel}>
-                  I have read and agree to the{" "}
+                  I agree to the{" "}
                   <span
                     style={styles.checkboxLink}
                     onClick={(event) => {
@@ -1800,14 +1415,11 @@ export default function LandingPage({ onEnterApp }) {
                   >
                     Privacy Policy
                   </span>
-                  , and I understand that MaxTradeAI is educational only and not
-                  financial advice.
+                  .
                 </span>
               </label>
 
-              {checkoutError && (
-                <div style={styles.modalError}>{checkoutError}</div>
-              )}
+              {checkoutError && <div style={styles.modalError}>{checkoutError}</div>}
 
               <button
                 type="submit"
@@ -1818,9 +1430,7 @@ export default function LandingPage({ onEnterApp }) {
                   cursor: checkoutLoading ? "default" : "pointer",
                 }}
               >
-                {checkoutLoading
-                  ? "Redirecting…"
-                  : `Subscribe ${PRICE_SHORT} with Stripe →`}
+                {checkoutLoading ? "Redirecting…" : `Subscribe ${PRICE_SHORT} with Stripe →`}
               </button>
             </form>
 
@@ -1829,15 +1439,11 @@ export default function LandingPage({ onEnterApp }) {
                 <span style={styles.idLabel}>Your Member ID:</span>
                 <span style={styles.idValue}>{memberId}</span>
                 <div style={styles.idHint}>
-                  Save this somewhere safe — you&apos;ll use it to log into Max
-                  Trade Coach on any device.
+                  Save this somewhere safe — you&apos;ll use it to log in on any device.
                 </div>
                 <button
                   type="button"
-                  style={{
-                    ...styles.modalButtonPrimary,
-                    marginTop: 10,
-                  }}
+                  style={{ ...styles.modalButtonPrimary, marginTop: 10 }}
                   onClick={openWorkspace}
                 >
                   I saved it → go to my portal
@@ -1862,8 +1468,7 @@ export default function LandingPage({ onEnterApp }) {
           <div style={styles.modalCard}>
             <div style={styles.modalTitle}>Enter your Member ID</div>
             <div style={styles.modalText}>
-              Paste the Member ID you received after purchase to unlock your Max
-              Trade Coach portal.
+              Paste the Member ID you received after purchase to unlock your portal.
             </div>
 
             <form onSubmit={handleMemberPortalSubmit}>
@@ -1886,9 +1491,7 @@ export default function LandingPage({ onEnterApp }) {
                 required
               />
 
-              {memberPortalError && (
-                <div style={styles.modalError}>{memberPortalError}</div>
-              )}
+              {memberPortalError && <div style={styles.modalError}>{memberPortalError}</div>}
 
               <button
                 type="submit"
@@ -1919,61 +1522,50 @@ export default function LandingPage({ onEnterApp }) {
         <div style={styles.overlay}>
           <div style={styles.modalCard}>
             <div style={styles.modalTitle}>Privacy Policy</div>
-            <div style={styles.modalText}>
-              How MaxTradeAI handles your information.
-            </div>
+            <div style={styles.modalText}>How MaxTradeAI handles your information.</div>
             <div style={styles.legalBody}>
               <div style={styles.legalHeading}>1. Information You Provide</div>
               <p>
-                When you use MaxTradeAI, you may upload screenshots, enter
-                notes, and provide basic details like your name and email. This
-                information is used to generate AI feedback and maintain your
-                personal workspace.
+                When you use MaxTradeAI, you may upload screenshots, enter notes, and provide basic
+                details like your name and email. This information is used to generate AI feedback
+                and maintain your personal workspace.
               </p>
 
               <div style={styles.legalHeading}>2. How We Use Your Data</div>
               <p>
-                We use your data to operate and improve the app, generate
-                educational feedback on your trades, and keep your journal and
-                trade history organized. We do not sell your personal data.
+                We use your data to operate and improve the app, generate educational feedback on
+                your trades, and keep your journal and trade history organized. We do not sell your
+                personal data.
               </p>
 
               <div style={styles.legalHeading}>3. AI & Third-Party Services</div>
               <p>
-                Your charts and notes may be processed by third-party AI
-                providers solely for the purpose of generating feedback. We take
-                reasonable steps to protect this data, but no system is 100%
-                secure.
+                Your charts and notes may be processed by third-party AI providers solely for the
+                purpose of generating feedback. We take reasonable steps to protect this data, but
+                no system is 100% secure.
               </p>
 
               <div style={styles.legalHeading}>4. Storage & Security</div>
               <p>
-                Some information may be stored locally in your browser or on our
-                servers. We aim to use reasonable security measures, but you
-                should avoid uploading highly sensitive personal or financial
-                account information.
+                Some information may be stored locally in your browser or on our servers. We aim to
+                use reasonable security measures, but you should avoid uploading highly sensitive
+                personal or financial account information.
               </p>
 
               <div style={styles.legalHeading}>5. Your Choices</div>
               <p>
-                You can stop using the app at any time. If you&apos;d like your
-                data removed from our systems, you can contact us and we will
-                make reasonable efforts to delete it, where technically and
-                legally possible.
+                You can stop using the app at any time. If you&apos;d like your data removed from
+                our systems, you can contact us and we will make reasonable efforts to delete it,
+                where technically and legally possible.
               </p>
 
               <div style={styles.legalHeading}>6. Changes to This Policy</div>
               <p>
-                We may update this Privacy Policy over time. If we make material
-                changes, we&apos;ll update the effective date and may provide
-                a brief notice in the app.
+                We may update this Privacy Policy over time. If we make material changes, we&apos;ll
+                update the effective date and may provide a brief notice in the app.
               </p>
             </div>
-            <button
-              type="button"
-              style={styles.modalButtonSecondary}
-              onClick={() => setShowPrivacy(false)}
-            >
+            <button type="button" style={styles.modalButtonSecondary} onClick={() => setShowPrivacy(false)}>
               Close
             </button>
           </div>
@@ -1985,68 +1577,57 @@ export default function LandingPage({ onEnterApp }) {
         <div style={styles.overlay}>
           <div style={styles.modalCard}>
             <div style={styles.modalTitle}>Terms of Use</div>
-            <div style={styles.modalText}>
-              Please read this before relying on MaxTradeAI.
-            </div>
+            <div style={styles.modalText}>Please read this before relying on MaxTradeAI.</div>
             <div style={styles.legalBody}>
               <div style={styles.legalHeading}>1. Educational Purpose Only</div>
               <p>
-                MaxTradeAI is provided for educational and informational
-                purposes only. It does not provide financial, investment, legal,
-                tax, or professional advice of any kind.
+                MaxTradeAI is provided for educational and informational purposes only. It does not
+                provide financial, investment, legal, tax, or professional advice of any kind.
               </p>
 
               <div style={styles.legalHeading}>2. No Financial Advice</div>
               <p>
-                Nothing generated by the app should be interpreted as a
-                recommendation to buy, sell, or hold any security, currency, or
-                financial instrument. You are solely responsible for any trades
-                you choose to place.
+                Nothing generated by the app should be interpreted as a recommendation to buy,
+                sell, or hold any security, currency, or financial instrument. You are solely
+                responsible for any trades you choose to place.
               </p>
 
               <div style={styles.legalHeading}>3. AI-Generated Content</div>
               <p>
-                Feedback in MaxTradeAI is generated using AI models based on the
-                screenshots and notes you provide. AI can misunderstand charts,
-                miss important details, or generate inaccurate or incomplete
-                information. You should never treat AI feedback as guaranteed
-                truth.
+                Feedback in MaxTradeAI is generated using AI models based on the screenshots and
+                notes you provide. AI can misunderstand charts, miss important details, or generate
+                inaccurate or incomplete information. You should never treat AI feedback as
+                guaranteed truth.
               </p>
 
               <div style={styles.legalHeading}>4. User Responsibility</div>
               <p>
-                By using this app, you agree that you are responsible for:
-                providing accurate information, managing your own risk, and
-                verifying any ideas before acting on them. You trade at your own
-                risk.
+                By using this app, you agree that you are responsible for providing accurate
+                information, managing your own risk, and verifying any ideas before acting on them.
+                You trade at your own risk.
               </p>
 
               <div style={styles.legalHeading}>5. Limitation of Liability</div>
               <p>
-                To the fullest extent permitted by law, MaxTradeAI and its
-                operators are not liable for any direct, indirect, incidental,
-                or consequential losses or damages arising from your use of the
-                app, including trading losses, missed opportunities, or emotional
-                stress.
+                To the fullest extent permitted by law, MaxTradeAI and its operators are not liable
+                for any direct, indirect, incidental, or consequential losses or damages arising
+                from your use of the app, including trading losses, missed opportunities, or
+                emotional stress.
               </p>
 
               <div style={styles.legalHeading}>6. No Warranties</div>
               <p>
-                The app is provided &quot;as is&quot; and &quot;as available&quot;
-                without warranties of any kind, whether express or implied.
+                The app is provided &quot;as is&quot; and &quot;as available&quot; without warranties
+                of any kind, whether express or implied.
               </p>
 
               <div style={styles.legalHeading}>7. Changes to Terms</div>
               <p>
-                We may update these Terms of Use over time. Continued use of the
-                app after changes means you accept the updated terms.
+                We may update these Terms of Use over time. Continued use of this app after changes
+                means you accept the updated terms.
               </p>
             </div>
-            <button
-              type="button"
-              style={styles.modalButtonSecondary}
-              onClick={() => setShowTerms(false)}
-            >
+            <button type="button" style={styles.modalButtonSecondary} onClick={() => setShowTerms(false)}>
               Close
             </button>
           </div>
@@ -2058,44 +1639,35 @@ export default function LandingPage({ onEnterApp }) {
         <div style={styles.overlay}>
           <div style={styles.modalCard}>
             <div style={styles.modalTitle}>Disclaimer</div>
-            <div style={styles.modalText}>
-              AI can be wrong. Trading always involves risk.
-            </div>
+            <div style={styles.modalText}>AI can be wrong. Trading always involves risk.</div>
             <div style={styles.legalBody}>
               <div style={styles.legalHeading}>1. No Guarantees</div>
               <p>
-                MaxTradeAI cannot guarantee accuracy of any AI-generated
-                feedback, nor can it guarantee profits, improvement, or specific
-                outcomes. All trading involves risk, and you may lose money.
+                MaxTradeAI cannot guarantee accuracy of any AI-generated feedback, nor can it
+                guarantee profits, improvement, or specific outcomes. All trading involves risk,
+                and you may lose money.
               </p>
 
               <div style={styles.legalHeading}>2. AI Limitations</div>
               <p>
-                Even with detailed notes and clear screenshots, AI can
-                misinterpret context, miss key points, or provide feedback that
-                you disagree with. Treat AI feedback as an extra opinion, not a
-                signal service or rulebook.
+                Even with detailed notes and clear screenshots, AI can misinterpret context, miss
+                key points, or provide feedback that you disagree with. Treat AI feedback as an
+                extra opinion, not a signal service or rulebook.
               </p>
 
               <div style={styles.legalHeading}>3. Your Decisions</div>
               <p>
-                Any trades you place are your decisions and your responsibility.
-                You should always use your own judgment, risk management, and,
-                where appropriate, consult a qualified financial professional.
+                Any trades you place are your decisions and your responsibility. You should always
+                use your own judgment and risk management.
               </p>
 
               <div style={styles.legalHeading}>4. Educational Framing</div>
               <p>
-                Think of MaxTradeAI like a practice tool or training partner.
-                Its role is to help you reflect on your process, not to tell you
-                exactly what to do in the markets.
+                Think of MaxTradeAI like a practice tool or training partner. Its role is to help
+                you reflect on your process, not to tell you exactly what to do in the markets.
               </p>
             </div>
-            <button
-              type="button"
-              style={styles.modalButtonSecondary}
-              onClick={() => setShowDisclaimer(false)}
-            >
+            <button type="button" style={styles.modalButtonSecondary} onClick={() => setShowDisclaimer(false)}>
               Close
             </button>
           </div>
