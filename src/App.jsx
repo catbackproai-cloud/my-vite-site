@@ -4,6 +4,8 @@ import Landing from './pages/Landing'
 import Auth from './pages/Auth'
 import Workspace from './pages/Workspace'
 import Upgrade from './pages/Upgrade'
+import Terms from './pages/Terms'
+import Privacy from './pages/Privacy'
 
 function ProtectedRoute({ children }) {
   const { user, profile, loading } = useAuth()
@@ -26,6 +28,8 @@ export default function App() {
       <Route path="/login" element={<Auth mode="login" />} />
       <Route path="/signup" element={<Auth mode="signup" />} />
       <Route path="/upgrade" element={<Upgrade />} />
+      <Route path="/terms" element={<Terms />} />
+      <Route path="/privacy" element={<Privacy />} />
       <Route path="/workspace" element={<ProtectedRoute><Workspace /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
