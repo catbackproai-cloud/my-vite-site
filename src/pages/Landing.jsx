@@ -3,15 +3,15 @@ import { useNavigate } from 'react-router-dom'
 const CYAN = '#22d3ee'
 const BG_DEEP = '#020617'
 const BG_MID = '#030817'
-const BG_TOP = '#07101f'
+
 const TEXT_PRIMARY = '#f1f5f9'
 const TEXT_MUTED = '#94a3b8'
 
 const features = [
   {
-    icon: '🧠',
-    title: 'AI Chart Analysis',
-    desc: 'Upload any chart and get instant, actionable coaching from Claude — your always-on trading mentor.',
+    icon: '🤖',
+    title: 'AI That Knows You',
+    desc: 'Your AI coach learns your strategy, rules, and tendencies. Every response is tailored to your specific trading plan — not generic advice.',
   },
   {
     icon: '📅',
@@ -26,17 +26,17 @@ const features = [
 ]
 
 const steps = [
-  { num: '01', title: 'Upload your chart', desc: 'Drop in a screenshot of any trade or setup.' },
-  { num: '02', title: 'Get AI feedback', desc: 'Receive a grade, analysis, and specific coaching tips.' },
-  { num: '03', title: 'Track & improve', desc: 'Log your P&L, journal insights, and watch your edge compound.' },
+  { num: '01', title: 'Set your trading plan', desc: 'Tell the AI your strategy, rules, and goals once. It remembers everything.' },
+  { num: '02', title: 'Chat & share your trades', desc: 'Send messages or drop in chart screenshots. Get coaching that references your actual plan.' },
+  { num: '03', title: 'Track & improve', desc: 'Log your P&L, journal your sessions, and let the AI spot patterns in your trading.' },
 ]
 
 const pricingFeatures = [
-  'Unlimited AI chart analysis',
+  'Personal AI coach that adapts to your style',
+  'Send charts & get plan-specific feedback',
+  'Full conversation history — it remembers',
   'Daily P&L calendar & tracking',
   'Structured trading journal',
-  'AI grades every trade A–F',
-  'Cloud sync across all devices',
   'Cancel anytime',
 ]
 
@@ -163,7 +163,7 @@ export default function Landing() {
             textTransform: 'uppercase',
           }}>
             <span>✦</span>
-            <span>AI-Powered Trading Journal</span>
+            <span>Your Personal AI Trading Coach</span>
           </div>
 
           <h1 style={{
@@ -177,13 +177,13 @@ export default function Landing() {
             WebkitTextFillColor: 'transparent',
             backgroundClip: 'text',
           }}>
-            Stop Trading Blind.<br />
+            An AI Coach That<br />
             <span style={{
               background: `linear-gradient(135deg, ${CYAN}, #3b82f6)`,
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
               backgroundClip: 'text',
-            }}>Start Trading Smart.</span>
+            }}>Knows Your Game.</span>
           </h1>
 
           <p style={{
@@ -193,7 +193,7 @@ export default function Landing() {
             maxWidth: '520px',
             margin: '0 auto 40px',
           }}>
-            Upload your charts, get instant AI coaching, track your P&L, and build the habits of a consistently profitable trader.
+            Tell it your strategy once. Then chat, share charts, and get feedback that actually holds you to your plan — not generic tips.
           </p>
 
           <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
