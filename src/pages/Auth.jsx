@@ -166,8 +166,6 @@ export default function Auth({ mode }) {
               <label htmlFor="tos" style={{ fontSize: '12px', color: TEXT_MUTED, lineHeight: '1.5', cursor: 'pointer' }}>
                 I agree to the{' '}
                 <a href="/terms" style={{ color: CYAN, textDecoration: 'none' }}>Terms of Service</a>
-                {' '}and{' '}
-                <a href="/privacy" style={{ color: CYAN, textDecoration: 'none' }}>Privacy Policy</a>
               </label>
             </div>
           )}
