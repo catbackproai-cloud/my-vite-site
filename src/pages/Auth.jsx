@@ -9,13 +9,14 @@ const TEXT_MUTED = '#94a3b8'
 
 export default function Auth({ mode }) {
   const navigate = useNavigate()
-  const { signIn, signUp, profile } = useAuth()
+  const { signIn, signUp } = useAuth()
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [fullName, setFullName] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [agreedToTos, setAgreedToTos] = useState(false)
 
   const isLogin = mode === 'login'
 
@@ -42,6 +43,11 @@ export default function Auth({ mode }) {
         await signIn(email, password)
         navigate('/workspace')
       } else {
+        if (!agreedToTos) {
+          setError('Please agree to the Terms of Service to continue.')
+          setLoading(false)
+          return
+        }
         await signUp(email, password, fullName)
         navigate('/workspace')
       }
@@ -148,6 +154,24 @@ export default function Auth({ mode }) {
             />
           </div>
 
+          {!isLogin && (
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+              <input
+                type="checkbox"
+                id="tos"
+                checked={agreedToTos}
+                onChange={e => setAgreedToTos(e.target.checked)}
+                style={{ marginTop: '2px', accentColor: CYAN, cursor: 'pointer', flexShrink: 0 }}
+              />
+              <label htmlFor="tos" style={{ fontSize: '12px', color: TEXT_MUTED, lineHeight: '1.5', cursor: 'pointer' }}>
+                I agree to the{' '}
+                <a href="/terms" style={{ color: CYAN, textDecoration: 'none' }}>Terms of Service</a>
+                {' '}and{' '}
+                <a href="/privacy" style={{ color: CYAN, textDecoration: 'none' }}>Privacy Policy</a>
+              </label>
+            </div>
+          )}
+
           {error && (
             <div style={{
               background: 'rgba(239,68,68,0.1)',
@@ -163,15 +187,15 @@ export default function Auth({ mode }) {
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || (!isLogin && !agreedToTos)}
             style={{
               width: '100%',
-              background: loading ? 'rgba(34,211,238,0.5)' : CYAN,
+              background: (loading || (!isLogin && !agreedToTos)) ? 'rgba(34,211,238,0.5)' : CYAN,
               color: '#020617',
               border: 'none',
               fontSize: '15px',
               fontWeight: '700',
-              cursor: loading ? 'not-allowed' : 'pointer',
+              cursor: (loading || (!isLogin && !agreedToTos)) ? 'not-allowed' : 'pointer',
               padding: '13px',
               borderRadius: '8px',
               marginTop: '4px',

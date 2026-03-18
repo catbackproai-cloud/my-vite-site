@@ -40,10 +40,10 @@ const pricingFeatures = [
   'Cancel anytime',
 ]
 
-const stats = [
-  { value: '500+', label: 'Active traders' },
-  { value: '10k+', label: 'Trades analyzed' },
-  { value: '$2M+', label: 'P&L tracked' },
+const pillars = [
+  { icon: '🎯', label: 'Plan-aware coaching' },
+  { icon: '📊', label: 'Chart analysis via AI' },
+  { icon: '📓', label: 'Journal & P&L tracking' },
 ]
 
 export default function Landing() {
@@ -236,22 +236,29 @@ export default function Landing() {
             </button>
           </div>
 
-          {/* Stats row */}
+          {/* Pillars row */}
           <div style={{
             display: 'flex',
-            gap: '40px',
+            gap: '12px',
             justifyContent: 'center',
             marginTop: '64px',
             flexWrap: 'wrap',
           }}>
-            {stats.map(s => (
-              <div key={s.label} style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '28px', fontWeight: '800', color: TEXT_PRIMARY, letterSpacing: '-1px' }}>
-                  {s.value}
-                </div>
-                <div style={{ fontSize: '13px', color: TEXT_MUTED, marginTop: '4px' }}>
-                  {s.label}
-                </div>
+            {pillars.map(p => (
+              <div key={p.label} style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                background: 'rgba(255,255,255,0.04)',
+                border: '1px solid rgba(255,255,255,0.08)',
+                borderRadius: '999px',
+                padding: '8px 18px',
+                fontSize: '13px',
+                color: TEXT_MUTED,
+                fontWeight: '500',
+              }}>
+                <span>{p.icon}</span>
+                <span>{p.label}</span>
               </div>
             ))}
           </div>
