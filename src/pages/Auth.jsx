@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+
 
 const CYAN = '#22d3ee'
 const BG_DEEP = '#020617'
@@ -9,7 +10,17 @@ const TEXT_MUTED = '#94a3b8'
 
 export default function Auth({ mode }) {
   const navigate = useNavigate()
-  const { signIn, signUp } = useAuth()
+  const { signIn, signUp, user, profile, loading: authLoading } = useAuth()
+
+  // Navigate once auth state settles after login/signup
+  useEffect(() => {
+    if (authLoading || !user) return
+    if (profile?.subscription_status === 'active') {
+      navigate('/workspace', { replace: true })
+    } else if (profile) {
+      navigate('/upgrade', { replace: true })
+    }
+  }, [user, profile, authLoading, navigate])
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -41,7 +52,7 @@ export default function Auth({ mode }) {
     try {
       if (isLogin) {
         await signIn(email, password)
-        navigate('/workspace')
+        // navigation handled by useEffect above
       } else {
         if (!agreedToTos) {
           setError('Please agree to the Terms of Service to continue.')
@@ -49,7 +60,7 @@ export default function Auth({ mode }) {
           return
         }
         await signUp(email, password, fullName)
-        navigate('/workspace')
+        // navigation handled by useEffect above
       }
     } catch (err) {
       setError(err.message || 'Something went wrong. Please try again.')
