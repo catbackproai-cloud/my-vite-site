@@ -40,7 +40,7 @@ Your coaching style:
     if (!claudeMessages.length) return { statusCode: 400, body: JSON.stringify({ error: 'No message content' }) }
 
     const message = await client.messages.create({
-      model: 'claude-opus-4-6',
+      model: 'claude-sonnet-4-6',
       max_tokens: 2048,
       system: systemPrompt,
       messages: claudeMessages,
