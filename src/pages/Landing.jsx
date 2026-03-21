@@ -435,9 +435,17 @@ export default function Landing() {
         gap: '16px',
       }}>
         <span style={{ fontSize: '16px', fontWeight: '800', color: CYAN }}>MaxTradeAI</span>
-        <span style={{ color: TEXT_MUTED, fontSize: '13px' }}>
-          © {new Date().getFullYear()} MaxTradeAI. All rights reserved.
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '24px', flexWrap: 'wrap' }}>
+          <span style={{ color: TEXT_MUTED, fontSize: '13px' }}>
+            © {new Date().getFullYear()} MaxTradeAI. All rights reserved.
+          </span>
+          <a href="mailto:orbitalbiz1@gmail.com" style={{ color: TEXT_MUTED, fontSize: '13px', textDecoration: 'none' }}
+            onMouseEnter={e => e.target.style.color = '#f1f5f9'}
+            onMouseLeave={e => e.target.style.color = '#94a3b8'}
+          >
+            Contact Us
+          </a>
+        </div>
       </footer>
     </div>
   )
