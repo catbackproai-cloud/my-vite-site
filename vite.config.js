@@ -98,7 +98,7 @@ COACHING TIP:
               // ── chat ──────────────────────────────────────────────────
               if (req.url === '/api/chat') {
                 const { default: Anthropic } = await import('@anthropic-ai/sdk')
-                const { messages, tradingPlan, recentJournal, imageBase64, mimeType, currentText } = body
+                const { messages, tradingPlan, recentJournal, images, currentText } = body
 
                 const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY })
 
@@ -127,16 +127,16 @@ Your coaching style:
                   }
                 }
 
-                // Build current user message (may include image)
-                if (imageBase64) {
+                // Build current user message (may include images)
+                if (images?.length) {
                   claudeMessages.push({
                     role: 'user',
                     content: [
-                      {
+                      ...images.map(img => ({
                         type: 'image',
-                        source: { type: 'base64', media_type: mimeType || 'image/jpeg', data: imageBase64 },
-                      },
-                      { type: 'text', text: currentText || 'Please analyze this chart.' },
+                        source: { type: 'base64', media_type: img.mimeType || 'image/jpeg', data: img.base64 },
+                      })),
+                      { type: 'text', text: currentText || 'Please analyze these charts.' },
                     ],
                   })
                 } else if (currentText) {

@@ -39,8 +39,8 @@ export default function AICoach() {
   const { user, profile } = useAuth()
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
-  const [imageFile, setImageFile] = useState(null)
-  const [imagePreview, setImagePreview] = useState(null)
+  const [imageFiles, setImageFiles] = useState([])
+  const [imagePreviews, setImagePreviews] = useState([])
   const [sending, setSending] = useState(false)
   const [loadingHistory, setLoadingHistory] = useState(true)
   const [showPlanModal, setShowPlanModal] = useState(false)
@@ -109,20 +109,17 @@ export default function AICoach() {
 
   async function handleSend() {
     const text = input.trim()
-    if (!text && !imageFile) return
+    if (!text && imageFiles.length === 0) return
     if (sending) return
 
     setSending(true)
 
-    const hasImage = !!imageFile
-    let imageBase64 = null
-    let mimeType = null
-    let localPreview = imagePreview
+    const hasImage = imageFiles.length > 0
+    const localPreviews = [...imagePreviews]
 
-    if (imageFile) {
-      imageBase64 = await fileToBase64(imageFile)
-      mimeType = imageFile.type
-    }
+    const images = await Promise.all(
+      imageFiles.map(async f => ({ base64: await fileToBase64(f), mimeType: f.type }))
+    )
 
     // Add user message to UI immediately
     const userMsg = {
@@ -130,13 +127,13 @@ export default function AICoach() {
       role: 'user',
       content: text || '',
       has_image: hasImage,
-      localPreview,
+      localPreviews,
       pending: false,
     }
     setMessages(prev => [...prev, userMsg])
     setInput('')
-    setImageFile(null)
-    setImagePreview(null)
+    setImageFiles([])
+    setImagePreviews([])
 
     // Save user message to DB
     await saveMessage('user', text || '', hasImage)
@@ -159,8 +156,7 @@ export default function AICoach() {
           messages: history,
           tradingPlan,
           recentJournal,
-          imageBase64,
-          mimeType,
+          images,
           currentText: text,
         }),
       })
@@ -201,22 +197,33 @@ export default function AICoach() {
     }
   }
 
+  function addFiles(files) {
+    const imgs = Array.from(files).filter(f => f.type.startsWith('image/'))
+    if (!imgs.length) return
+    setImageFiles(prev => [...prev, ...imgs])
+    setImagePreviews(prev => [...prev, ...imgs.map(f => URL.createObjectURL(f))])
+  }
+
   function handleFileChange(e) {
-    const file = e.target.files[0]
-    if (!file) return
-    setImageFile(file)
-    const url = URL.createObjectURL(file)
-    setImagePreview(url)
+    addFiles(e.target.files)
     e.target.value = ''
   }
 
   function handleDrop(e) {
     e.preventDefault()
-    const file = e.dataTransfer.files[0]
-    if (file && file.type.startsWith('image/')) {
-      setImageFile(file)
-      setImagePreview(URL.createObjectURL(file))
-    }
+    addFiles(e.dataTransfer.files)
+  }
+
+  function handlePaste(e) {
+    const items = Array.from(e.clipboardData?.items || [])
+    const imageItems = items.filter(i => i.type.startsWith('image/'))
+    if (!imageItems.length) return
+    addFiles(imageItems.map(i => i.getAsFile()))
+  }
+
+  function removeImage(index) {
+    setImageFiles(prev => prev.filter((_, i) => i !== index))
+    setImagePreviews(prev => prev.filter((_, i) => i !== index))
   }
 
   async function savePlan() {
@@ -235,7 +242,7 @@ export default function AICoach() {
     setShowPlanModal(true)
   }
 
-  const canSend = (input.trim() || imageFile) && !sending
+  const canSend = (input.trim() || imageFiles.length > 0) && !sending
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', position: 'relative' }}>
@@ -401,19 +408,21 @@ export default function AICoach() {
                   </div>
                 ) : (
                   <>
-                    {msg.localPreview && (
-                      <img
-                        src={msg.localPreview}
-                        alt="chart"
-                        style={{ maxWidth: '100%', borderRadius: '8px', marginBottom: '8px', display: 'block' }}
-                      />
+                    {msg.localPreviews?.length > 0 && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '8px' }}>
+                        {msg.localPreviews.map((src, i) => (
+                          <img key={i} src={src} alt="chart"
+                            style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: '8px', display: 'block' }}
+                          />
+                        ))}
+                      </div>
                     )}
-                    {msg.has_image && !msg.localPreview && !msg.content && (
+                    {msg.has_image && !msg.localPreviews?.length && !msg.content && (
                       <div style={{ fontSize: '12px', color: TEXT_MUTED, fontStyle: 'italic', marginBottom: '4px' }}>
                         📎 Chart image
                       </div>
                     )}
-                    {msg.has_image && !msg.localPreview && msg.content && (
+                    {msg.has_image && !msg.localPreviews?.length && msg.content && (
                       <div style={{ fontSize: '12px', color: TEXT_MUTED, marginBottom: '6px' }}>📎 Chart attached</div>
                     )}
                     <div style={{ fontSize: '14px', lineHeight: '1.65', whiteSpace: 'pre-wrap' }}>
@@ -428,43 +437,48 @@ export default function AICoach() {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Image preview */}
-      {imagePreview && (
+      {/* Image previews */}
+      {imagePreviews.length > 0 && (
         <div style={{
           padding: '8px 0',
           display: 'flex',
           alignItems: 'center',
-          gap: '10px',
+          gap: '8px',
           flexShrink: 0,
+          flexWrap: 'wrap',
         }}>
-          <div style={{ position: 'relative', display: 'inline-block' }}>
-            <img
-              src={imagePreview}
-              alt="preview"
-              style={{ height: '60px', borderRadius: '8px', border: '1px solid rgba(34,211,238,0.3)' }}
-            />
-            <button
-              onClick={() => { setImageFile(null); setImagePreview(null) }}
-              style={{
-                position: 'absolute',
-                top: '-6px',
-                right: '-6px',
-                width: '18px',
-                height: '18px',
-                borderRadius: '50%',
-                background: '#ef4444',
-                border: 'none',
-                color: '#fff',
-                fontSize: '10px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontFamily: 'inherit',
-              }}
-            >✕</button>
-          </div>
-          <span style={{ fontSize: '12px', color: TEXT_MUTED }}>Chart ready to send</span>
+          {imagePreviews.map((src, i) => (
+            <div key={i} style={{ position: 'relative', display: 'inline-block' }}>
+              <img
+                src={src}
+                alt="preview"
+                style={{ height: '60px', borderRadius: '8px', border: '1px solid rgba(34,211,238,0.3)' }}
+              />
+              <button
+                onClick={() => removeImage(i)}
+                style={{
+                  position: 'absolute',
+                  top: '-6px',
+                  right: '-6px',
+                  width: '18px',
+                  height: '18px',
+                  borderRadius: '50%',
+                  background: '#ef4444',
+                  border: 'none',
+                  color: '#fff',
+                  fontSize: '10px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontFamily: 'inherit',
+                }}
+              >✕</button>
+            </div>
+          ))}
+          <span style={{ fontSize: '12px', color: TEXT_MUTED }}>
+            {imagePreviews.length} chart{imagePreviews.length > 1 ? 's' : ''} ready to send
+          </span>
         </div>
       )}
 
@@ -493,7 +507,7 @@ export default function AICoach() {
             style={{
               background: 'none',
               border: 'none',
-              color: imageFile ? CYAN : TEXT_MUTED,
+              color: imageFiles.length > 0 ? CYAN : TEXT_MUTED,
               cursor: 'pointer',
               padding: '4px',
               fontSize: '18px',
@@ -508,6 +522,7 @@ export default function AICoach() {
             ref={fileInputRef}
             type="file"
             accept="image/*"
+            multiple
             onChange={handleFileChange}
             style={{ display: 'none' }}
           />
@@ -522,6 +537,7 @@ export default function AICoach() {
               e.target.style.height = Math.min(e.target.scrollHeight, 140) + 'px'
             }}
             onKeyDown={handleKeyDown}
+            onPaste={handlePaste}
             placeholder="Ask your coach anything, or drop a chart screenshot..."
             rows={1}
             style={{

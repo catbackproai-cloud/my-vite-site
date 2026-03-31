@@ -4,7 +4,7 @@ exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') return { statusCode: 405, body: 'Method not allowed' }
 
   try {
-    const { messages, tradingPlan, recentJournal, imageBase64, mimeType, currentText } = JSON.parse(event.body)
+    const { messages, tradingPlan, recentJournal, images, currentText } = JSON.parse(event.body)
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
     const journalContext = recentJournal?.length
@@ -29,12 +29,15 @@ Your coaching style:
       if (m.content) claudeMessages.push({ role: m.role, content: m.content })
     }
 
-    if (imageBase64) {
+    if (images?.length) {
       claudeMessages.push({
         role: 'user',
         content: [
-          { type: 'image', source: { type: 'base64', media_type: mimeType || 'image/jpeg', data: imageBase64 } },
-          { type: 'text', text: currentText || 'Please analyze this chart.' },
+          ...images.map(img => ({
+            type: 'image',
+            source: { type: 'base64', media_type: img.mimeType || 'image/jpeg', data: img.base64 },
+          })),
+          { type: 'text', text: currentText || 'Please analyze these charts.' },
         ],
       })
     } else if (currentText) {
