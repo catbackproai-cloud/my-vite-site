@@ -53,7 +53,22 @@ export function AuthProvider({ children }) {
       }
     )
 
-    return () => subscription.unsubscribe()
+    // When laptop lid opens / tab resumes, clear any stale auth lock data
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        Object.keys(localStorage).forEach(key => {
+          if (key.startsWith('mta-auth') && key.includes('lock')) {
+            localStorage.removeItem(key)
+          }
+        })
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
+
+    return () => {
+      subscription.unsubscribe()
+      document.removeEventListener('visibilitychange', handleVisibility)
+    }
   }, [])
 
   const isSubscribed = profile?.subscription_status === 'active'
@@ -74,7 +89,17 @@ export function AuthProvider({ children }) {
   }
 
   async function signIn(email, password) {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+    // Clear any stale auth state before signing in
+    Object.keys(localStorage).forEach(key => {
+      if (key.startsWith('mta-auth')) localStorage.removeItem(key)
+    })
+
+    const signInPromise = supabase.auth.signInWithPassword({ email, password })
+    const timeout = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Sign in timed out. Please try again.')), 12000)
+    )
+
+    const { data, error } = await Promise.race([signInPromise, timeout])
     if (error) throw error
     return data
   }

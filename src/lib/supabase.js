@@ -9,6 +9,7 @@ export const supabase = createClient(
       storageKey: 'mta-auth',
       autoRefreshToken: true,
       detectSessionInUrl: true,
+      lock: (_name, _timeout, fn) => fn(),
     },
   }
 )

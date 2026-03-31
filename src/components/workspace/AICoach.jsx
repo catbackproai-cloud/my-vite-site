@@ -48,14 +48,17 @@ export default function AICoach() {
   const [editingPlan, setEditingPlan] = useState('')
   const [savingPlan, setSavingPlan] = useState(false)
 
+  const [recentJournal, setRecentJournal] = useState([])
+
   const messagesEndRef = useRef(null)
   const fileInputRef = useRef(null)
   const textareaRef = useRef(null)
 
-  // Load conversation history + trading plan
+  // Load conversation history + trading plan + journal entries
   useEffect(() => {
     if (!user) return
     loadHistory()
+    loadJournal()
     setTradingPlan(profile?.trading_plan || '')
   }, [user, profile])
 
@@ -63,6 +66,19 @@ export default function AICoach() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, sending])
+
+  async function loadJournal() {
+    const fourteenDaysAgo = new Date()
+    fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14)
+    const { data } = await supabase
+      .from('journal_entries')
+      .select('date, notes, learned, improve')
+      .eq('user_id', user.id)
+      .gte('date', fourteenDaysAgo.toISOString().split('T')[0])
+      .order('date', { ascending: false })
+      .limit(14)
+    if (data) setRecentJournal(data)
+  }
 
   async function loadHistory() {
     setLoadingHistory(true)
@@ -142,6 +158,7 @@ export default function AICoach() {
         body: JSON.stringify({
           messages: history,
           tradingPlan,
+          recentJournal,
           imageBase64,
           mimeType,
           currentText: text,
