@@ -197,11 +197,19 @@ export default function AICoach() {
     }
   }
 
+  const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
+
   function addFiles(files) {
     const imgs = Array.from(files).filter(f => f.type.startsWith('image/'))
     if (!imgs.length) return
-    setImageFiles(prev => [...prev, ...imgs])
-    setImagePreviews(prev => [...prev, ...imgs.map(f => URL.createObjectURL(f))])
+    const tooBig = imgs.filter(f => f.size > MAX_FILE_SIZE)
+    if (tooBig.length) {
+      alert(`${tooBig.map(f => f.name).join(', ')} ${tooBig.length > 1 ? 'are' : 'is'} over 5MB. Please use a smaller image.`)
+    }
+    const valid = imgs.filter(f => f.size <= MAX_FILE_SIZE)
+    if (!valid.length) return
+    setImageFiles(prev => [...prev, ...valid])
+    setImagePreviews(prev => [...prev, ...valid.map(f => URL.createObjectURL(f))])
   }
 
   function handleFileChange(e) {

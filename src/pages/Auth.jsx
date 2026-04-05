@@ -192,17 +192,25 @@ export default function Auth({ mode }) {
             </div>
 
             <div>
-              <label style={{
-                display: 'block',
-                fontSize: '11px',
-                fontWeight: '500',
-                color: TEXT_MUTED,
-                marginBottom: '6px',
-                letterSpacing: '0.06em',
-                textTransform: 'uppercase',
-              }}>
-                Password
-              </label>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                <label style={{
+                  fontSize: '11px',
+                  fontWeight: '500',
+                  color: TEXT_MUTED,
+                  letterSpacing: '0.06em',
+                  textTransform: 'uppercase',
+                }}>
+                  Password
+                </label>
+                {isLogin && (
+                  <Link to="/forgot-password" style={{ fontSize: '11px', color: TEXT_MUTED, textDecoration: 'none' }}
+                    onMouseEnter={e => e.target.style.color = CYAN}
+                    onMouseLeave={e => e.target.style.color = TEXT_MUTED}
+                  >
+                    Forgot password?
+                  </Link>
+                )}
+              </div>
               <input
                 type="password"
                 value={password}

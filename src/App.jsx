@@ -5,6 +5,8 @@ import Auth from './pages/Auth'
 import Workspace from './pages/Workspace'
 import Upgrade from './pages/Upgrade'
 import Terms from './pages/Terms'
+import ForgotPassword from './pages/ForgotPassword'
+import ResetPassword from './pages/ResetPassword'
 
 
 function ProtectedRoute({ children }) {
@@ -29,6 +31,8 @@ export default function App() {
       <Route path="/signup" element={<Auth mode="signup" />} />
       <Route path="/upgrade" element={<Upgrade />} />
       <Route path="/terms" element={<Terms />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
 
       <Route path="/workspace" element={<ProtectedRoute><Workspace /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/" replace />} />
