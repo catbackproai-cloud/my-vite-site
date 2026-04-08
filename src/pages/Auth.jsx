@@ -29,6 +29,84 @@ export default function Auth({ mode }) {
   const [agreedToTos, setAgreedToTos] = useState(false)
 
   const isLogin = mode === 'login'
+  const WAITLIST_URL = 'https://jacobs-newsletter-ce8664.beehiiv.com'
+
+  if (!isLogin) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        background: BG,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '24px',
+      }}
+        className="dot-grid"
+      >
+        <div style={{
+          position: 'fixed',
+          top: '15%',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          width: '500px',
+          height: '400px',
+          background: 'radial-gradient(ellipse, rgba(34,211,238,0.05) 0%, transparent 70%)',
+          pointerEvents: 'none',
+        }} />
+        <div style={{ width: '100%', maxWidth: '380px' }} className="fade-in">
+          <div style={{
+            background: 'rgba(6,15,30,0.95)',
+            border: '1px solid rgba(255,255,255,0.07)',
+            backdropFilter: 'blur(20px)',
+            borderRadius: '16px',
+            padding: '36px 32px',
+            boxShadow: '0 0 0 1px rgba(255,255,255,0.03), 0 24px 48px rgba(0,0,0,0.4)',
+            textAlign: 'center',
+          }}>
+            <Link to="/" style={{ textDecoration: 'none' }}>
+              <span style={{ fontSize: '20px', fontWeight: '700', color: CYAN, letterSpacing: '-0.5px' }}>
+                MaxTradeAI
+              </span>
+            </Link>
+            <p style={{ color: TEXT_PRIMARY, fontSize: '18px', fontWeight: '600', marginTop: '20px', letterSpacing: '-0.03em' }}>
+              We're not quite ready yet
+            </p>
+            <p style={{ color: TEXT_MUTED, fontSize: '13px', marginTop: '8px', lineHeight: '1.6', letterSpacing: '-0.01em' }}>
+              MaxTradeAI is launching soon. Join the waitlist to get early access.
+            </p>
+            <a
+              href={WAITLIST_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn"
+              style={{
+                display: 'block',
+                marginTop: '24px',
+                background: CYAN,
+                color: '#020617',
+                fontSize: '14px',
+                fontWeight: '600',
+                padding: '12px',
+                borderRadius: '8px',
+                textDecoration: 'none',
+                letterSpacing: '-0.01em',
+                boxShadow: '0 0 20px rgba(34,211,238,0.15)',
+              }}
+            >
+              Join the waitlist
+            </a>
+            <div style={{ marginTop: '20px', fontSize: '13px', color: TEXT_MUTED }}>
+              Already have an account?{' '}
+              <Link to="/login" style={{ color: CYAN, textDecoration: 'none', fontWeight: '500' }}>
+                Log in
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   const inputStyle = {
     width: '100%',
