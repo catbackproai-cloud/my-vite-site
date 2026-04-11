@@ -49,6 +49,7 @@ export default function AICoach() {
   const [savingPlan, setSavingPlan] = useState(false)
 
   const [recentJournal, setRecentJournal] = useState([])
+  const [recapLoading, setRecapLoading] = useState(false)
 
   const messagesEndRef = useRef(null)
   const fileInputRef = useRef(null)
@@ -250,6 +251,40 @@ export default function AICoach() {
     setShowPlanModal(true)
   }
 
+  async function handleWeeklyRecap() {
+    if (recapLoading || sending) return
+    setRecapLoading(true)
+    const typingId = Date.now()
+    setMessages(prev => [...prev, { id: typingId, role: 'assistant', pending: true }])
+    try {
+      const res = await fetch('/api/weekly-recap', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id, tradingPlan }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to generate recap')
+      const content = data.recap
+      setMessages(prev => prev.filter(m => m.id !== typingId).concat({
+        id: Date.now() + 1,
+        role: 'assistant',
+        content,
+        pending: false,
+      }))
+      await saveMessage('assistant', content)
+    } catch (err) {
+      setMessages(prev => prev.filter(m => m.id !== typingId).concat({
+        id: Date.now() + 1,
+        role: 'assistant',
+        content: `Sorry, couldn't generate recap: ${err.message}`,
+        pending: false,
+        isError: true,
+      }))
+    } finally {
+      setRecapLoading(false)
+    }
+  }
+
   const canSend = (input.trim() || imageFiles.length > 0) && !sending
 
   return (
@@ -272,23 +307,43 @@ export default function AICoach() {
               : 'Set your trading plan so the AI can adapt to your style'}
           </div>
         </div>
-        <button
-          onClick={openPlanModal}
-          style={{
-            background: tradingPlan ? 'rgba(34,211,238,0.08)' : 'rgba(34,211,238,0.15)',
-            border: `1px solid ${tradingPlan ? 'rgba(34,211,238,0.2)' : 'rgba(34,211,238,0.4)'}`,
-            color: CYAN,
-            padding: '7px 16px',
-            borderRadius: '8px',
-            fontSize: '13px',
-            fontWeight: '600',
-            cursor: 'pointer',
-            fontFamily: 'inherit',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {tradingPlan ? 'Edit Trading Plan' : '+ Set Trading Plan'}
-        </button>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button
+            onClick={handleWeeklyRecap}
+            disabled={recapLoading || sending}
+            style={{
+              background: 'rgba(255,255,255,0.04)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              color: recapLoading ? '#64748b' : '#94a3b8',
+              padding: '7px 14px',
+              borderRadius: '8px',
+              fontSize: '13px',
+              fontWeight: '500',
+              cursor: recapLoading ? 'default' : 'pointer',
+              fontFamily: 'inherit',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {recapLoading ? 'Generating...' : '📊 Weekly Recap'}
+          </button>
+          <button
+            onClick={openPlanModal}
+            style={{
+              background: tradingPlan ? 'rgba(34,211,238,0.08)' : 'rgba(34,211,238,0.15)',
+              border: `1px solid ${tradingPlan ? 'rgba(34,211,238,0.2)' : 'rgba(34,211,238,0.4)'}`,
+              color: CYAN,
+              padding: '7px 16px',
+              borderRadius: '8px',
+              fontSize: '13px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {tradingPlan ? 'Edit Trading Plan' : '+ Set Trading Plan'}
+          </button>
+        </div>
       </div>
 
       {/* Messages area */}
