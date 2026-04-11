@@ -264,7 +264,8 @@ export default function AICoach() {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to generate recap')
-      const content = data.recap
+      const weekLabel = data.week_of ? ` (week of ${data.week_of})` : ''
+      const content = `📊 **Weekly Recap${weekLabel}**\n\n${data.recap}`
       setMessages(prev => prev.filter(m => m.id !== typingId).concat({
         id: Date.now() + 1,
         role: 'assistant',

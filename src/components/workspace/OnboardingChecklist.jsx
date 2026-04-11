@@ -23,7 +23,7 @@ export default function OnboardingChecklist({ setActivePage }) {
       const [{ count: trades }, { count: journal }, { count: messages }] = await Promise.all([
         supabase.from('pnl_entries').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
         supabase.from('journal_entries').select('id', { count: 'exact', head: true }).eq('user_id', user.id),
-        supabase.from('chat_messages').select('id', { count: 'exact', head: true }).eq('user_id', user.id).eq('role', 'user'),
+        supabase.from('ai_messages').select('id', { count: 'exact', head: true }).eq('user_id', user.id).eq('role', 'user'),
       ])
       setCounts({ trades: trades || 0, journal: journal || 0, messages: messages || 0 })
       setLoading(false)
