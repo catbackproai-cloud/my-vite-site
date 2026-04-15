@@ -1,10 +1,7 @@
-const Stripe = require('stripe')
-const { createClient } = require('@supabase/supabase-js')
+import Stripe from 'stripe'
+import { createClient } from '@supabase/supabase-js'
 
-// Must disable body parsing so Stripe can verify the raw payload
-module.exports.config = {
-  api: { bodyParser: false },
-}
+export const config = { api: { bodyParser: false } }
 
 function getRawBody(req) {
   return new Promise((resolve, reject) => {
@@ -15,7 +12,7 @@ function getRawBody(req) {
   })
 }
 
-module.exports = async (req, res) => {
+export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)

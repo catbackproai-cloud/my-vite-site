@@ -1,7 +1,7 @@
-const Anthropic = require('@anthropic-ai/sdk')
-const { createClient } = require('@supabase/supabase-js')
+import Anthropic from '@anthropic-ai/sdk'
+import { createClient } from '@supabase/supabase-js'
 
-module.exports = async (req, res) => {
+export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
   try {
@@ -9,7 +9,6 @@ module.exports = async (req, res) => {
     const supabase = createClient(process.env.VITE_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY)
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
 
-    // Return the most recent stored recap if one exists
     const { data: latest } = await supabase
       .from('weekly_recaps')
       .select('recap, week_of')
@@ -22,7 +21,6 @@ module.exports = async (req, res) => {
       return res.status(200).json({ recap: latest.recap, week_of: latest.week_of, cached: true })
     }
 
-    // No recap stored yet — generate one now
     const sevenDaysAgo = new Date()
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
     const fromDate = sevenDaysAgo.toISOString().split('T')[0]
@@ -69,7 +67,6 @@ Write a concise weekly recap: one-sentence verdict, what they did well, biggest 
 
     const recap = message.content[0].text
 
-    // Store it so future clicks are instant
     await supabase.from('weekly_recaps').upsert(
       { user_id: userId, week_of: weekOf, recap },
       { onConflict: 'user_id,week_of' }
