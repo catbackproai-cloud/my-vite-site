@@ -35,12 +35,12 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.15);
+  background: rgba(148, 163, 184, 0.12);
   border-radius: 999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(148, 163, 184, 0.3);
+  background: rgba(148, 163, 184, 0.25);
 }
 
 ::-webkit-scrollbar-track {
@@ -51,7 +51,122 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Premium button base */
+/* ── Animations ─────────────────────────────────────────── */
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeInFast {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(12px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(34, 211, 238, 0); }
+  50%       { box-shadow: 0 0 16px 3px rgba(34, 211, 238, 0.15); }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes ping {
+  0%    { transform: scale(1); opacity: 0.8; }
+  80%, 100% { transform: scale(1.8); opacity: 0; }
+}
+
+@keyframes streakBounce {
+  0%, 100% { transform: scale(1); }
+  50%       { transform: scale(1.08); }
+}
+
+/* ── Utility classes ─────────────────────────────────────── */
+
+.fade-in        { animation: fadeIn 0.35s cubic-bezier(0.4, 0, 0.2, 1) both; }
+.fade-in-fast   { animation: fadeInFast 0.2s cubic-bezier(0.4, 0, 0.2, 1) both; }
+.slide-in-right { animation: slideInRight 0.3s cubic-bezier(0.4, 0, 0.2, 1) both; }
+
+.gradient-text {
+  background: linear-gradient(135deg, #22d3ee 0%, #818cf8 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.gradient-text-gold {
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Glass card */
+.glass {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.glass-strong {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+/* Glow ring on active/focus */
+.glow-ring {
+  box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.3),
+              0 0 12px rgba(34, 211, 238, 0.1);
+}
+
+.glow-ring-sm {
+  box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.2),
+              0 0 6px rgba(34, 211, 238, 0.08);
+}
+
+/* Premium surface */
+.surface {
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 14px;
+}
+
+.surface-raised {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 12px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25);
+}
+
+/* Shimmer loading */
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(255,255,255,0.03) 0%,
+    rgba(255,255,255,0.07) 50%,
+    rgba(255,255,255,0.03) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.6s ease infinite;
+}
+
+/* ── Buttons ─────────────────────────────────────────────── */
+
 .btn {
   display: inline-flex;
   align-items: center;
@@ -64,23 +179,33 @@ body {
   user-select: none;
 }
 
-.btn:active:not(:disabled) {
-  transform: scale(0.97);
+.btn:active:not(:disabled) { transform: scale(0.97); }
+.btn:disabled { cursor: not-allowed; opacity: 0.5; }
+
+.btn-cyan {
+  background: linear-gradient(135deg, rgba(34,211,238,0.18), rgba(34,211,238,0.1));
+  border: 1px solid rgba(34,211,238,0.3);
+  color: #22d3ee;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 13px;
 }
 
-.btn:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
+.btn-cyan:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgba(34,211,238,0.25), rgba(34,211,238,0.15));
+  box-shadow: 0 0 16px rgba(34,211,238,0.15);
 }
 
-/* Nav item transitions */
+/* ── Nav ─────────────────────────────────────────────────── */
+
 .nav-item {
   transition: background 0.15s cubic-bezier(0.4, 0, 0.2, 1),
               color 0.15s cubic-bezier(0.4, 0, 0.2, 1),
               border-color 0.15s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Card hover */
+/* ── Cards ───────────────────────────────────────────────── */
+
 .card-hover {
   transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
 }
@@ -89,18 +214,53 @@ body {
   transform: translateY(-2px);
 }
 
-/* Subtle fade-in animation */
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(6px); }
-  to { opacity: 1; transform: translateY(0); }
-}
+/* ── Dot grid background ─────────────────────────────────── */
 
-.fade-in {
-  animation: fadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1) both;
-}
-
-/* Dot grid background */
 .dot-grid {
-  background-image: radial-gradient(circle, rgba(255,255,255,0.07) 1px, transparent 1px);
+  background-image: radial-gradient(circle, rgba(255,255,255,0.06) 1px, transparent 1px);
   background-size: 28px 28px;
+}
+
+/* ── Checkbox / toggle custom ────────────────────────────── */
+
+.check-box {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  border: 1.5px solid rgba(255,255,255,0.2);
+  background: rgba(255,255,255,0.04);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+}
+
+.check-box.checked {
+  border-color: #22d3ee;
+  background: rgba(34,211,238,0.15);
+  box-shadow: 0 0 8px rgba(34,211,238,0.2);
+}
+
+/* ── Streak badge ────────────────────────────────────────── */
+
+.streak-badge {
+  animation: streakBounce 2s ease-in-out infinite;
+}
+
+/* ── Ping dot (live indicator) ───────────────────────────── */
+
+.ping-dot {
+  position: relative;
+  display: inline-flex;
+}
+
+.ping-dot::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: #22d3ee;
+  animation: ping 1.5s ease-out infinite;
 }

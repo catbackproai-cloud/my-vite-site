@@ -34,10 +34,21 @@ function IconJournal() {
   )
 }
 
+function IconPlan() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path d="M2 3.5A1.5 1.5 0 013.5 2h9A1.5 1.5 0 0114 3.5v9A1.5 1.5 0 0112.5 14h-9A1.5 1.5 0 012 12.5v-9z" stroke="currentColor" strokeWidth="1.3"/>
+      <path d="M5.5 8l2 2 3-3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M5 5h6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+    </svg>
+  )
+}
+
 const navItems = [
-  { id: 'ai', label: 'AI Coach', Icon: IconAI },
-  { id: 'pnl', label: 'P&L Calendar', Icon: IconCalendar },
-  { id: 'journal', label: 'Journal', Icon: IconJournal },
+  { id: 'ai',      label: 'AI Coach',      Icon: IconAI },
+  { id: 'plan',    label: 'Daily Plan',     Icon: IconPlan },
+  { id: 'pnl',     label: 'P&L Calendar',  Icon: IconCalendar },
+  { id: 'journal', label: 'Journal',        Icon: IconJournal },
 ]
 
 export default function Sidebar({ activePage, setActivePage }) {

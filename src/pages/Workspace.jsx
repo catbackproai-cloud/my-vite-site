@@ -7,6 +7,7 @@ import AICoach from '../components/workspace/AICoach'
 import PnLCalendar from '../components/workspace/PnLCalendar'
 import Journal from '../components/workspace/Journal'
 import OnboardingChecklist from '../components/workspace/OnboardingChecklist'
+import DailyPlan from '../components/workspace/DailyPlan'
 
 export default function Workspace() {
   const [activePage, setActivePage] = useState('ai')
@@ -39,6 +40,7 @@ export default function Workspace() {
         <main style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
           <OnboardingChecklist setActivePage={setActivePage} />
           {activePage === 'ai' && <AICoach />}
+          {activePage === 'plan' && <DailyPlan />}
           {activePage === 'pnl' && <PnLCalendar />}
           {activePage === 'journal' && <Journal />}
         </main>
