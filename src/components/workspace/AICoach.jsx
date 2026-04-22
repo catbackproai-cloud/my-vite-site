@@ -376,12 +376,12 @@ export default function AICoach() {
           }}>
             <div style={{ fontSize: '36px' }}>📈</div>
             <div style={{ fontSize: '16px', fontWeight: '700', color: TEXT_PRIMARY }}>
-              Your ICT AI Coach
+              Your AI Trading Coach
             </div>
             <div style={{ fontSize: '13px', color: TEXT_MUTED, textAlign: 'center', maxWidth: '400px', lineHeight: '1.6' }}>
-              Drop a chart for a full ICT breakdown, describe a trade, or ask anything about your setups and execution.
+              Drop a chart for a full breakdown, describe a trade, or ask anything about your setups, execution, or psychology.
               {!tradingPlan && (
-                <span style={{ color: CYAN }}> Set your trading plan so the AI knows your models, sessions, and rules.</span>
+                <span style={{ color: CYAN }}> Set your trading plan so the AI knows your system and can hold you accountable.</span>
               )}
             </div>
             <div style={{
@@ -392,8 +392,8 @@ export default function AICoach() {
               marginTop: '8px',
             }}>
               {[
-                'Why do I keep front-running my OBs?',
-                'Grade this Silver Bullet setup',
+                'Why do I keep breaking my rules?',
+                'Grade this setup for me',
                 'Am I trading the right sessions?',
               ].map(prompt => (
                 <button
