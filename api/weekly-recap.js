@@ -48,20 +48,20 @@ export default async function handler(req, res) {
       max_tokens: 400,
       messages: [{
         role: 'user',
-        content: `You are MaxTradeAI, a personal AI trading coach. Generate a weekly performance recap.
+        content: `You are MaxTradeAI — an elite AI coach for ICT and Smart Money Concepts traders. Generate a weekly performance recap using ICT language and framework.
 
-${tradingPlan ? `TRADER'S RULES:\n${tradingPlan}\n` : ''}
-WEEK SUMMARY:
+${tradingPlan ? `TRADER'S RULES & PLAN:\n${tradingPlan}\n` : ''}
+WEEK NUMBERS:
 - Total P&L: $${totalPnl.toFixed(2)}
-- Win days: ${winDays}, Loss days: ${lossDays}, Trades: ${(pnlEntries || []).length}
+- Win days: ${winDays}, Loss days: ${lossDays}, Trades logged: ${(pnlEntries || []).length}
 
 TRADE LOG:
 ${tradeSummary || 'No trades logged this week'}
 
-JOURNAL:
+JOURNAL ENTRIES:
 ${journalSummary || 'No journal entries this week'}
 
-Write a concise weekly recap: one-sentence verdict, what they did well, biggest pattern or mistake, one thing to focus on next week. Be direct. Max 200 words. No headers — write like a coach talking to them.`,
+Write a sharp weekly recap. Lead with a one-sentence verdict on their week. Then: what they executed well (be specific — reference actual entries, sessions, or setups from the data). Then: the biggest pattern or mistake — name it in ICT terms if applicable (front-running, trading dead zone, no liquidity sweep, HTF misalignment, revenge trade, etc.). End with one focused thing to work on next week. Max 200 words. No headers. Write like a coach who trades ICT talking directly to them.`,
       }],
     })
 

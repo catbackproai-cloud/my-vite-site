@@ -376,12 +376,12 @@ export default function AICoach() {
           }}>
             <div style={{ fontSize: '36px' }}>📈</div>
             <div style={{ fontSize: '16px', fontWeight: '700', color: TEXT_PRIMARY }}>
-              Your AI Trading Coach
+              Your ICT AI Coach
             </div>
-            <div style={{ fontSize: '13px', color: TEXT_MUTED, textAlign: 'center', maxWidth: '380px', lineHeight: '1.6' }}>
-              Ask anything, share your chart screenshots for analysis, or describe a trade.
+            <div style={{ fontSize: '13px', color: TEXT_MUTED, textAlign: 'center', maxWidth: '400px', lineHeight: '1.6' }}>
+              Drop a chart for a full ICT breakdown, describe a trade, or ask anything about your setups and execution.
               {!tradingPlan && (
-                <span style={{ color: CYAN }}> Set your trading plan above so the AI learns your style.</span>
+                <span style={{ color: CYAN }}> Set your trading plan so the AI knows your models, sessions, and rules.</span>
               )}
             </div>
             <div style={{
@@ -392,9 +392,9 @@ export default function AICoach() {
               marginTop: '8px',
             }}>
               {[
-                'Review my trading plan',
-                'Why do I keep breaking my rules?',
-                'How do I manage FOMO better?',
+                'Why do I keep front-running my OBs?',
+                'Grade this Silver Bullet setup',
+                'Am I trading the right sessions?',
               ].map(prompt => (
                 <button
                   key={prompt}
