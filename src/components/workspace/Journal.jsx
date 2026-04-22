@@ -15,13 +15,6 @@ function todayStr() {
 const SESSION_OPTIONS = ['Pre-Market', 'London', 'London/NY Overlap', 'New York AM', 'New York PM', 'Asia', 'Other']
 const SETUP_OPTIONS = ['Pullback', 'Breakout', 'Reversal', 'Order Block', 'FVG', 'Supply/Demand', 'Support/Resistance', 'Trend Continuation', 'Range', 'Other']
 
-const CONFLUENCE_FIELDS = [
-  { key: 'htf_aligned',        label: 'HTF Aligned',         desc: 'Higher timeframe trend / bias confirmed' },
-  { key: 'liquidity_swept',    label: 'Liquidity Swept',      desc: 'Stop hunt / equal highs/lows taken out' },
-  { key: 'in_session',         label: 'In Session',           desc: 'Traded within your valid session window' },
-  { key: 'got_confirmation',   label: 'Got Confirmation',     desc: 'Entry trigger / confirmation candle present' },
-]
-
 const TEXT_SECTIONS = [
   { key: 'notes',   label: "Today's Notes",    placeholder: "What happened today? Walk through your trades, observations, and any notable moments..." },
   { key: 'learned', label: "What I Learned",   placeholder: "New insights, patterns, or lessons from today's session..." },
@@ -106,18 +99,21 @@ function SelectField({ value, onChange, options, placeholder }) {
 }
 
 export default function Journal() {
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
   const [day, setDay] = useState(todayStr())
   const [journal, setJournal] = useState({
     notes: '', learned: '', improve: '',
     session: '', setup_type: '',
-    htf_aligned: false, liquidity_swept: false, in_session: false, got_confirmation: false,
     rule_violated: false, violated_rule: '',
+    confluences_met: [],
   })
   const [saving, setSaving] = useState(false)
   const [lastSaved, setLastSaved] = useState(null)
   const [loading, setLoading] = useState(false)
   const saveTimerRef = useRef(null)
+
+  // Confluences defined by user in their Daily Plan settings
+  const userConfluences = profile?.confluences || []
 
   const loadJournal = useCallback(async () => {
     if (!user) return
@@ -137,19 +133,16 @@ export default function Journal() {
           improve: data.improve || '',
           session: data.session || '',
           setup_type: data.setup_type || '',
-          htf_aligned: data.htf_aligned || false,
-          liquidity_swept: data.liquidity_swept || false,
-          in_session: data.in_session || false,
-          got_confirmation: data.got_confirmation || false,
           rule_violated: data.rule_violated || false,
           violated_rule: data.violated_rule || '',
+          confluences_met: data.confluences_met || [],
         })
       } else {
-        setJournal({ notes: '', learned: '', improve: '', session: '', setup_type: '', htf_aligned: false, liquidity_swept: false, in_session: false, got_confirmation: false, rule_violated: false, violated_rule: '' })
+        setJournal({ notes: '', learned: '', improve: '', session: '', setup_type: '', rule_violated: false, violated_rule: '', confluences_met: [] })
       }
       setLastSaved(null)
     } catch {
-      setJournal({ notes: '', learned: '', improve: '', session: '', setup_type: '', htf_aligned: false, liquidity_swept: false, in_session: false, got_confirmation: false, rule_violated: false, violated_rule: '' })
+      setJournal({ notes: '', learned: '', improve: '', session: '', setup_type: '', rule_violated: false, violated_rule: '', confluences_met: [] })
     } finally {
       setLoading(false)
     }
@@ -169,12 +162,9 @@ export default function Journal() {
         improve: data.improve,
         session: data.session,
         setup_type: data.setup_type,
-        htf_aligned: data.htf_aligned,
-        liquidity_swept: data.liquidity_swept,
-        in_session: data.in_session,
-        got_confirmation: data.got_confirmation,
         rule_violated: data.rule_violated,
         violated_rule: data.violated_rule,
+        confluences_met: data.confluences_met,
         updated_at: new Date().toISOString(),
       }, { onConflict: 'user_id,date' })
       setLastSaved(new Date())
@@ -192,13 +182,21 @@ export default function Journal() {
     saveTimerRef.current = setTimeout(() => saveJournal(updated), 1200)
   }
 
+  function toggleConfluence(name) {
+    const current = journal.confluences_met || []
+    const updated = current.includes(name)
+      ? current.filter(c => c !== name)
+      : [...current, name]
+    handleChange('confluences_met', updated)
+  }
+
   function changeDay(delta) {
     const d = new Date(day + 'T00:00:00')
     d.setDate(d.getDate() + delta)
     setDay(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`)
   }
 
-  const confluenceCount = CONFLUENCE_FIELDS.filter(f => journal[f.key]).length
+  const confluenceCount = (journal.confluences_met || []).length
   const totalChars = (journal.notes + journal.learned + journal.improve).length
 
   return (
@@ -282,33 +280,49 @@ export default function Journal() {
               </div>
             </div>
 
-            {/* Confluence checklist */}
+            {/* Dynamic Confluence checklist */}
             <div style={{ marginBottom: '4px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
                 <label style={{ fontSize: '11px', color: TEXT_DIM, fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Confluence</label>
-                <span style={{
-                  fontSize: '11px',
-                  fontWeight: '600',
-                  color: confluenceCount >= 3 ? '#22c55e' : confluenceCount >= 2 ? CYAN : TEXT_DIM,
-                  background: confluenceCount >= 3 ? 'rgba(34,197,94,0.1)' : confluenceCount >= 2 ? 'rgba(34,211,238,0.1)' : 'rgba(255,255,255,0.04)',
-                  border: `1px solid ${confluenceCount >= 3 ? 'rgba(34,197,94,0.25)' : confluenceCount >= 2 ? 'rgba(34,211,238,0.25)' : 'rgba(255,255,255,0.08)'}`,
-                  padding: '2px 8px',
-                  borderRadius: '20px',
+                {userConfluences.length > 0 && (
+                  <span style={{
+                    fontSize: '11px',
+                    fontWeight: '600',
+                    color: confluenceCount >= Math.ceil(userConfluences.length * 0.75) ? '#22c55e' : confluenceCount >= Math.ceil(userConfluences.length * 0.5) ? CYAN : TEXT_DIM,
+                    background: confluenceCount >= Math.ceil(userConfluences.length * 0.75) ? 'rgba(34,197,94,0.1)' : confluenceCount >= Math.ceil(userConfluences.length * 0.5) ? 'rgba(34,211,238,0.1)' : 'rgba(255,255,255,0.04)',
+                    border: `1px solid ${confluenceCount >= Math.ceil(userConfluences.length * 0.75) ? 'rgba(34,197,94,0.25)' : confluenceCount >= Math.ceil(userConfluences.length * 0.5) ? 'rgba(34,211,238,0.25)' : 'rgba(255,255,255,0.08)'}`,
+                    padding: '2px 8px',
+                    borderRadius: '20px',
+                  }}>
+                    {confluenceCount}/{userConfluences.length}
+                  </span>
+                )}
+              </div>
+              {userConfluences.length > 0 ? (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                  {userConfluences.map(name => (
+                    <Checkbox
+                      key={name}
+                      checked={(journal.confluences_met || []).includes(name)}
+                      onChange={() => toggleConfluence(name)}
+                      label={name}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div style={{
+                  padding: '14px',
+                  background: 'rgba(255,255,255,0.02)',
+                  border: '1px dashed rgba(255,255,255,0.1)',
+                  borderRadius: '9px',
+                  fontSize: '12px',
+                  color: TEXT_DIM,
+                  textAlign: 'center',
                 }}>
-                  {confluenceCount}/{CONFLUENCE_FIELDS.length}
-                </span>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                {CONFLUENCE_FIELDS.map(f => (
-                  <Checkbox
-                    key={f.key}
-                    checked={journal[f.key]}
-                    onChange={v => handleChange(f.key, v)}
-                    label={f.label}
-                    desc={f.desc}
-                  />
-                ))}
-              </div>
+                  No confluences set — add them in{' '}
+                  <span style={{ color: CYAN, fontWeight: '500' }}>Daily Plan → My Confluences</span>
+                </div>
+              )}
             </div>
           </div>
 

@@ -19,13 +19,13 @@ const BIAS_OPTIONS = [
 ]
 
 const SESSION_CHECKBOXES = [
-  { key: 'london',   label: 'London',          desc: '3:00 – 11:00 AM UTC' },
-  { key: 'new_york', label: 'New York',         desc: '1:00 – 9:00 PM UTC' },
-  { key: 'overlap',  label: 'London/NY Overlap', desc: '1:00 – 4:00 PM UTC' },
-  { key: 'asia',     label: 'Asia',             desc: '12:00 – 9:00 AM UTC' },
+  { key: 'london',   label: 'London',             desc: '3:00 – 11:00 AM UTC' },
+  { key: 'new_york', label: 'New York',            desc: '1:00 – 9:00 PM UTC' },
+  { key: 'overlap',  label: 'London/NY Overlap',   desc: '1:00 – 4:00 PM UTC' },
+  { key: 'asia',     label: 'Asia',                desc: '12:00 – 9:00 AM UTC' },
 ]
 
-function SessionToggle({ checked, onChange, label, desc }) {
+function CheckToggle({ checked, onChange, label, desc }) {
   return (
     <button
       type="button"
@@ -66,14 +66,171 @@ function SessionToggle({ checked, onChange, label, desc }) {
       </div>
       <div>
         <div style={{ fontSize: '13px', fontWeight: '500', color: checked ? TEXT_PRIMARY : TEXT_MUTED }}>{label}</div>
-        <div style={{ fontSize: '11px', color: TEXT_DIM, marginTop: '1px' }}>{desc}</div>
+        {desc && <div style={{ fontSize: '11px', color: TEXT_DIM, marginTop: '1px' }}>{desc}</div>}
       </div>
     </button>
   )
 }
 
-export default function DailyPlan() {
+// ── My Confluences Manager ──────────────────────────────────
+function ConfluenceManager({ confluences, onSave }) {
+  const [items, setItems] = useState(confluences || [])
+  const [input, setInput] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
   const { user } = useAuth()
+
+  useEffect(() => { setItems(confluences || []) }, [confluences])
+
+  function addItem() {
+    const trimmed = input.trim()
+    if (!trimmed || items.includes(trimmed)) { setInput(''); return }
+    const updated = [...items, trimmed]
+    setItems(updated)
+    setInput('')
+    persist(updated)
+  }
+
+  function removeItem(name) {
+    const updated = items.filter(i => i !== name)
+    setItems(updated)
+    persist(updated)
+  }
+
+  async function persist(updated) {
+    if (!user) return
+    setSaving(true)
+    setSaved(false)
+    try {
+      await supabase.from('profiles').update({ confluences: updated }).eq('id', user.id)
+      onSave(updated)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    } catch (err) {
+      console.error('Confluence save error:', err)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div style={{
+      background: 'rgba(255,255,255,0.025)',
+      border: '1px solid rgba(255,255,255,0.08)',
+      borderRadius: '14px',
+      padding: '20px',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+        <div>
+          <div style={{ fontSize: '13px', fontWeight: '700', color: TEXT_PRIMARY }}>My Confluences</div>
+          <div style={{ fontSize: '11px', color: TEXT_DIM, marginTop: '2px' }}>
+            Define the factors you look for in a valid setup — these appear as checkboxes in your journal
+          </div>
+        </div>
+        {saving && (
+          <span style={{ fontSize: '11px', color: CYAN, display: 'flex', alignItems: 'center', gap: '5px' }}>
+            <span style={{ width: '8px', height: '8px', borderRadius: '50%', border: '1.5px solid #22d3ee', borderTopColor: 'transparent', display: 'inline-block', animation: 'spin 0.7s linear infinite' }} />
+            Saving
+          </span>
+        )}
+        {saved && !saving && <span style={{ fontSize: '11px', color: '#22c55e' }}>✓ Saved</span>}
+      </div>
+
+      {/* Current items */}
+      {items.length > 0 ? (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', margin: '14px 0' }}>
+          {items.map(name => (
+            <div key={name} style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              background: 'rgba(34,211,238,0.08)',
+              border: '1px solid rgba(34,211,238,0.2)',
+              borderRadius: '20px',
+              padding: '5px 10px 5px 12px',
+              fontSize: '12px',
+              fontWeight: '500',
+              color: CYAN,
+            }}>
+              {name}
+              <button
+                type="button"
+                onClick={() => removeItem(name)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: 'rgba(34,211,238,0.5)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  padding: '0',
+                  lineHeight: 1,
+                  fontSize: '14px',
+                  fontFamily: 'inherit',
+                }}
+                onMouseEnter={e => e.currentTarget.style.color = '#ef4444'}
+                onMouseLeave={e => e.currentTarget.style.color = 'rgba(34,211,238,0.5)'}
+              >×</button>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div style={{ fontSize: '12px', color: TEXT_DIM, margin: '14px 0', fontStyle: 'italic' }}>
+          No confluences added yet — add your first one below
+        </div>
+      )}
+
+      {/* Add input */}
+      <div style={{ display: 'flex', gap: '8px' }}>
+        <input
+          type="text"
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && addItem()}
+          placeholder="e.g. HTF Aligned, FVG Present, Order Block, Liquidity Swept..."
+          style={{
+            flex: 1,
+            background: 'rgba(255,255,255,0.04)',
+            border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: '8px',
+            color: TEXT_PRIMARY,
+            fontSize: '13px',
+            padding: '8px 12px',
+            fontFamily: 'inherit',
+            outline: 'none',
+            caretColor: CYAN,
+          }}
+          onFocus={e => e.currentTarget.style.borderColor = 'rgba(34,211,238,0.3)'}
+          onBlur={e => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'}
+        />
+        <button
+          type="button"
+          onClick={addItem}
+          disabled={!input.trim()}
+          style={{
+            background: 'rgba(34,211,238,0.1)',
+            border: '1px solid rgba(34,211,238,0.25)',
+            color: CYAN,
+            borderRadius: '8px',
+            padding: '8px 16px',
+            fontSize: '13px',
+            fontWeight: '600',
+            cursor: 'pointer',
+            fontFamily: 'inherit',
+            transition: 'all 0.15s',
+            opacity: input.trim() ? 1 : 0.4,
+          }}
+        >
+          Add
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ── Main Component ──────────────────────────────────────────
+export default function DailyPlan() {
+  const { user, profile, refreshProfile } = useAuth()
   const [day, setDay] = useState(todayStr())
   const [plan, setPlan] = useState({
     bias: '',
@@ -83,10 +240,16 @@ export default function DailyPlan() {
     key_levels: '',
     mindset_intention: '',
   })
+  const [confluences, setConfluences] = useState([])
   const [saving, setSaving] = useState(false)
   const [lastSaved, setLastSaved] = useState(null)
   const [loading, setLoading] = useState(false)
   const saveTimerRef = useRef(null)
+
+  // Load confluences from profile
+  useEffect(() => {
+    setConfluences(profile?.confluences || [])
+  }, [profile])
 
   const loadPlan = useCallback(async () => {
     if (!user) return
@@ -216,12 +379,21 @@ export default function DailyPlan() {
 
       {loading ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {[120, 160, 140].map((h, i) => (
+          {[120, 160, 140, 120].map((h, i) => (
             <div key={i} className="shimmer" style={{ borderRadius: '14px', height: `${h}px` }} />
           ))}
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+
+          {/* ── My Confluences ── */}
+          <ConfluenceManager
+            confluences={confluences}
+            onSave={updated => {
+              setConfluences(updated)
+              refreshProfile(user.id)
+            }}
+          />
 
           {/* ── HTF Bias ── */}
           <div style={{
@@ -282,7 +454,7 @@ export default function DailyPlan() {
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {SESSION_CHECKBOXES.map(s => (
-                  <SessionToggle
+                  <CheckToggle
                     key={s.key}
                     checked={plan.sessions[s.key]}
                     onChange={v => handleChange('sessions', { ...plan.sessions, [s.key]: v })}
@@ -310,18 +482,7 @@ export default function DailyPlan() {
                   onChange={e => handleChange('draw_on_liquidity', e.target.value)}
                   placeholder="Where is price likely drawing to? HTF target, EQH/EQL, premium/discount levels..."
                   rows={3}
-                  style={{
-                    width: '100%',
-                    background: 'transparent',
-                    border: 'none',
-                    outline: 'none',
-                    resize: 'none',
-                    color: TEXT_PRIMARY,
-                    fontSize: '13px',
-                    lineHeight: '1.6',
-                    fontFamily: 'inherit',
-                    caretColor: CYAN,
-                  }}
+                  style={{ width: '100%', background: 'transparent', border: 'none', outline: 'none', resize: 'none', color: TEXT_PRIMARY, fontSize: '13px', lineHeight: '1.6', fontFamily: 'inherit', caretColor: CYAN }}
                   onFocus={e => e.currentTarget.parentElement.style.borderColor = 'rgba(34,211,238,0.25)'}
                   onBlur={e => e.currentTarget.parentElement.style.borderColor = 'rgba(255,255,255,0.08)'}
                 />
@@ -342,18 +503,7 @@ export default function DailyPlan() {
                   onChange={e => handleChange('key_levels', e.target.value)}
                   placeholder="Support, resistance, POIs, order blocks..."
                   rows={3}
-                  style={{
-                    width: '100%',
-                    background: 'transparent',
-                    border: 'none',
-                    outline: 'none',
-                    resize: 'none',
-                    color: TEXT_PRIMARY,
-                    fontSize: '13px',
-                    lineHeight: '1.6',
-                    fontFamily: 'inherit',
-                    caretColor: CYAN,
-                  }}
+                  style={{ width: '100%', background: 'transparent', border: 'none', outline: 'none', resize: 'none', color: TEXT_PRIMARY, fontSize: '13px', lineHeight: '1.6', fontFamily: 'inherit', caretColor: CYAN }}
                   onFocus={e => e.currentTarget.parentElement.style.borderColor = 'rgba(34,211,238,0.25)'}
                   onBlur={e => e.currentTarget.parentElement.style.borderColor = 'rgba(255,255,255,0.08)'}
                 />
@@ -367,10 +517,7 @@ export default function DailyPlan() {
             border: '1px solid rgba(255,255,255,0.08)',
             borderRadius: '14px',
             padding: '20px',
-          }}
-            onFocus={e => e.currentTarget.style.borderColor = 'rgba(34,211,238,0.25)'}
-            onBlur={e => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'}
-          >
+          }}>
             <label style={{ fontSize: '13px', fontWeight: '700', color: TEXT_PRIMARY, display: 'block', marginBottom: '12px' }}>
               Setup I'm Looking For
             </label>
@@ -379,19 +526,7 @@ export default function DailyPlan() {
               onChange={e => handleChange('setup_looking_for', e.target.value)}
               placeholder="Describe the exact setup conditions: what structure you need, entry trigger, invalidation, target..."
               rows={4}
-              style={{
-                width: '100%',
-                background: 'transparent',
-                border: 'none',
-                outline: 'none',
-                resize: 'vertical',
-                color: TEXT_PRIMARY,
-                fontSize: '14px',
-                lineHeight: '1.7',
-                fontFamily: 'inherit',
-                caretColor: CYAN,
-                minHeight: '90px',
-              }}
+              style={{ width: '100%', background: 'transparent', border: 'none', outline: 'none', resize: 'vertical', color: TEXT_PRIMARY, fontSize: '14px', lineHeight: '1.7', fontFamily: 'inherit', caretColor: CYAN, minHeight: '90px' }}
               onFocus={e => e.currentTarget.parentElement.style.borderColor = 'rgba(34,211,238,0.25)'}
               onBlur={e => e.currentTarget.parentElement.style.borderColor = 'rgba(255,255,255,0.08)'}
             />
@@ -413,18 +548,7 @@ export default function DailyPlan() {
               onChange={e => handleChange('mindset_intention', e.target.value)}
               placeholder="e.g. 'Wait for confirmation — no anticipation entries.' or 'If I lose 2 trades, I stop for the day.'"
               rows={3}
-              style={{
-                width: '100%',
-                background: 'transparent',
-                border: 'none',
-                outline: 'none',
-                resize: 'vertical',
-                color: TEXT_PRIMARY,
-                fontSize: '14px',
-                lineHeight: '1.7',
-                fontFamily: 'inherit',
-                caretColor: CYAN,
-              }}
+              style={{ width: '100%', background: 'transparent', border: 'none', outline: 'none', resize: 'vertical', color: TEXT_PRIMARY, fontSize: '14px', lineHeight: '1.7', fontFamily: 'inherit', caretColor: CYAN }}
               onFocus={e => e.currentTarget.parentElement.style.borderColor = 'rgba(34,211,238,0.25)'}
               onBlur={e => e.currentTarget.parentElement.style.borderColor = 'rgba(255,255,255,0.08)'}
             />
